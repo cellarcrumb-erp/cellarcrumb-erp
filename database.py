@@ -718,7 +718,7 @@ def _seed_data(c, conn, sqlite_mode=True):
     manager_hash = bcrypt.hashpw(b'manager123', bcrypt.gensalt()).decode('utf-8')
     ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,TRUE,?)",
        ('admin', 'System Administrator', 'admin@cellarncrumb.co.ke', admin_hash, role_ids['Admin'], datetime.now().isoformat()))
-    ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,1,?)",
+    ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,TRUE,?)",
        ('manager', 'General Manager', 'manager@cellarncrumb.co.ke', manager_hash, role_ids['Manager'], datetime.now().isoformat()))
 
     num_series = [
@@ -747,8 +747,8 @@ def _seed_data(c, conn, sqlite_mode=True):
         uid = ex_ri('uom', ['code', 'name', 'base_uom'], (u, u, u))
         uom_ids[u] = uid
 
-    ex("INSERT INTO taxes (code, name, rate, tax_type, is_active) VALUES (?,?,16,'Sales',1)", ('VAT16', 'VAT 16%'))
-    ex("INSERT INTO taxes (code, name, rate, tax_type, is_active) VALUES (?,?,0,'Sales',1)", ('NONE', 'No Tax'))
+    ex("INSERT INTO taxes (code, name, rate, tax_type, is_active) VALUES (?,?,16,'Sales',TRUE)", ('VAT16', 'VAT 16%'))
+    ex("INSERT INTO taxes (code, name, rate, tax_type, is_active) VALUES (?,?,0,'Sales',TRUE)", ('NONE', 'No Tax'))
 
     currencies = [('KES', 'Kenyan Shilling', 'KES', 1), ('USD', 'US Dollar', '$', 130), ('EUR', 'Euro', '€', 140)]
     for cur in currencies:
@@ -756,7 +756,7 @@ def _seed_data(c, conn, sqlite_mode=True):
 
     payment_methods = ['Cash', 'Bank Transfer', 'M-Pesa', 'Card', 'Cheque']
     for pm in payment_methods:
-        ex("INSERT INTO payment_methods (name, method_type, is_active) VALUES (?,?,1)", (pm, pm.split()[0]))
+        ex("INSERT INTO payment_methods (name, method_type, is_active) VALUES (?,?,TRUE)", (pm, pm.split()[0]))
 
     # Branch first (warehouses reference it)
     branch_id = ex_ri('branches', ['code', 'name', 'address', 'phone', 'email', 'tax_id', 'is_main', 'is_active', 'created_at'],
@@ -819,11 +819,11 @@ def _seed_data(c, conn, sqlite_mode=True):
                     (code, name, acc_type, parent_id, bool(is_posting), True, 0))
         coa_map[code] = cid
 
-    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,0,1)",
+    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,0,TRUE)",
        ('CASH-MAIN', 'Cash Register', 'Cash', 'Cash', 'KES', coa_map['1110']))
-    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, account_number, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,?,0,1)",
+    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, account_number, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,?,0,TRUE)",
        ('KCB-001', 'KCB Current Account', 'Bank', 'KCB Bank', '001', 'KES', coa_map['1120']))
-    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,0,1)",
+    ex("INSERT INTO bank_accounts (code, name, account_type, bank_name, currency, coa_id, current_balance, is_active) VALUES (?,?,?,?,?,?,0,TRUE)",
        ('MPESA-001', 'M-Pesa Till', 'Mobile', 'M-Pesa', 'KES', coa_map['1130']))
 
     departments = ['Administration', 'Production', 'Sales', 'Purchasing', 'Store', 'Finance', 'Human Resources']
