@@ -79,6 +79,8 @@ class _PgWrapper:
         # SQLite datetime('now') and date('now')
         s = re.sub(r"\bdatetime\('now'\)", "NOW()", s, flags=re.IGNORECASE)
         s = re.sub(r"\bdate\('now'\)", "CURRENT_DATE", s, flags=re.IGNORECASE)
+        # SQLite IFNULL(a, b) -> COALESCE(a, b)
+        s = re.sub(r'\bIFNULL\(', 'COALESCE(', s, flags=re.IGNORECASE)
         # SQLite strftime('%Y-%m', col) -> SUBSTR(col::text, 1, 7)
         s = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"SUBSTR(\1::text, 1, 7)", s, flags=re.IGNORECASE)
         # INSERT OR IGNORE INTO -> INSERT INTO ... ON CONFLICT DO NOTHING

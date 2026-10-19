@@ -69,13 +69,13 @@ def dashboard():
     # Low Stock Items
     r_low = conn.execute("""
         SELECT COUNT(*) as cnt FROM items i
-        WHERE i.is_stock_item = 1 AND i.is_active = 1
+        WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
         AND (SELECT COALESCE(SUM(sb.quantity), 0) FROM stock_balances sb WHERE sb.item_id = i.id) <= i.reorder_level
     """).fetchone()
     low_stock_count = r_low['cnt'] if r_low else 0
 
     # Cash Balance
-    r_cash = conn.execute("SELECT COALESCE(SUM(current_balance), 0) as val FROM bank_accounts WHERE is_active = 1").fetchone()
+    r_cash = conn.execute("SELECT COALESCE(SUM(current_balance), 0) as val FROM bank_accounts WHERE is_active = TRUE").fetchone()
     cash_balance = r_cash['val'] if r_cash else 0
 
     # Pending Drafts Count
@@ -101,9 +101,9 @@ def dashboard():
         SELECT i.code, i.name, COALESCE(SUM(sb.quantity), 0) as stock, i.reorder_level
         FROM items i
         LEFT JOIN stock_balances sb ON i.id = sb.item_id
-        WHERE i.is_stock_item = 1 AND i.is_active = 1
-        GROUP BY i.id
-        HAVING stock <= i.reorder_level
+        WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
+        GROUP BY i.id, i.code, i.name, i.reorder_level
+        HAVING COALESCE(SUM(sb.quantity), 0) <= i.reorder_level
         LIMIT 6
     """).fetchall()
 

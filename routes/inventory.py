@@ -633,7 +633,7 @@ def new_count():
             """, (doc_ref, doc_date, warehouse_id, remarks, session.get('user_id')))
             count_id = cur.lastrowid
             
-            items = conn.execute("SELECT i.id, i.cost, IFNULL(sb.quantity, 0) as sys_qty FROM items i LEFT JOIN stock_balances sb ON i.id = sb.item_id AND sb.warehouse_id = ? WHERE i.is_stock_item = 1", (warehouse_id,)).fetchall()
+            items = conn.execute("SELECT i.id, i.cost, COALESCE(sb.quantity, 0) as sys_qty FROM items i LEFT JOIN stock_balances sb ON i.id = sb.item_id AND sb.warehouse_id = ? WHERE i.is_stock_item = TRUE", (warehouse_id,)).fetchall()
             for item in items:
                 conn.execute("INSERT INTO inventory_count_lines (count_id, item_id, system_qty, counted_qty, variance, unit_cost) VALUES (?, ?, ?, 0, ?, ?)",
                              (count_id, item['id'], item['sys_qty'], -item['sys_qty'], item['cost']))
@@ -720,12 +720,12 @@ def report_stock_valuation():
 def report_low_stock():
     conn = get_db()
     items = conn.execute("""
-        SELECT i.code, i.name, i.reorder_level, IFNULL(SUM(sb.quantity), 0) as current_stock, i.cost
+        SELECT i.code, i.name, i.reorder_level, COALESCE(SUM(sb.quantity), 0) as current_stock, i.cost
         FROM items i
         LEFT JOIN stock_balances sb ON i.id = sb.item_id
-        WHERE i.is_stock_item = 1
-        GROUP BY i.id
-        HAVING current_stock <= i.reorder_level AND i.reorder_level > 0
+        WHERE i.is_stock_item = TRUE
+        GROUP BY i.id, i.code, i.name, i.reorder_level, i.cost
+        HAVING COALESCE(SUM(sb.quantity), 0) <= i.reorder_level AND i.reorder_level > 0
     """).fetchall()
     return render_template('inventory/report_low_stock.html', items=items)
 
