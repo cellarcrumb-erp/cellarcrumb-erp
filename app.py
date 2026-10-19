@@ -73,12 +73,12 @@ def create_app():
         from database import PH
         # If Admin or Manager, can access all active branches; otherwise allowed user_branches
         if role in ['Admin', 'Manager']:
-            branches = conn.execute(f"SELECT * FROM branches WHERE is_active = 1 ORDER BY is_main DESC, name ASC").fetchall()
+            branches = conn.execute(f"SELECT * FROM branches WHERE is_active = TRUE ORDER BY is_main DESC, name ASC").fetchall()
         else:
             branches = conn.execute(f"""
                 SELECT b.* FROM user_branches ub 
                 JOIN branches b ON ub.branch_id = b.id 
-                WHERE ub.user_id = {PH} AND b.is_active = 1 
+                WHERE ub.user_id = {PH} AND b.is_active = TRUE 
                 ORDER BY ub.is_default DESC, b.name ASC
             """, (user_id,)).fetchall()
             

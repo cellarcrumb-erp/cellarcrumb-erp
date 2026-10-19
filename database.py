@@ -11,6 +11,7 @@ All SQL is kept compatible via a small adapter:
 """
 
 import os
+import re
 import json
 from pathlib import Path
 from datetime import datetime
@@ -69,10 +70,31 @@ class _PgWrapper:
         self._conn = pg_conn
         self.row_factory = None   # compatibility shim
 
-    # Translate ? → %s on the fly
+    # Translate SQLite queries to PostgreSQL dialect on the fly
     @staticmethod
     def _fix(sql):
-        return sql.replace('?', '%s')
+        if not sql:
+            return sql
+        s = sql.replace('?', '%s')
+        # SQLite datetime('now') and date('now')
+        s = re.sub(r"\bdatetime\('now'\)", "NOW()", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bdate\('now'\)", "CURRENT_DATE", s, flags=re.IGNORECASE)
+        # SQLite strftime('%Y-%m', col) -> SUBSTR(col::text, 1, 7)
+        s = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"SUBSTR(\1::text, 1, 7)", s, flags=re.IGNORECASE)
+        # INSERT OR IGNORE INTO -> INSERT INTO ... ON CONFLICT DO NOTHING
+        if re.search(r'\bINSERT\s+OR\s+IGNORE\s+INTO\b', s, flags=re.IGNORECASE):
+            s = re.sub(r'\bINSERT\s+OR\s+IGNORE\s+INTO\b', 'INSERT INTO', s, flags=re.IGNORECASE)
+            if 'ON CONFLICT' not in s.upper():
+                s = s.rstrip(';') + ' ON CONFLICT DO NOTHING'
+        # Boolean columns: is_<col> = 1/0 -> is_<col> = TRUE/FALSE
+        s = re.sub(r'\b(is_\w+)\s*=\s*CASE\s+WHEN\s+(is_\w+)\s*=\s*1\s+THEN\s+0\s+ELSE\s+1\s+END', r'\1 = NOT \2', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*=\s*1\b', r'\1 = TRUE', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*=\s*0\b', r'\1 = FALSE', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*!=\s*1\b', r'\1 != TRUE', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*!=\s*0\b', r'\1 != FALSE', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*<>\s*1\b', r'\1 <> TRUE', s, flags=re.IGNORECASE)
+        s = re.sub(r'\b(is_\w+)\s*<>\s*0\b', r'\1 <> FALSE', s, flags=re.IGNORECASE)
+        return s
 
     def execute(self, sql, params=()):
         cur = self._conn.cursor()

@@ -183,7 +183,7 @@ def login():
         cursor.execute("""
             SELECT u.id, u.username, u.full_name, u.password_hash, r.name as role_name, r.permissions 
             FROM users u JOIN roles r ON u.role_id = r.id 
-            WHERE u.username = ? AND u.is_active = 1
+            WHERE u.username = ? AND u.is_active = TRUE
         """, (username,))
         user = cursor.fetchone()
         
@@ -209,7 +209,7 @@ def login():
                 SELECT b.id, b.name, b.code, ub.is_default
                 FROM user_branches ub 
                 JOIN branches b ON ub.branch_id = b.id 
-                WHERE ub.user_id = ? AND b.is_active = 1 
+                WHERE ub.user_id = ? AND b.is_active = TRUE 
                 ORDER BY ub.is_default DESC, b.id ASC
             """, (user['id'],)).fetchall()
             
@@ -221,7 +221,7 @@ def login():
                 session['active_branch_code'] = def_b['code']
             elif user['role_name'] in ['Admin', 'Manager']:
                 # Admins/Managers default to Main HQ or All Branches
-                main_b = cursor.execute("SELECT id, name, code FROM branches WHERE is_main = 1 AND is_active = 1 LIMIT 1").fetchone()
+                main_b = cursor.execute("SELECT id, name, code FROM branches WHERE is_main = TRUE AND is_active = TRUE LIMIT 1").fetchone()
                 if main_b:
                     session['active_branch_id'] = main_b['id']
                     session['active_branch_name'] = main_b['name']
@@ -232,7 +232,7 @@ def login():
                     session['active_branch_code'] = 'ALL'
             else:
                 # Fallback to main branch
-                main_b = cursor.execute("SELECT id, name, code FROM branches WHERE is_main = 1 AND is_active = 1 LIMIT 1").fetchone()
+                main_b = cursor.execute("SELECT id, name, code FROM branches WHERE is_main = TRUE AND is_active = TRUE LIMIT 1").fetchone()
                 if main_b:
                     session['active_branch_id'] = main_b['id']
                     session['active_branch_name'] = main_b['name']
