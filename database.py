@@ -716,7 +716,7 @@ def _seed_data(c, conn, sqlite_mode=True):
 
     admin_hash = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode('utf-8')
     manager_hash = bcrypt.hashpw(b'manager123', bcrypt.gensalt()).decode('utf-8')
-    ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,1,?)",
+    ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,TRUE,?)",
        ('admin', 'System Administrator', 'admin@cellarncrumb.co.ke', admin_hash, role_ids['Admin'], datetime.now().isoformat()))
     ex("INSERT INTO users (username, full_name, email, password_hash, role_id, is_active, created_at) VALUES (?,?,?,?,?,1,?)",
        ('manager', 'General Manager', 'manager@cellarncrumb.co.ke', manager_hash, role_ids['Manager'], datetime.now().isoformat()))
