@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Stock Balances</h2>
+<table class="table">
+    <tr><th>Item Code</th><th>Item Name</th><th>Warehouse</th><th>Quantity</th><th>Value</th></tr>
+    {% for b in balances %}
+    <tr>
+        <td>{{ b.code }}</td>
+        <td>{{ b.name }}</td>
+        <td>{{ b.warehouse }}</td>
+        <td>{{ b.quantity }}</td>
+        <td>{{ b.value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

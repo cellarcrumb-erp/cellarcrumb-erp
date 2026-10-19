@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ payment.doc_ref }}</title>
+  <style>
+    body { font-family: sans-serif; color: #333; margin: 0; padding: 20px; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+    .info-box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .table th, .table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .footer { margin-top: 50px; display: flex; justify-content: space-between; }
+    .sign-line { width: 200px; border-top: 1px solid #000; text-align: center; padding-top: 5px; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:20px;">
+    <button onclick="window.print()" style="padding:10px 20px; background:#c9a84c; color:#fff; border:none; cursor:pointer;">Print</button>
+  </div>
+  <div class="header">
+    <div class="title">{% if payment.payment_type == 'Incoming' %}RECEIPT{% else %}PAYMENT VOUCHER{% endif %}</div>
+    <div>{{ company.name }}</div>
+    <div>{{ company.address }} | {{ company.phone }}</div>
+  </div>
+  <div class="info-box">
+    <div class="row"><div><strong>Ref No:</strong> {{ payment.doc_ref }}</div><div><strong>Date:</strong> {{ payment.doc_date }}</div></div>
+    <div class="row"><div><strong>{% if payment.payment_type == 'Incoming' %}Received From{% else %}Paid To{% endif %}:</strong> {{ payment.partner_name or '-' }}</div></div>
+  </div>
+  <div class="info-box">
+    <div class="row">
+      <div style="font-size: 18px;"><strong>Amount:</strong> KES {{ payment.amount }}</div>
+    </div>
+    <div class="row">
+      <div><strong>Payment Method:</strong> {{ payment.payment_method_name }}</div>
+      <div><strong>Bank Account:</strong> {{ payment.bank_account_name }}</div>
+    </div>
+    {% if payment.reference %}
+    <div class="row"><div><strong>Reference:</strong> {{ payment.reference }}</div></div>
+    {% endif %}
+  </div>
+  {% if allocations %}
+  <h3>Allocations</h3>
+  <table class="table">
+    <thead><tr><th>Document</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for a in allocations %}
+      <tr><td>{{ a.doc_type }} #{{ a.doc_id }}</td><td>{{ a.amount }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="footer">
+    <div class="sign-line">Prepared By</div>
+    <div class="sign-line">Authorized By</div>
+    <div class="sign-line">Received By</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block page_title %}{{ doc.doc_type }} {{ doc.doc_ref }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('purchases.index') }}">Purchases</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('purchases.doc_list', doc_kind=doc_kind) }}">{{ doc.doc_type }}s</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ doc.doc_ref }}</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <div class="flex items-center gap-3">
+      <h2 style="margin:0; font-size:22px; font-weight:700;">{{ doc.doc_type }} {{ doc.doc_ref }}</h2>
+      <span class="badge {% if doc.status=='Draft' %}badge-draft{% elif doc.status in ['Posted', 'Confirmed', 'Paid'] %}badge-posted{% elif doc.status=='Partial' %}badge-pending{% elif doc.status=='Cancelled' %}badge-cancelled{% else %}badge-closed{% endif %}">
+        {{ doc.status }}
+      </span>
+      {% if is_fully_copied %}
+      <span class="badge badge-draft" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;">
+        Fully Drawn
+      </span>
+      {% endif %}
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Created: {{ doc.created_at or doc.doc_date }}</div>
+  </div>
+
+  <div class="flex gap-2 items-center">
+    {% if doc.status == 'Draft' %}
+    <form method="POST" action="{{ url_for('purchases.doc_post', doc_kind=doc_kind, id=doc.id) }}">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i data-feather="check" style="width:14px;height:14px;"></i> Post / Confirm
+      </button>
+    </form>
+    {% endif %}
+
+    <!-- SAP Copy To Action Dropdown -->
+    {% if valid_copy_to and doc.status != 'Cancelled' and not is_fully_copied %}
+    <div style="position:relative; display:inline-block;">
+      <button type="button" onclick="toggleDropdown('copyToMenu')" class="btn btn-secondary btn-sm" style="border-color:var(--gold); color:var(--gold-dark);">
+        <i data-feather="corner-up-right" style="width:14px;height:14px;"></i> Copy To ▾
+      </button>
+      <div id="copyToMenu" class="dropdown-menu" style="display:none; position:absolute; right:0; top:calc(100% + 4px); min-width:180px; background:#ffffff; border-radius:8px; box-shadow:var(--shadow-lg); border:1px solid var(--border); padding:6px 0; z-index:100;">
+        {% for target in valid_copy_to %}
+        <a href="{{ url_for('purchases.doc_new', doc_kind=target.kind, copy_from_id=doc.id, copy_from_type=doc.doc_type) }}" style="display:flex; align-items:center; gap:8px; padding:9px 16px; color:var(--text-primary); text-decoration:none; font-size:13px; font-weight:500; transition:background 0.1s;">
+          <i data-feather="arrow-right" style="width:13px;height:13px; color:var(--gold);"></i> {{ target.type }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('purchases.doc_print', doc_kind=doc_kind, id=doc.id) }}" target="_blank" class="btn btn-secondary btn-sm">
+      <i data-feather="printer" style="width:14px;height:14px;"></i> Print
+    </a>
+  </div>
+</div>
+
+<!-- Header Card -->
+<div class="card p-4">
+  <div class="detail-grid">
+    <div>
+      <div class="detail-label">Supplier</div>
+      <div class="detail-value">{{ doc.supplier_name }}</div>
+    </div>
+    <div>
+      <div class="detail-label">Branch</div>
+      <div class="detail-value">
+        <span class="badge badge-open" style="font-size:12px;">
+          <i data-feather="map-pin" style="width:11px;height:11px; margin-right:4px;"></i>
+          {{ doc.branch_name or 'Main HQ' }}
+        </span>
+      </div>
+    </div>
+    <div>
+      <div class="detail-label">Document Date</div>
+      <div class="detail-value">{{ doc.doc_date }}</div>
+    </div>
+    <div>
+      <div class="detail-label">Warehouse</div>
+      <div class="detail-value">{{ doc.warehouse_name or '-' }}</div>
+    </div>
+    <div>
+      <div class="detail-label">Total Amount</div>
+      <div class="detail-value text-erp-gold font-bold" style="font-size:18px;">KES {{ "%.2f"|format(doc.total) }}</div>
+    </div>
+  </div>
+
+  {% if doc.remarks %}
+  <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-bottom:20px;">
+    <div class="detail-label" style="margin-bottom:2px;">Remarks</div>
+    <div style="font-size:13.5px; color:var(--text-primary);">{{ doc.remarks }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Line Items Table with Fulfillment Tracking -->
+  <div class="card-header" style="margin-top:10px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+    <h3 class="card-title">Line Items & Fulfillment</h3>
+  </div>
+
+  <div class="table-card border rounded mb-6" style="margin-bottom:24px;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="text-right">Ordered Qty</th>
+          <th class="text-right">Drawn / Copied</th>
+          <th class="text-right">Open Qty</th>
+          <th class="text-right">Unit Price</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in lines %}
+        <tr>
+          <td>
+            <div class="font-bold">{{ l.item_name }}</div>
+            <div style="font-size:11.5px; color:var(--text-secondary);">{{ l.item_code }}</div>
+          </td>
+          <td class="text-right font-semibold">{{ "%.2f"|format(l.quantity) }}</td>
+          <td class="text-right" style="color:var(--text-secondary);">{{ "%.2f"|format(l.copied_qty or 0) }}</td>
+          <td class="text-right font-bold" style="color:{% if l.open_qty > 0 %}#059669{% else %}#94a3b8{% endif %};">
+            {{ "%.2f"|format(l.open_qty) }}
+          </td>
+          <td class="text-right">KES {{ "%.2f"|format(l.unit_cost) }}</td>
+          <td class="text-right font-bold">KES {{ "%.2f"|format(l.line_total) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:#f8fafc; font-weight:700;">
+          <td colspan="5" class="text-right" style="padding:14px 18px;">Total:</td>
+          <td class="text-right text-erp-gold font-bold" style="font-size:16px; padding:14px 18px;">KES {{ "%.2f"|format(doc.total) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Document Relationship Map (SAP Document Chain) -->
+  <div style="background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:18px;">
+    <h4 style="margin:0 0 14px 0; font-size:13px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
+      <i data-feather="git-commit" style="width:15px;height:15px; color:var(--gold);"></i> Document Relationship Chain
+    </h4>
+    <div class="two-col" style="gap:16px;">
+      <!-- Upstream Base Document -->
+      <div class="card p-3 m-0" style="background:#ffffff; border:1px solid var(--border); box-shadow:none;">
+        <div class="detail-label" style="margin-bottom:8px;">Based On (Copied From)</div>
+        {% if base_docs %}
+          {% for b in base_docs %}
+          <div class="flex justify-between items-center" style="font-size:13px; padding:6px 0; border-bottom:1px solid var(--border-subtle);">
+            <div>
+              <span class="font-bold text-erp-gold">{{ b.doc_ref }}</span>
+              <span style="font-size:11.5px; color:var(--text-secondary);">({{ b.doc_type }})</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary);">
+              {{ b.doc_date }} | KES {{ "%.2f"|format(b.total) }}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="font-size:12.5px; color:var(--text-muted); font-style:italic;">Standalone (Created directly)</div>
+        {% endif %}
+      </div>
+
+      <!-- Downstream Target Documents -->
+      <div class="card p-3 m-0" style="background:#ffffff; border:1px solid var(--border); box-shadow:none;">
+        <div class="detail-label" style="margin-bottom:8px;">Target Documents (Copied To)</div>
+        {% if target_docs %}
+          {% for t in target_docs %}
+          <div class="flex justify-between items-center" style="font-size:13px; padding:6px 0; border-bottom:1px solid var(--border-subtle);">
+            <div>
+              <span class="font-bold text-erp-gold">{{ t.doc_ref }}</span>
+              <span style="font-size:11.5px; color:var(--text-secondary);">({{ t.doc_type }})</span>
+            </div>
+            <div class="flex items-center gap-2" style="font-size:12px; color:var(--text-secondary);">
+              <span>{{ t.doc_date }} | KES {{ "%.2f"|format(t.total) }}</span>
+              <span class="badge badge-draft" style="font-size:10.5px; padding:2px 6px;">{{ t.status }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="font-size:12.5px; color:var(--text-muted); font-style:italic;">No downstream documents generated yet</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleDropdown(id) {
+    const el = document.getElementById(id);
+    if(el.style.display === 'block') {
+      el.style.display = 'none';
+    } else {
+      el.style.display = 'block';
+    }
+  }
+  window.onclick = function(event) {
+    if (!event.target.closest('.dropdown-menu') && !event.target.closest('button')) {
+      document.querySelectorAll('.dropdown-menu').forEach(el => {
+        el.style.display = 'none';
+      });
+    }
+  }
+</script>
+{% endblock %}

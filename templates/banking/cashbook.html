@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block page_title %}Cashbook Report{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Cashbook Report</span>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <form method="GET" style="display:flex; gap:10px; align-items:flex-end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Bank Account</label>
+      <select name="account_id" class="form-control" required>
+        {% for a in accounts %}
+        <option value="{{ a.id }}" {% if request.args.get('account_id')|int == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">From Date</label>
+      <input type="date" name="from_date" class="form-control" value="{{ request.args.get('from_date','') }}">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">To Date</label>
+      <input type="date" name="to_date" class="form-control" value="{{ request.args.get('to_date','') }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Apply Filter</button>
+    <button type="button" class="btn btn-secondary" onclick="window.print()">Print</button>
+  </form>
+</div>
+{% if account %}
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Ref</th>
+        <th>Description</th>
+        <th>Receipts (Dr)</th>
+        <th>Payments (Cr)</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#f8fafc; font-weight:bold;">
+        <td colspan="5">Opening Balance</td>
+        <td>{{ opening_balance }}</td>
+      </tr>
+      {% set current = opening_balance %}
+      {% for t in transactions %}
+      {% set amt = t.amount|float %}
+      {% set current = current + amt %}
+      <tr>
+        <td>{{ t.doc_date }}</td>
+        <td>{{ t.doc_ref }}</td>
+        <td>{{ t.description }}</td>
+        <td>{% if amt > 0 %}{{ amt }}{% endif %}</td>
+        <td>{% if amt < 0 %}{{ amt|abs }}{% endif %}</td>
+        <td>{{ current }}</td>
+      </tr>
+      {% endfor %}
+      <tr style="background:#f8fafc; font-weight:bold;">
+        <td colspan="5">Closing Balance</td>
+        <td>{{ closing_balance }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

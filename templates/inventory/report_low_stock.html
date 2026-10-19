@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Low Stock Report</h2>
+<table class="table">
+    <tr><th>Code</th><th>Name</th><th>Total Stock</th><th>Reorder Level</th></tr>
+    {% for r in data %}
+    <tr class="table-danger">
+        <td>{{ r.code }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.total_stock }}</td>
+        <td>{{ r.reorder_level }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block page_title %}New Goods Issue{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">New Goods Issue (IGI)</h2>
+        <p class="text-sm text-gray-500">Record stock reduction / internal material issue</p>
+    </div>
+    <div>
+        <button type="button" onclick="openCopyFromModal()" class="btn btn-secondary border border-erp-gold text-erp-gold hover:bg-yellow-50 flex items-center gap-1">
+            <i data-feather="corner-down-left" style="width:14px;height:14px;"></i> Copy From SO ▾
+        </button>
+    </div>
+</div>
+
+<form method="POST" id="issueForm" class="bg-white rounded-lg shadow p-6">
+    <input type="hidden" name="source_doc_id" id="sourceDocId" value="">
+    <input type="hidden" name="source_doc_type" id="sourceDocType" value="">
+    <input type="hidden" name="source_doc_ref" id="sourceDocRef" value="">
+
+    <div id="baseDocBanner" class="alert alert-info mb-4 hidden" style="display:none;">
+        <i data-feather="link" style="width:16px;height:16px;"></i>
+        <span>Drawing from base document: <strong id="baseDocBannerRef"></strong> (<span id="baseDocBannerType"></span>)</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Issue Warehouse *</label>
+            <select name="warehouse_id" id="warehouseSelect" required class="w-full border rounded p-2 text-sm">
+                <option value="">Select Warehouse</option>
+                {% for w in warehouses %}
+                <option value="{{ w.id }}">{{ w.name }} ({{ w.code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Issue Date *</label>
+            <input type="date" name="doc_date" required class="w-full border rounded p-2 text-sm" value="{{ today }}">
+        </div>
+    </div>
+
+    <h3 class="text-lg font-bold text-gray-800 mb-2">Issued Items</h3>
+    <div class="overflow-x-auto mb-4 border rounded">
+        <table class="w-full text-left border-collapse" id="linesTable">
+            <thead>
+                <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
+                    <th class="p-2">Item *</th>
+                    <th class="p-2 text-right">Quantity *</th>
+                    <th class="p-2 text-center"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="border-b line-row">
+                    <td class="p-2">
+                        <input type="hidden" name="source_line_id[]" value="">
+                        <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select">
+                            <option value="">Select Item</option>
+                            {% for i in items %}
+                            <option value="{{ i.id }}">{{ i.code }} - {{ i.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-28 border rounded p-1 text-sm text-right qty-input" value="1"></td>
+                    <td class="p-2 text-center">
+                        <button type="button" class="text-red-500 hover:text-red-700 font-bold px-2 remove-btn" onclick="removeRow(this)">&times;</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex justify-between items-center mb-6">
+        <button type="button" onclick="addRow()" class="btn btn-secondary text-sm">+ Add Row</button>
+    </div>
+
+    <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Remarks / Reason</label>
+        <textarea name="remarks" rows="2" class="w-full border rounded p-2 text-sm"></textarea>
+    </div>
+
+    <div class="flex justify-end gap-2">
+        <a href="{{ url_for('inventory.issues') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Draft Issue</button>
+    </div>
+</form>
+
+<!-- Copy From Modal -->
+<div id="copyModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 mx-4" style="background:#fff; border-radius:8px; width:90%; max-width:680px; padding:20px;">
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+            <h3 class="text-lg font-bold text-gray-800">Copy From Sales Order</h3>
+            <button type="button" onclick="closeCopyModal()" class="text-gray-500 hover:text-gray-700 font-bold text-xl">&times;</button>
+        </div>
+        <div id="modalList" style="max-height:260px; overflow-y:auto;" class="border rounded mb-4">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead><tr class="bg-gray-100 border-b text-xs text-gray-600"><th class="p-2">SO Ref</th><th class="p-2">Date</th><th class="p-2">Customer</th><th class="p-2 text-right">Open Lines</th><th class="p-2 text-center">Action</th></tr></thead>
+                <tbody id="modalBody"><tr><td colspan="5" class="p-4 text-center text-gray-500">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function addRow(itemId='', qty=1, sLineId='') {
+    const tbody = document.querySelector('#linesTable tbody');
+    const tr = document.querySelector('.line-row').cloneNode(true);
+    tr.querySelector('.item-select').value = itemId;
+    tr.querySelector('.qty-input').value = qty;
+    tr.querySelector('input[name="source_line_id[]"]').value = sLineId;
+    tbody.appendChild(tr);
+}
+function removeRow(btn) {
+    if(document.querySelectorAll('.line-row').length > 1) {
+        btn.closest('tr').remove();
+    }
+}
+function openCopyFromModal() {
+    const modal = document.getElementById('copyModal');
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    fetch('/inventory/api/eligible-sources?target_type=Goods+Issue')
+        .then(r => r.json())
+        .then(data => {
+            const tb = document.getElementById('modalBody');
+            if(!data.sources || data.sources.length === 0) {
+                tb.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No open sales orders available.</td></tr>';
+                return;
+            }
+            let h = '';
+            data.sources.forEach(s => {
+                h += `<tr class="border-b hover:bg-yellow-50">
+                    <td class="p-2 font-semibold text-erp-gold">${s.doc_ref}</td>
+                    <td class="p-2 text-xs">${s.doc_date}</td>
+                    <td class="p-2">${s.partner_name || '-'}</td>
+                    <td class="p-2 text-right text-xs">${s.open_lines_count}</td>
+                    <td class="p-2 text-center"><button type="button" onclick="loadSourceSO(${s.id})" class="btn btn-sm btn-primary py-1 px-2 text-xs">Select</button></td>
+                </tr>`;
+            });
+            tb.innerHTML = h;
+        });
+}
+function closeCopyModal() {
+    const modal = document.getElementById('copyModal');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+}
+function loadSourceSO(docId) {
+    fetch(`/inventory/api/source-lines?source_module=sales&doc_id=${docId}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('sourceDocId').value = data.header.id;
+            document.getElementById('sourceDocType').value = 'Sales Order';
+            document.getElementById('sourceDocRef').value = data.header.doc_ref;
+
+            document.getElementById('baseDocBannerRef').innerText = data.header.doc_ref;
+            document.getElementById('baseDocBannerType').innerText = 'Sales Order';
+            const b = document.getElementById('baseDocBanner');
+            b.classList.remove('hidden');
+            b.style.display = 'flex';
+
+            if(data.header.warehouse_id) {
+                document.getElementById('warehouseSelect').value = data.header.warehouse_id;
+            }
+
+            const tbody = document.querySelector('#linesTable tbody');
+            tbody.innerHTML = '';
+            data.lines.forEach(l => {
+                if(l.open_qty > 0) {
+                    addRow(l.item_id, l.open_qty, l.id);
+                }
+            });
+            if(tbody.children.length === 0) addRow();
+            closeCopyModal();
+        });
+}
+</script>
+{% endblock %}

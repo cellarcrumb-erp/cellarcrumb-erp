@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_title %}Transactions{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Transactions</span>
+</div>
+<div class="card table-card">
+  <div class="table-toolbar" style="padding:16px; border-bottom:1px solid var(--border);">
+    <form method="GET" style="display:flex; gap:10px;">
+      <select name="account_id" class="form-control filter-select">
+        <option value="">All Accounts</option>
+        {% for a in accounts %}
+        <option value="{{ a.id }}" {% if request.args.get('account_id')|int == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="type" class="form-control filter-select">
+        <option value="">All Types</option>
+        <option value="Deposit" {% if request.args.get('type') == 'Deposit' %}selected{% endif %}>Deposit</option>
+        <option value="Withdrawal" {% if request.args.get('type') == 'Withdrawal' %}selected{% endif %}>Withdrawal</option>
+        <option value="Transfer" {% if request.args.get('type') == 'Transfer' %}selected{% endif %}>Transfer</option>
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Ref</th>
+        <th>Account</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Amount</th>
+        <th>Reconciled</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td>{{ t.doc_date }}</td>
+        <td>{{ t.doc_ref }}</td>
+        <td>{{ t.account_name }}</td>
+        <td>{{ t.txn_type }}</td>
+        <td>{{ t.description }}</td>
+        <td style="color:{% if t.amount > 0 %}green{% else %}red{% endif %}; font-weight:bold;">
+          {{ t.amount }}
+        </td>
+        <td><span class="badge {% if t.is_reconciled %}badge-posted{% else %}badge-pending{% endif %}">{{ 'Yes' if t.is_reconciled else 'No' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

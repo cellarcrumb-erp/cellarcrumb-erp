@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Stock Ledger (Recent 100)</h2>
+<table class="table table-sm">
+    <tr><th>Item</th><th>Warehouse</th><th>Doc Type</th><th>Doc Ref</th><th>In</th><th>Out</th><th>Bal</th></tr>
+    {% for r in data %}
+    <tr>
+        <td>{{ r.item_name }}</td>
+        <td>{{ r.warehouse_name }}</td>
+        <td>{{ r.doc_type }}</td>
+        <td>{{ r.doc_ref }}</td>
+        <td>{{ r.qty_in }}</td>
+        <td>{{ r.qty_out }}</td>
+        <td>{{ r.balance }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

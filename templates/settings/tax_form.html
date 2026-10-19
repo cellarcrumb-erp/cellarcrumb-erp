@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if tax %}Edit{% else %}New{% endif %} Tax{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.taxes') }}">Taxes</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if tax %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Code *</label>
+        <input type="text" name="code" class="form-control" value="{{ tax.code if tax else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" name="name" class="form-control" value="{{ tax.name if tax else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rate (%) *</label>
+        <input type="number" step="0.01" name="rate" class="form-control" value="{{ tax.rate if tax else '0' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tax Type</label>
+        <select name="tax_type" class="form-control">
+          <option value="VAT" {% if tax and tax.tax_type=='VAT' %}selected{% endif %}>VAT</option>
+          <option value="Exempt" {% if tax and tax.tax_type=='Exempt' %}selected{% endif %}>Exempt</option>
+          <option value="Zero-Rated" {% if tax and tax.tax_type=='Zero-Rated' %}selected{% endif %}>Zero-Rated</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Is Active</label>
+        <input type="checkbox" name="is_active" {% if not tax or tax.is_active %}checked{% endif %}>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('settings.taxes') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

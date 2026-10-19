@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block page_title %}Headcount Report{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Headcount Report</span>
+</div>
+<div class="actions-bar">
+  <button class="btn btn-secondary" onclick="window.print()">Print</button>
+</div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:20px;">
+  <div class="stat-card"><div class="stat-label">Total Employees</div><div class="stat-value">{{ total }}</div></div>
+  <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value blue">{{ active }}</div></div>
+  <div class="stat-card"><div class="stat-label">Inactive</div><div class="stat-value red">{{ inactive }}</div></div>
+  <div class="stat-card"><div class="stat-label">On Leave</div><div class="stat-value gold">{{ on_leave }}</div></div>
+</div>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">By Department</div></div>
+    <table class="table">
+      <thead><tr><th>Department</th><th>Total</th><th>Active</th><th>Inactive</th></tr></thead>
+      <tbody>
+        {% for row in dept_summary %}
+        <tr><td>{{ row.name }}</td><td>{{ row.total }}</td><td>{{ row.active }}</td><td>{{ row.inactive }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">By Employment Type</div></div>
+    <table class="table">
+      <thead><tr><th>Type</th><th>Total</th><th>Active</th></tr></thead>
+      <tbody>
+        {% for row in type_summary %}
+        <tr><td>{{ row.type }}</td><td>{{ row.total }}</td><td>{{ row.active }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

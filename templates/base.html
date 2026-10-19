@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Overview{% endblock %} — Cellar & Crumb ERP</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- Feather Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">C&C</div>
+    <div>
+      <div class="sidebar-title">Cellar & Crumb</div>
+      <div class="sidebar-subtitle">Operations ERP</div>
+    </div>
+  </div>
+  
+  <nav class="sidebar-nav">
+    {% if user_can('overview', 'read') %}
+    <a href="{{ url_for('overview.dashboard') }}" class="sidebar-item {% if request.blueprint == 'overview' %}active{% endif %}">
+      <i data-feather="grid"></i> Overview
+    </a>
+    {% endif %}
+    
+    {% if user_can('inventory', 'read') or user_can('bp_master', 'read') or user_can('sales', 'read') or user_can('purchases', 'read') or user_can('production', 'read') %}
+    <div class="sidebar-section">Operations</div>
+    
+    {% if user_can('inventory', 'read') %}
+    <a href="{{ url_for('inventory.index') }}" class="sidebar-item {% if request.blueprint == 'inventory' %}active{% endif %}">
+      <i data-feather="package"></i> Inventory / Stock
+    </a>
+    {% endif %}
+    
+    {% if user_can('bp_master', 'read') %}
+    <a href="{{ url_for('bp_master.index') }}" class="sidebar-item {% if request.blueprint == 'bp_master' %}active{% endif %}">
+      <i data-feather="users"></i> BP Master
+    </a>
+    {% endif %}
+    
+    {% if user_can('sales', 'read') %}
+    <a href="{{ url_for('sales.index') }}" class="sidebar-item {% if request.blueprint == 'sales' %}active{% endif %}">
+      <i data-feather="shopping-cart"></i> Sales
+    </a>
+    {% endif %}
+    
+    {% if user_can('purchases', 'read') %}
+    <a href="{{ url_for('purchases.index') }}" class="sidebar-item {% if request.blueprint == 'purchases' %}active{% endif %}">
+      <i data-feather="truck"></i> Purchases
+    </a>
+    {% endif %}
+    
+    {% if user_can('production', 'read') %}
+    <a href="{{ url_for('production.index') }}" class="sidebar-item {% if request.blueprint == 'production' %}active{% endif %}">
+      <i data-feather="cpu"></i> Production
+    </a>
+    {% endif %}
+    {% endif %}
+    
+    {% if user_can('finance', 'read') or user_can('hr', 'read') or user_can('banking', 'read') or user_can('payments', 'read') %}
+    <div class="sidebar-section">Finance & HR</div>
+    
+    {% if user_can('finance', 'read') %}
+    <a href="{{ url_for('finance.index') }}" class="sidebar-item {% if request.blueprint == 'finance' %}active{% endif %}">
+      <i data-feather="bar-chart-2"></i> Finance
+    </a>
+    {% endif %}
+    
+    {% if user_can('hr', 'read') %}
+    <a href="{{ url_for('hr.index') }}" class="sidebar-item {% if request.blueprint == 'hr' %}active{% endif %}">
+      <i data-feather="user-check"></i> Human Resources
+    </a>
+    {% endif %}
+    
+    {% if user_can('banking', 'read') %}
+    <a href="{{ url_for('banking.index') }}" class="sidebar-item {% if request.blueprint == 'banking' %}active{% endif %}">
+      <i data-feather="credit-card"></i> Banking
+    </a>
+    {% endif %}
+    
+    {% if user_can('payments', 'read') %}
+    <a href="{{ url_for('payments.index') }}" class="sidebar-item {% if request.blueprint == 'payments' %}active{% endif %}">
+      <i data-feather="dollar-sign"></i> Payments
+    </a>
+    {% endif %}
+    {% endif %}
+    
+    {% if user_can('settings', 'read') %}
+    <div class="sidebar-section">Admin</div>
+    
+    <a href="{{ url_for('settings.index') }}" class="sidebar-item {% if request.blueprint == 'settings' %}active{% endif %}">
+      <i data-feather="settings"></i> Settings
+    </a>
+    {% endif %}
+  </nav>
+  
+  <div class="sidebar-footer">
+    <div class="sidebar-item" style="cursor:default;">
+      <i data-feather="user"></i>
+      <div>
+        <div style="font-size:12px;color:white;">{{ session.get('full_name', 'User') }}</div>
+        <div style="font-size:10px;color:#9ca3af;">{{ session.get('role', '') }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="sidebar-item" style="color:#ef4444; margin-top:4px;">
+      <i data-feather="log-out"></i> Logout
+    </a>
+  </div>
+</aside>
+
+<!-- Main Wrapper -->
+<div class="main-wrapper">
+  <!-- Subtle Tech Grid & Deep Navy Accent Canvas -->
+  <div class="tech-canvas-bg" aria-hidden="true">
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+    <svg class="tech-wireframe tech-wireframe-tl" width="220" height="220" viewBox="0 0 200 200" fill="none">
+      <path d="M100 20 L160 55 L100 90 L40 55 Z" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.2"/>
+      <path d="M40 55 L40 125 L100 160 L100 90 Z" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.2"/>
+      <path d="M160 55 L160 125 L100 160 L100 90 Z" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.2"/>
+      <path d="M100 20 L100 90" stroke="rgba(56, 189, 248, 0.12)" stroke-width="1"/>
+      <path d="M100 45 L135 65 L100 85 L65 65 Z" stroke="rgba(56, 189, 248, 0.18)" stroke-width="1"/>
+      <path d="M65 65 L65 105 L100 125 L100 85 Z" stroke="rgba(56, 189, 248, 0.18)" stroke-width="1"/>
+      <path d="M135 65 L135 105 L100 125 L100 85 Z" stroke="rgba(56, 189, 248, 0.18)" stroke-width="1"/>
+    </svg>
+    <svg class="tech-wireframe tech-wireframe-br" width="280" height="280" viewBox="0 0 200 200" fill="none">
+      <path d="M100 20 L160 55 L100 90 L40 55 Z" stroke="rgba(56, 189, 248, 0.12)" stroke-width="1.2"/>
+      <path d="M40 55 L40 125 L100 160 L100 90 Z" stroke="rgba(56, 189, 248, 0.12)" stroke-width="1.2"/>
+      <path d="M160 55 L160 125 L100 160 L100 90 Z" stroke="rgba(56, 189, 248, 0.12)" stroke-width="1.2"/>
+      <path d="M100 20 L100 90" stroke="rgba(56, 189, 248, 0.09)" stroke-width="1"/>
+      <path d="M100 45 L135 65 L100 85 L65 65 Z" stroke="rgba(56, 189, 248, 0.14)" stroke-width="1"/>
+      <path d="M65 65 L65 105 L100 125 L100 85 Z" stroke="rgba(56, 189, 248, 0.14)" stroke-width="1"/>
+      <path d="M135 65 L135 105 L100 125 L100 85 Z" stroke="rgba(56, 189, 248, 0.14)" stroke-width="1"/>
+    </svg>
+  </div>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+    <div class="topbar-actions">
+      {% block topbar_actions %}{% endblock %}
+
+      <!-- SAP Multiple Branches Switcher -->
+      {% if session.get('user_id') and all_accessible_branches %}
+        {% if all_accessible_branches|length == 1 and not can_switch_all_branches %}
+        <!-- Static Branch Badge for single assigned branch users -->
+        <div style="display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:#f3f4f6; font-size:13px; font-weight:600;">
+          <i data-feather="map-pin" style="width:14px;height:14px; color:var(--gold);"></i>
+          <span>{{ active_branch.name if active_branch else all_accessible_branches[0].name }}</span>
+        </div>
+        {% else %}
+        <div style="position:relative; display:inline-block;">
+          <button type="button" onclick="toggleDropdown('branchSwitcherMenu', event)" class="btn btn-secondary btn-sm" 
+                  style="display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.07); color:#f3f4f6; font-size:13px; font-weight:600; cursor:pointer;">
+            <i data-feather="map-pin" style="width:14px;height:14px; color:var(--gold);"></i>
+            <span>
+              {% if active_branch %}
+                {{ active_branch.name }}
+              {% else %}
+                All Branches
+              {% endif %}
+            </span>
+            <i data-feather="chevron-down" style="width:13px;height:13px; color:var(--text-muted);"></i>
+          </button>
+
+          <div id="branchSwitcherMenu" class="dropdown-menu" style="display:none; position:absolute; right:0; top:calc(100% + 8px); min-width:260px; background:#0b1325; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,0.7); border:1px solid rgba(56,189,248,0.22); padding:6px 0; z-index:9999;">
+            <div style="padding:8px 16px; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8; border-bottom:1px solid rgba(255,255,255,0.08);">
+              Active Working Branch
+            </div>
+
+            {% if can_switch_all_branches %}
+            <a href="{{ url_for('settings.switch_branch', branch_id=0) }}" 
+               style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; color:#f8fafc; text-decoration:none; font-size:13px; font-weight:{% if not active_branch_id %}700{% else %}500{% endif %}; background:{% if not active_branch_id %}rgba(201,168,76,0.18){% else %}transparent{% endif %}; transition:background 0.15s;">
+              <span style="display:flex; align-items:center; gap:8px;">
+                <i data-feather="globe" style="width:14px;height:14px; color:var(--gold);"></i>
+                All Branches (Consolidated)
+              </span>
+              {% if not active_branch_id %}
+              <i data-feather="check" style="width:14px;height:14px; color:var(--gold);"></i>
+              {% endif %}
+            </a>
+            {% endif %}
+
+            {% for b in all_accessible_branches %}
+            <a href="{{ url_for('settings.switch_branch', branch_id=b.id) }}" 
+               style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; color:#f8fafc; text-decoration:none; font-size:13px; font-weight:{% if active_branch_id == b.id %}700{% else %}500{% endif %}; background:{% if active_branch_id == b.id %}rgba(201,168,76,0.18){% else %}transparent{% endif %}; border-top:1px solid rgba(255,255,255,0.04); transition:background 0.15s;">
+              <span style="display:flex; align-items:center; gap:8px;">
+                <i data-feather="home" style="width:14px;height:14px; color:{% if b.is_main %}var(--gold){% else %}#94a3b8{% endif %};"></i>
+                <span>{{ b.name }} <small style="color:#94a3b8;">({{ b.code }})</small></span>
+              </span>
+              {% if active_branch_id == b.id %}
+              <i data-feather="check" style="width:14px;height:14px; color:var(--gold);"></i>
+              {% endif %}
+            </a>
+            {% endfor %}
+
+            {% if session.get('role') in ['Admin', 'Manager'] %}
+            <div style="border-top:1px solid rgba(255,255,255,0.08); margin-top:4px; padding-top:4px;">
+              <a href="{{ url_for('settings.branches') }}" style="display:flex; align-items:center; gap:8px; padding:8px 16px; color:var(--gold); text-decoration:none; font-size:12px; font-weight:600;">
+                <i data-feather="settings" style="width:13px;height:13px;"></i> Manage Branches...
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      <span class="user-badge">
+        <i data-feather="user" style="width:14px;height:14px;color:var(--gold);"></i>
+        {{ session.get('username', '') }}
+      </span>
+    </div>
+  </div>
+  
+  <!-- Content -->
+  <div class="content">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'error' if category == 'error' else category }}">
+            <i data-feather="{% if category == 'success' %}check-circle{% elif category in ['error', 'danger'] %}x-circle{% elif category == 'warning' %}alert-triangle{% else %}info{% endif %}" style="width:18px;height:18px;"></i>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script>
+  feather.replace();
+  
+  // Auto-dismiss alerts
+  setTimeout(function() {
+    document.querySelectorAll('.alert').forEach(function(el) {
+      el.style.opacity = '0';
+      setTimeout(function() { el.remove(); }, 300);
+    });
+  }, 5000);
+
+  // Tab switching handler
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-bs-toggle="tab"], .tab-btn');
+    if (!btn) return;
+    e.preventDefault();
+    
+    var targetSelector = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
+    if (!targetSelector && btn.dataset.tab) targetSelector = '#' + btn.dataset.tab;
+    if (!targetSelector) return;
+    
+    var targetEl = document.querySelector(targetSelector);
+    if (!targetEl) return;
+    
+    var navContainer = btn.closest('.nav-tabs, .tab-bar');
+    if (navContainer) {
+      navContainer.querySelectorAll('.nav-link, .tab-btn').forEach(function(el) {
+        el.classList.remove('active');
+      });
+      btn.classList.add('active');
+    }
+    
+    var tabContent = targetEl.closest('.tab-content') || targetEl.parentElement;
+    if (tabContent) {
+      tabContent.querySelectorAll('.tab-pane').forEach(function(el) {
+        el.classList.remove('active', 'show');
+        el.style.display = 'none';
+      });
+      targetEl.classList.add('active', 'show');
+      targetEl.style.display = 'block';
+    }
+  });
+
+  // Dropdown toggle handler
+  window.toggleDropdown = function(id, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isDisplayed = menu.style.display === 'block';
+    // Close any other open dropdowns
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+      m.style.display = 'none';
+    });
+    if (!isDisplayed) {
+      menu.style.display = 'block';
+      if (window.feather) feather.replace();
+    }
+  };
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown-menu') && !e.target.closest('[onclick*="toggleDropdown"]')) {
+      document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+        m.style.display = 'none';
+      });
+    }
+  });
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

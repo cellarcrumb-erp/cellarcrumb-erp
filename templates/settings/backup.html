@@ -1,0 +1,127 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Database Backup & Restore{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Database Backup & Restore</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Database Backup & Restore</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+      Manage live database snapshots, offline downloads, and system recovery points
+    </div>
+  </div>
+  <form method="POST" action="{{ url_for('settings.create_backup') }}" style="margin:0;">
+    <button type="submit" class="btn btn-primary" style="padding:9px 18px;">
+      <i data-feather="plus-circle" style="width:15px;height:15px;"></i> Take Live Backup Now
+    </button>
+  </form>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 340px; gap:24px; align-items:start;">
+  <!-- Left: Backup Archives List -->
+  <div class="card table-card">
+    <div class="table-toolbar" style="padding:16px 20px;">
+      <h3 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px;">
+        <i data-feather="archive" style="width:16px;height:16px; color:var(--gold);"></i>
+        Backup Snapshots Archive
+      </h3>
+      <span class="badge badge-active">{{ backups|length }} Backup(s) Available</span>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Backup Filename</th>
+          <th style="width:120px;">Size</th>
+          <th style="width:180px;">Created Date</th>
+          <th class="text-right" style="width:200px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if backups %}
+          {% for b in backups %}
+          <tr>
+            <td>
+              <div class="font-bold" style="color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                <i data-feather="database" style="width:14px;height:14px; color:var(--gold);"></i>
+                {{ b.filename }}
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-open" style="font-size:11px;">{{ b.size }}</span>
+            </td>
+            <td style="color:var(--text-secondary); font-size:12.5px;">{{ b.timestamp }}</td>
+            <td class="text-right">
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <a href="{{ url_for('settings.download_backup', filename=b.filename) }}" class="btn btn-secondary btn-sm" title="Download to PC">
+                  <i data-feather="download" style="width:12px;height:12px;"></i> Download
+                </a>
+                
+                <form method="POST" action="{{ url_for('settings.restore_backup', filename=b.filename) }}" style="margin:0;" onsubmit="return confirm('WARNING: Restoring this backup will replace current database data with this snapshot. A pre-restore safety copy will be taken automatically. Do you wish to proceed?');">
+                  <button type="submit" class="btn btn-secondary btn-sm" style="color:#d97706;" title="Restore Snapshot">
+                    <i data-feather="rotate-ccw" style="width:12px;height:12px;"></i> Restore
+                  </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('settings.delete_backup', filename=b.filename) }}" style="margin:0;" onsubmit="return confirm('Are you sure you want to permanently delete this backup file?');">
+                  <button type="submit" class="btn btn-secondary btn-sm" style="color:#dc2626;" title="Delete Backup">
+                    <i data-feather="trash-2" style="width:12px;height:12px;"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="text-center" style="padding:36px; color:var(--text-muted);">
+              No backup snapshots found. Click <strong>"Take Live Backup Now"</strong> above to create your first backup.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Right: Upload & Info Card -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <!-- Upload to Restore -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="upload-cloud" style="width:16px;height:16px; color:var(--gold);"></i>
+        Upload & Restore Backup
+      </div>
+      <p style="font-size:12px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;">
+        Restore the system from an external <code>.db</code> backup file stored on your computer or backup drive.
+      </p>
+
+      <form method="POST" action="{{ url_for('settings.upload_restore_backup') }}" enctype="multipart/form-data" onsubmit="return confirm('WARNING: Uploading and restoring will overwrite the current database. Proceed?');">
+        <div style="margin-bottom:14px;">
+          <input type="file" name="file" accept=".db" required class="form-control" style="font-size:12px; padding:6px 10px;">
+        </div>
+        <button type="submit" class="btn btn-secondary w-full" style="justify-content:center; color:#d97706; font-weight:600;">
+          <i data-feather="refresh-cw" style="width:14px;height:14px;"></i> Upload & Restore
+        </button>
+      </form>
+    </div>
+
+    <!-- Security & Best Practices Info -->
+    <div class="card" style="padding:20px; background:#f8fafc; border-left:4px solid var(--gold);">
+      <div style="font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+        <i data-feather="shield" style="width:14px;height:14px; color:var(--gold);"></i>
+        Backup Integrity & Best Practices
+      </div>
+      <ul style="font-size:12px; color:var(--text-secondary); padding-left:16px; margin:0; line-height:1.6;">
+        <li>Backups use <strong>SQLite Online Backup API</strong> to flush active WAL transactions safely without server downtime.</li>
+        <li>We recommend downloading backup snapshots to an offline USB drive or secure cloud storage weekly.</li>
+        <li>Before any restore operation, an automated pre-restore safety copy is taken automatically.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ user.username }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.users') }}">Users</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ user.username }}</span>
+</div>
+<div class="actions-bar" style="margin-bottom:20px;">
+  <a href="{{ url_for('settings.edit_user', id=user.id) }}" class="btn btn-primary">Edit</a>
+  <button class="btn btn-secondary" onclick="document.getElementById('pwd-form').style.display='block'">Reset Password</button>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <div class="detail-grid">
+    <div class="detail-label">Username</div><div class="detail-value">{{ user.username }}</div>
+    <div class="detail-label">Full Name</div><div class="detail-value">{{ user.full_name }}</div>
+    <div class="detail-label">Email</div><div class="detail-value">{{ user.email }}</div>
+    <div class="detail-label">Role</div><div class="detail-value">{{ user.role_name }}</div>
+    <div class="detail-label">Status</div><div class="detail-value"><span class="badge {% if user.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Active' if user.is_active else 'Inactive' }}</span></div>
+  </div>
+</div>
+<div class="card form-card" id="pwd-form" style="display:none; padding:20px;">
+  <h3>Reset Password</h3>
+  <form method="POST" action="{{ url_for('settings.reset_password', id=user.id) }}">
+    <div class="form-group" style="width:300px;">
+      <label class="form-label">New Password *</label>
+      <input type="password" name="new_password" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Reset</button>
+    <button type="button" class="btn btn-secondary mt-2" onclick="document.getElementById('pwd-form').style.display='none'">Cancel</button>
+  </form>
+</div>
+{% endblock %}

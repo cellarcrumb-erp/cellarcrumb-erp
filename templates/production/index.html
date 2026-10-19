@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Production Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Production</h2>
+</div>
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-gold"><i data-feather="box"></i> Bill of Materials</h5>
+                <p class="card-text text-muted">Manage recipes and production materials.</p>
+                <a href="{{ url_for('production.bom_list') }}" class="btn btn-outline-primary btn-sm">View BOMs</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-gold"><i data-feather="settings"></i> Production Orders</h5>
+                <p class="card-text text-muted">Create and track production runs.</p>
+                <a href="{{ url_for('production.order_list') }}" class="btn btn-outline-primary btn-sm">View Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-gold"><i data-feather="trash-2"></i> Wastage</h5>
+                <p class="card-text text-muted">Log production wastage.</p>
+                <a href="{{ url_for('production.wastage_list') }}" class="btn btn-outline-primary btn-sm">View Wastage</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-gold"><i data-feather="bar-chart-2"></i> Reports</h5>
+                <p class="card-text text-muted">Production analytics.</p>
+                <a href="{{ url_for('production.report_production_summary') }}" class="btn btn-outline-primary btn-sm">View Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

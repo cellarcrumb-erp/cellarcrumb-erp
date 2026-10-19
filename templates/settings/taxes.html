@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block page_title %}Taxes{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Taxes</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_tax') }}" class="btn btn-primary">New Tax</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>Code</th><th>Name</th><th>Rate (%)</th><th>Tax Type</th><th>Active</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for t in taxes %}
+      <tr>
+        <td>{{ t.code }}</td>
+        <td>{{ t.name }}</td>
+        <td>{{ t.rate }}</td>
+        <td>{{ t.tax_type }}</td>
+        <td><span class="badge {% if t.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Yes' if t.is_active else 'No' }}</span></td>
+        <td><a href="{{ url_for('settings.edit_tax', id=t.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

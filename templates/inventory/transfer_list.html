@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Stock Transfers</h2>
+<a href="{{ url_for('inventory.new_transfer') }}" class="btn btn-primary mb-3">New Transfer</a>
+<table class="table">
+    <tr><th>Ref</th><th>Date</th><th>Status</th><th>Action</th></tr>
+    {% for r in transfers %}
+    <tr>
+        <td>{{ r.doc_ref }}</td>
+        <td>{{ r.doc_date }}</td>
+        <td>{{ r.status }}</td>
+        <td><a href="{{ url_for('inventory.transfer_detail', id=r.id) }}">View</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

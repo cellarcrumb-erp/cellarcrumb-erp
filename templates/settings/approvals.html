@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block page_title %}Approval Workflows{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Approval Workflows</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_approval') }}" class="btn btn-primary">New Rule</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>Module</th><th>Doc Type</th><th>Condition</th><th>Approver Role</th><th>Active</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for w in workflows %}
+      <tr>
+        <td>{{ w.module }}</td>
+        <td>{{ w.doc_type }}</td>
+        <td>{{ w.condition_field }} {{ w.condition_op }} {{ w.condition_value }}</td>
+        <td>{{ w.approver_role_name }}</td>
+        <td><span class="badge {% if w.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Yes' if w.is_active else 'No' }}</span></td>
+        <td><a href="{{ url_for('settings.edit_approval', id=w.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

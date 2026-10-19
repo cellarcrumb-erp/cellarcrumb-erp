@@ -1,0 +1,126 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}{{ 'Edit' if partner else 'New' }} Business Partner{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('bp_master.index') }}">BP Master</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ 'Edit ' + partner.name if partner else 'New Business Partner' }}</span>
+</div>
+
+<div class="card form-card">
+  <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:20px;">
+    <h3 class="card-title" style="font-size:18px; font-weight:700;">
+      <i data-feather="user-plus" style="width:18px;height:18px; color:var(--gold); vertical-align:middle; margin-right:6px;"></i>
+      {{ 'Edit Partner: ' + partner.name if partner else 'Create New Business Partner' }}
+    </h3>
+  </div>
+
+  <form method="POST">
+    <div class="form-grid">
+      <!-- Partner Type First (influences CardCode) -->
+      <div class="form-group">
+        <label class="form-label">Partner Type *</label>
+        <select name="partner_type" id="partnerTypeSelect" class="form-control" required>
+          <option value="Customer" {% if partner and partner.partner_type == 'Customer' %}selected{% endif %}>Customer (CUS)</option>
+          <option value="Supplier" {% if partner and partner.partner_type == 'Supplier' %}selected{% endif %}>Supplier (SUP)</option>
+          <option value="Customer & Supplier" {% if partner and partner.partner_type == 'Customer & Supplier' %}selected{% endif %}>Customer &amp; Supplier (BPS)</option>
+          <option value="Employee" {% if partner and partner.partner_type == 'Employee' %}selected{% endif %}>Employee (EMP)</option>
+          <option value="Other" {% if partner and partner.partner_type == 'Other' %}selected{% endif %}>Other (OTH)</option>
+        </select>
+      </div>
+
+      <!-- CardCode / BP Code -->
+      <div class="form-group">
+        <label class="form-label">
+          CardCode / BP Code *
+          <span style="font-size:11px; text-transform:none; color:var(--text-muted); font-weight:normal;">(Auto-generated if blank)</span>
+        </label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" name="code" id="cardCodeInput" class="form-control font-bold" 
+                 placeholder="e.g. CUS0001, SUP0001" 
+                 value="{{ partner.code if partner else '' }}"
+                 style="color:var(--gold-dark); letter-spacing:0.04em;">
+          {% if not partner %}
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetchNextCode()" title="Refresh Next Code">
+            <i data-feather="refresh-cw" style="width:14px;height:14px;"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Partner Name -->
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Business Partner Name *</label>
+        <input type="text" name="name" class="form-control" 
+               placeholder="e.g. Walk-in Customer, Milling Best Supplies, ABC Ltd" 
+               value="{{ partner.name if partner else '' }}" required>
+      </div>
+
+      <!-- Contact details -->
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="text" name="phone" class="form-control" placeholder="e.g. +254 700 000 000" value="{{ partner.phone if partner else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="e.g. info@company.co.ke" value="{{ partner.email if partner else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">KRA PIN / Tax ID</label>
+        <input type="text" name="tax_id" class="form-control" placeholder="e.g. P051234567A" value="{{ partner.tax_id if partner else '' }}">
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Physical / Postal Address</label>
+        <textarea name="address" class="form-control" rows="3" placeholder="e.g. Industrial Area, Nairobi">{{ partner.address if partner else '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;">
+      <a href="{{ url_for('bp_master.index') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-feather="check" style="width:14px;height:14px;"></i>
+        {{ 'Save Changes' if partner else 'Create Partner' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function fetchNextCode() {
+    const typeSelect = document.getElementById('partnerTypeSelect');
+    const codeInput = document.getElementById('cardCodeInput');
+    if (!typeSelect || !codeInput) return;
+    
+    fetch('{{ url_for("bp_master.next_code_api") }}?type=' + encodeURIComponent(typeSelect.value))
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.code) {
+          codeInput.value = data.code;
+        }
+      })
+      .catch(err => console.error('Error fetching code:', err));
+  }
+
+  {% if not partner %}
+  // Auto populate CardCode on first load and when type changes
+  document.addEventListener('DOMContentLoaded', function() {
+    const typeSelect = document.getElementById('partnerTypeSelect');
+    const codeInput = document.getElementById('cardCodeInput');
+    
+    if (typeSelect && codeInput && !codeInput.value) {
+      fetchNextCode();
+    }
+    
+    if (typeSelect) {
+      typeSelect.addEventListener('change', function() {
+        fetchNextCode();
+      });
+    }
+  });
+  {% endif %}
+</script>
+{% endblock %}

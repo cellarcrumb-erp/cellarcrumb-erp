@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <div class="flex items-center gap-3">
+            <h2 class="text-2xl font-bold text-gray-800">Goods Receipt {{ receipt.doc_ref }}</h2>
+            <span class="px-2 py-1 rounded text-xs font-semibold
+                {% if receipt.status == 'Draft' %}bg-gray-200 text-gray-800
+                {% elif receipt.status == 'Posted' %}bg-green-100 text-green-800
+                {% else %}bg-blue-100 text-blue-800{% endif %}">
+                {{ receipt.status }}
+            </span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Date: {{ receipt.doc_date }}</p>
+    </div>
+    <div class="flex gap-2">
+        {% if receipt.status == 'Draft' %}
+        <form method="POST" action="{{ url_for('inventory.post_receipt', id=receipt.id) }}">
+            <button type="submit" class="btn btn-primary flex items-center gap-1">
+                <i data-feather="check" style="width:14px;height:14px;"></i> Post to Stock
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <div>
+            <p class="text-sm text-gray-500">Warehouse</p>
+            <p class="font-semibold text-gray-800">{{ receipt.warehouse_name or '-' }}</p>
+        </div>
+        <div>
+            <p class="text-sm text-gray-500">Total Value</p>
+            <p class="font-semibold text-xl text-erp-gold">${{ "%.2f"|format(receipt.total_value or 0) }}</p>
+        </div>
+        <div>
+            <p class="text-sm text-gray-500">Status</p>
+            <p class="font-semibold text-gray-800">{{ receipt.status }}</p>
+        </div>
+    </div>
+
+    <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Line Items</h3>
+    <div class="overflow-x-auto border rounded mb-6">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
+                    <th class="p-3">Item</th>
+                    <th class="p-3 text-right">Received Quantity</th>
+                    <th class="p-3 text-right">Unit Cost</th>
+                    <th class="p-3 text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lines %}
+                <tr class="border-b hover:bg-gray-50 text-sm">
+                    <td class="p-3">
+                        <div class="font-semibold text-gray-800">{{ l.item_name }}</div>
+                        <div class="text-xs text-gray-500">{{ l.item_code }}</div>
+                    </td>
+                    <td class="p-3 text-right font-medium">{{ "%.2f"|format(l.quantity) }}</td>
+                    <td class="p-3 text-right">${{ "%.2f"|format(l.unit_cost) }}</td>
+                    <td class="p-3 text-right font-semibold">${{ "%.2f"|format(l.total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Document Relationship Chain -->
+    <div class="bg-gray-50 border rounded-lg p-4">
+        <h4 class="text-sm font-bold text-gray-700 uppercase mb-3 flex items-center gap-2">
+            <i data-feather="git-commit" style="width:14px;height:14px;"></i> Document Relationship Chain
+        </h4>
+        <div class="bg-white p-3 rounded border">
+            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">Based On (Copied From)</p>
+            {% if base_doc %}
+                <div class="flex items-center justify-between text-sm py-1">
+                    <div>
+                        <a href="{{ url_for('purchases.doc_detail', doc_kind='orders', id=base_doc.id) }}" class="font-medium text-erp-gold hover:underline">{{ base_doc.doc_ref }}</a>
+                        <span class="text-xs text-gray-500">({{ base_doc.doc_type }})</span>
+                    </div>
+                    <div class="text-xs text-gray-600">
+                        {{ base_doc.doc_date }} | ${{ "%.2f"|format(base_doc.total) }}
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-gray-400 italic">Direct Goods Receipt (No source PO)</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

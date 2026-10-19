@@ -1,0 +1,5 @@
+flask>=3.0
+bcrypt>=4.0
+waitress>=3.0; sys_platform == 'win32'
+gunicorn>=21.2; sys_platform != 'win32'
+psycopg2-binary>=2.9

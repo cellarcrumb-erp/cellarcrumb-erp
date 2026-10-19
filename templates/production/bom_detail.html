@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}BOM Detail{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>BOM: {{ bom.name }}</h2>
+    <div>
+        <a href="{{ url_for('production.bom_edit', id=bom.id) }}" class="btn btn-warning">Edit</a>
+        <form method="POST" action="{{ url_for('production.bom_toggle_active', id=bom.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-{{ 'danger' if bom.is_active else 'success' }}">
+                {{ 'Deactivate' if bom.is_active else 'Activate' }}
+            </button>
+        </form>
+        <a href="{{ url_for('production.bom_list') }}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <table class="table table-bordered bg-white shadow-sm">
+            <tr><th>Finished Item</th><td>{{ bom.finished_item_name }}</td></tr>
+            <tr><th>Quantity Produced</th><td>{{ bom.quantity_produced }}</td></tr>
+            <tr><th>Status</th><td>
+                {% if bom.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+            </td></tr>
+        </table>
+    </div>
+</div>
+<h4>Materials</h4>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>UOM</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.item_name }}</td>
+                    <td>{{ line.quantity }}</td>
+                    <td>{{ line.uom_name or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

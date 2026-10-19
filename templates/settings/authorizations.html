@@ -1,0 +1,124 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}General Authorizations{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>General Authorizations</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">General Authorizations</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Define module permissions and restrictions per role (Full, Read Only, No Authorization)</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 280px 1fr; gap:20px; align-items:start;">
+  <!-- Roles Sidebar -->
+  <div class="card" style="padding:16px;">
+    <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border);">
+      Roles & Groups
+    </div>
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      {% for r in roles %}
+      <a href="{{ url_for('settings.authorizations', role_id=r.id) }}" 
+         style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:8px; text-decoration:none; font-size:13.5px; font-weight:600; transition:all 0.15s;
+                background:{% if selected_role and selected_role.id == r.id %}var(--gold){% else %}transparent{% endif %};
+                color:{% if selected_role and selected_role.id == r.id %}#1a1f2e{% else %}var(--text-primary){% endif %};">
+        <span style="display:flex; align-items:center; gap:8px;">
+          <i data-feather="shield" style="width:14px;height:14px;"></i>
+          {{ r.name }}
+        </span>
+        <span style="font-size:11px; opacity:0.8;">{{ r.description or '' }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Permissions Form -->
+  {% if selected_role %}
+  <div class="card" style="padding:20px;">
+    <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid var(--border);">
+      <div>
+        <h3 style="margin:0; font-size:16px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <i data-feather="lock" style="width:16px;height:16px; color:var(--gold);"></i>
+          Permissions for Role: <span style="color:var(--gold-dark);">{{ selected_role.name }}</span>
+        </h3>
+        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">{{ selected_role.description }}</div>
+      </div>
+      {% if selected_role.name == 'Admin' %}
+      <span class="badge badge-active" style="padding:6px 12px; font-size:12px;">Superuser (Full Authorization)</span>
+      {% endif %}
+    </div>
+
+    <form method="POST" action="{{ url_for('settings.save_authorizations', role_id=selected_role.id) }}">
+      <table class="table" style="margin-bottom:20px;">
+        <thead>
+          <tr>
+            <th style="width:35%;">Module / Subject</th>
+            <th style="width:20%;">Category</th>
+            <th class="text-center" style="width:15%;">Full Auth</th>
+            <th class="text-center" style="width:15%;">Read Only</th>
+            <th class="text-center" style="width:15%;">No Auth</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mod in module_definitions %}
+          {% set current_level = role_perms.get(mod.key, 0)|int %}
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                <i data-feather="{{ mod.icon }}" style="width:14px;height:14px; color:var(--gold);"></i>
+                {{ mod.name }}
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-open" style="font-size:10.5px;">{{ mod.category }}</span>
+            </td>
+            <td class="text-center">
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                <input type="radio" name="perm_{{ mod.key }}" value="2" 
+                       {% if current_level == 2 or selected_role.name == 'Admin' %}checked{% endif %}
+                       {% if selected_role.name == 'Admin' %}disabled{% endif %}>
+                <span style="font-size:12px; color:#059669; font-weight:600;">Full</span>
+              </label>
+            </td>
+            <td class="text-center">
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                <input type="radio" name="perm_{{ mod.key }}" value="1" 
+                       {% if current_level == 1 and selected_role.name != 'Admin' %}checked{% endif %}
+                       {% if selected_role.name == 'Admin' %}disabled{% endif %}>
+                <span style="font-size:12px; color:#2563eb; font-weight:600;">Read</span>
+              </label>
+            </td>
+            <td class="text-center">
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                <input type="radio" name="perm_{{ mod.key }}" value="0" 
+                       {% if current_level == 0 and selected_role.name != 'Admin' %}checked{% endif %}
+                       {% if selected_role.name == 'Admin' %}disabled{% endif %}>
+                <span style="font-size:12px; color:#dc2626; font-weight:600;">None</span>
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if selected_role.name != 'Admin' %}
+      <div class="flex justify-end gap-3 pt-3" style="border-top:1px solid var(--border);">
+        <button type="submit" class="btn btn-primary">
+          <i data-feather="check" style="width:14px;height:14px;"></i> Save Authorizations
+        </button>
+      </div>
+      {% else %}
+      <div style="font-size:12px; color:var(--text-secondary); font-style:italic;">
+        * The Administrator role has permanent Full Authorization across all ERP modules.
+      </div>
+      {% endif %}
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

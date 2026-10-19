@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Sales — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:24px;">
+  <div>
+    <h1 class="page-title">Sales</h1>
+    <p class="page-subtitle">Manage customers, sales orders, deliveries, and invoicing.</p>
+  </div>
+</div>
+
+<div class="module-grid">
+
+  <!-- QUOTATIONS -->
+  <div class="module-card mc-blue" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='quotations') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='quotations') }}" class="mc-add" title="New Quotation" onclick="event.stopPropagation()">+</a>
+    <h3>Quotations</h3>
+    <p>Create and send estimates to customers.</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      {{ counts.quotations.count }} Quotations
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="70" cy="70" r="48" fill="rgba(59,130,246,0.12)"/>
+      <rect x="18" y="14" width="58" height="74" rx="7" fill="rgba(30,64,175,0.45)" stroke="rgba(96,165,250,0.55)" stroke-width="2"/>
+      <rect x="18" y="14" width="58" height="20" rx="7" fill="rgba(37,99,235,0.7)"/>
+      <rect x="18" y="24" width="58" height="10" fill="rgba(37,99,235,0.7)"/>
+      <line x1="30" y1="48" x2="63" y2="48" stroke="rgba(147,197,253,0.8)" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="60" x2="58" y2="60" stroke="rgba(147,197,253,0.55)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="30" y1="72" x2="52" y2="72" stroke="rgba(147,197,253,0.55)" stroke-width="2" stroke-linecap="round"/>
+      <g transform="translate(78,68) rotate(-40)">
+        <rect x="-5" y="-22" width="10" height="32" rx="3" fill="rgba(96,165,250,0.75)" stroke="rgba(147,197,253,0.9)" stroke-width="1.5"/>
+        <polygon points="-5,10 5,10 0,19" fill="rgba(147,197,253,0.95)"/>
+        <line x1="-5" y1="-8" x2="5" y2="-8" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- SALES ORDERS -->
+  <div class="module-card mc-gold" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='orders') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='orders') }}" class="mc-add" title="New Sales Order" onclick="event.stopPropagation()">+</a>
+    <h3>Sales Orders</h3>
+    <p>Manage confirmed customer orders.</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(253,211,77,0.9)" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><polyline points="9 12 11 14 15 10"/></svg>
+      {{ counts.orders.count }} Orders
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="68" r="46" fill="rgba(201,168,76,0.1)"/>
+      <rect x="22" y="16" width="60" height="76" rx="7" fill="rgba(120,80,10,0.55)" stroke="rgba(253,211,77,0.5)" stroke-width="2"/>
+      <rect x="34" y="10" width="36" height="16" rx="6" fill="rgba(161,110,15,0.9)" stroke="rgba(253,211,77,0.6)" stroke-width="1.5"/>
+      <rect x="40" y="14" width="24" height="8" rx="3" fill="rgba(253,211,77,0.25)"/>
+      <circle cx="78" cy="82" r="24" fill="rgba(100,65,10,0.8)" stroke="rgba(253,211,77,0.6)" stroke-width="2"/>
+      <text x="78" y="90" font-size="26" font-weight="900" text-anchor="middle" fill="rgba(253,211,77,0.95)" font-family="Arial">$</text>
+      <polyline points="38,54 50,64 68,44" stroke="rgba(253,211,77,0.85)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- DELIVERIES -->
+  <div class="module-card mc-green" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='deliveries') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='deliveries') }}" class="mc-add" title="New Delivery" onclick="event.stopPropagation()">+</a>
+    <h3>Deliveries</h3>
+    <p>Dispatch items and update inventory.</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(110,231,183,0.9)" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      {{ counts.deliveries.count }} Pending
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="65" cy="65" r="47" fill="rgba(16,185,129,0.1)"/>
+      <rect x="8" y="42" width="62" height="40" rx="5" fill="rgba(6,78,59,0.7)" stroke="rgba(52,211,153,0.6)" stroke-width="2"/>
+      <rect x="70" y="54" width="36" height="28" rx="5" fill="rgba(6,78,59,0.85)" stroke="rgba(52,211,153,0.6)" stroke-width="2"/>
+      <rect x="76" y="59" width="20" height="12" rx="3" fill="rgba(110,231,183,0.3)" stroke="rgba(110,231,183,0.5)" stroke-width="1.5"/>
+      <circle cx="28" cy="86" r="10" fill="rgba(4,50,38,0.9)" stroke="rgba(52,211,153,0.7)" stroke-width="2.5"/>
+      <circle cx="28" cy="86" r="4" fill="rgba(52,211,153,0.6)"/>
+      <circle cx="82" cy="86" r="10" fill="rgba(4,50,38,0.9)" stroke="rgba(52,211,153,0.7)" stroke-width="2.5"/>
+      <circle cx="82" cy="86" r="4" fill="rgba(52,211,153,0.6)"/>
+      <line x1="2" y1="52" x2="18" y2="52" stroke="rgba(52,211,153,0.4)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="2" y1="62" x2="12" y2="62" stroke="rgba(52,211,153,0.3)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="module-card mc-teal" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='invoices') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='invoices') }}" class="mc-add" title="New Invoice" onclick="event.stopPropagation()">+</a>
+    <h3>Sales Invoices</h3>
+    <p>Bill customers and manage receivables.</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      {{ "%.0f"|format(counts.invoices.total) }} Open Value
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="65" r="46" fill="rgba(13,148,136,0.12)"/>
+      <rect x="25" y="12" width="58" height="80" rx="6" fill="rgba(6,78,59,0.5)" stroke="rgba(45,212,191,0.5)" stroke-width="2"/>
+      <line x1="35" y1="32" x2="72" y2="32" stroke="rgba(94,234,212,0.8)" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="35" y1="44" x2="65" y2="44" stroke="rgba(94,234,212,0.5)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="35" y1="56" x2="60" y2="56" stroke="rgba(94,234,212,0.5)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="25" y1="68" x2="83" y2="68" stroke="rgba(45,212,191,0.4)" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <line x1="35" y1="80" x2="55" y2="80" stroke="rgba(94,234,212,0.6)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="60" y1="80" x2="73" y2="80" stroke="rgba(94,234,212,0.9)" stroke-width="2.5" stroke-linecap="round"/>
+      <polyline points="25,92 31,86 37,92 43,86 49,92 55,86 61,92 67,86 73,92 79,86 83,92" stroke="rgba(45,212,191,0.5)" stroke-width="2" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- SALES RETURNS -->
+  <div class="module-card mc-red mc-full" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='returns') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='returns') }}" class="mc-add" title="New Sales Return" onclick="event.stopPropagation()">+</a>
+    <h3>Sales Returns</h3>
+    <p>Process customer returns and credit notes.</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(252,165,165,0.9)" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.77"/></svg>
+      {{ counts.returns.count }} Returns
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="68" r="46" fill="rgba(220,38,38,0.1)"/>
+      <rect x="22" y="40" width="60" height="55" rx="5" fill="rgba(127,29,29,0.6)" stroke="rgba(252,165,165,0.55)" stroke-width="2"/>
+      <rect x="18" y="32" width="68" height="14" rx="4" fill="rgba(153,27,27,0.7)" stroke="rgba(252,165,165,0.55)" stroke-width="2"/>
+      <line x1="52" y1="32" x2="52" y2="95" stroke="rgba(252,165,165,0.3)" stroke-width="4"/>
+      <path d="M90,28 Q110,20 110,50 Q110,76 84,78" stroke="rgba(252,165,165,0.9)" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <polygon points="78,70 84,82 91,72" fill="rgba(252,165,165,0.9)"/>
+    </svg>
+  </div>
+
+</div>
+<style>.module-card { cursor: pointer; }</style>
+{% endblock %}

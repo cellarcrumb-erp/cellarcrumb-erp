@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Inventory Counts</h2>
+<a href="{{ url_for('inventory.new_count') }}" class="btn btn-primary mb-3">New Count</a>
+<table class="table">
+    <tr><th>Ref</th><th>Date</th><th>Status</th><th>Action</th></tr>
+    {% for r in counts %}
+    <tr>
+        <td>{{ r.doc_ref }}</td>
+        <td>{{ r.doc_date }}</td>
+        <td>{{ r.status }}</td>
+        <td><a href="{{ url_for('inventory.count_detail', id=r.id) }}">View/Edit</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,104 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Branch Authorizations — {{ user.full_name }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.users') }}">Users</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Branch Authorizations</span>
+</div>
+
+<div class="card form-card" style="max-width:720px;">
+  <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:20px;">
+    <div>
+      <h3 class="card-title" style="font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;">
+        <i data-feather="map-pin" style="width:18px;height:18px; color:var(--gold);"></i>
+        Branch Access Authorizations: <span style="color:var(--gold-dark);">{{ user.full_name }}</span>
+      </h3>
+      <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+        Username: <strong>{{ user.username }}</strong> &nbsp;|&nbsp; Role: <strong>{{ user.role_name or 'User' }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST">
+    <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">
+      Select which operating branches this user is authorized to access and switch between. When working within an assigned branch, data and documents for other branches will be restricted.
+    </p>
+
+    <table class="table" style="margin-bottom:24px;">
+      <thead>
+        <tr>
+          <th style="width:50px;" class="text-center">Authorize</th>
+          <th>Branch Code</th>
+          <th>Branch Name</th>
+          <th>Location</th>
+          <th style="width:120px;" class="text-center">Default Branch</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in branches %}
+        {% set is_assigned = b.id in assigned_map %}
+        {% set is_def = assigned_map.get(b.id, 0) == 1 %}
+        <tr>
+          <td class="text-center">
+            <input type="checkbox" name="branch_ids" value="{{ b.id }}" 
+                   id="chk_{{ b.id }}" {% if is_assigned %}checked{% endif %}
+                   style="width:16px; height:16px; cursor:pointer;"
+                   onchange="updateDefaultRadio({{ b.id }})">
+          </td>
+          <td>
+            <label for="chk_{{ b.id }}" style="font-weight:700; color:var(--gold-dark); cursor:pointer;">
+              {{ b.code }}
+            </label>
+          </td>
+          <td>
+            <label for="chk_{{ b.id }}" style="font-weight:600; cursor:pointer;">
+              {{ b.name }}
+              {% if b.is_main %}<span class="badge badge-active" style="font-size:10px; margin-left:6px;">Main HQ</span>{% endif %}
+            </label>
+          </td>
+          <td style="font-size:12.5px; color:var(--text-secondary);">{{ b.address or b.phone or '—' }}</td>
+          <td class="text-center">
+            <input type="radio" name="default_branch" value="{{ b.id }}" 
+                   id="rad_{{ b.id }}" {% if is_def %}checked{% endif %}
+                   style="cursor:pointer;">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="flex justify-end gap-3 pt-3" style="border-top:1px solid var(--border);">
+      <a href="{{ url_for('settings.users') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-feather="check" style="width:14px;height:14px;"></i> Save Branch Access
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateDefaultRadio(branchId) {
+  const chk = document.getElementById('chk_' + branchId);
+  const rad = document.getElementById('rad_' + branchId);
+  if (!chk.checked && rad.checked) {
+    // Pick first other checked box
+    const otherChks = document.querySelectorAll('input[name="branch_ids"]:checked');
+    if (otherChks.length > 0) {
+      const firstId = otherChks[0].value;
+      document.getElementById('rad_' + firstId).checked = true;
+    } else {
+      rad.checked = false;
+    }
+  } else if (chk.checked) {
+    const checkedRads = document.querySelectorAll('input[name="default_branch"]:checked');
+    if (checkedRads.length === 0) {
+      rad.checked = true;
+    }
+  }
+}
+</script>
+{% endblock %}

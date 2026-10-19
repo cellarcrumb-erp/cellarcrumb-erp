@@ -1,0 +1,102 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Branches (Business Places){% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Branches</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Branches (Business Places)</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Manage multiple operating branches, outlets, and business locations</div>
+  </div>
+  <div class="flex gap-2">
+    <a href="{{ url_for('settings.index') }}" class="btn btn-secondary btn-sm">
+      <i data-feather="arrow-left" style="width:14px;height:14px;"></i> Back to Settings
+    </a>
+    <a href="{{ url_for('settings.new_branch') }}" class="btn btn-primary btn-sm">
+      <i data-feather="plus" style="width:14px;height:14px;"></i> New Branch
+    </a>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:100px;">Code</th>
+        <th>Branch Name</th>
+        <th>Location / Address</th>
+        <th>Contact Info</th>
+        <th>Default Warehouse</th>
+        <th class="text-center" style="width:100px;">Warehouses</th>
+        <th style="width:110px;">Type</th>
+        <th style="width:100px;">Status</th>
+        <th class="text-right" style="width:100px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if branches %}
+        {% for b in branches %}
+        <tr>
+          <td>
+            <span class="font-bold" style="color:var(--gold-dark); letter-spacing:0.04em;">{{ b.code }}</span>
+          </td>
+          <td>
+            <div class="font-bold" style="color:var(--text-primary);">{{ b.name }}</div>
+            {% if b.tax_id %}
+            <div style="font-size:11.5px; color:var(--text-secondary);">PIN: {{ b.tax_id }}</div>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-secondary);">{{ b.address or '—' }}</td>
+          <td>
+            <div style="font-size:12.5px;">{{ b.phone or '—' }}</div>
+            {% if b.email %}
+            <div style="font-size:11.5px; color:var(--text-secondary);">{{ b.email }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if b.default_warehouse_name %}
+            <span class="badge badge-open">{{ b.default_warehouse_name }}</span>
+            {% else %}
+            <span style="color:var(--text-muted); font-size:12px;">Not Assigned</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge badge-draft">{{ b.warehouse_count }} WH</span>
+          </td>
+          <td>
+            {% if b.is_main %}
+            <span class="badge badge-posted font-bold" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">
+              ★ Main HQ
+            </span>
+            {% else %}
+            <span class="badge badge-draft">Branch</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if b.is_active %}badge-active{% else %}badge-archived{% endif %}">
+              {{ 'Active' if b.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td class="text-right">
+            <a href="{{ url_for('settings.edit_branch', id=b.id) }}" class="btn btn-secondary btn-sm" title="Edit Branch">
+              <i data-feather="edit-2" style="width:13px;height:13px;"></i> Edit
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="9" class="text-center" style="padding:32px; color:var(--text-muted);">
+            No branches configured.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

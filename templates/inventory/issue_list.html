@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Goods Issues</h2>
+<a href="{{ url_for('inventory.new_issue') }}" class="btn btn-primary mb-3">New Issue</a>
+<table class="table">
+    <tr><th>Ref</th><th>Date</th><th>Status</th><th>Total Value</th><th>Action</th></tr>
+    {% for r in issues %}
+    <tr>
+        <td>{{ r.doc_ref }}</td>
+        <td>{{ r.doc_date }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.total_value }}</td>
+        <td><a href="{{ url_for('inventory.issue_detail', id=r.id) }}">View</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

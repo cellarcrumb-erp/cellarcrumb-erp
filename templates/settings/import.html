@@ -1,0 +1,329 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Data Import Workbench (DTW){% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Data Import Workbench</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Bulk Data Import Workbench (DTW)</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+      SAP-Style Bulk Data Migration & Excel/CSV Upload with live validation
+    </div>
+  </div>
+</div>
+
+<!-- Type Selector Tabs -->
+<div class="tab-bar" style="margin-bottom:20px;">
+  <button type="button" class="tab-btn {% if active_tab == 'items' %}active{% endif %}" onclick="switchImportTab('items')">
+    <i data-feather="package" style="width:14px;height:14px; margin-right:4px;"></i> Items / Products
+  </button>
+  <button type="button" class="tab-btn {% if active_tab == 'partners' %}active{% endif %}" onclick="switchImportTab('partners')">
+    <i data-feather="users" style="width:14px;height:14px; margin-right:4px;"></i> Business Partners
+  </button>
+  <button type="button" class="tab-btn {% if active_tab == 'stock' %}active{% endif %}" onclick="switchImportTab('stock')">
+    <i data-feather="layers" style="width:14px;height:14px; margin-right:4px;"></i> Opening Stock
+  </button>
+  <button type="button" class="tab-btn {% if active_tab == 'coa' %}active{% endif %}" onclick="switchImportTab('coa')">
+    <i data-feather="book" style="width:14px;height:14px; margin-right:4px;"></i> Chart of Accounts
+  </button>
+</div>
+
+<div style="display:grid; grid-template-columns: 340px 1fr; gap:24px; align-items:start;">
+  <!-- Left Column: Template & Upload -->
+  <div class="card" style="padding:20px;">
+    <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+      <i data-feather="download-cloud" style="width:16px;height:16px; color:var(--gold);"></i>
+      Step 1: Download Template
+    </div>
+    <p style="font-size:12.5px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;">
+      Download the pre-formatted CSV template with standard column headers and sample data rows. Open and fill in Excel or your spreadsheet software.
+    </p>
+    <a id="downloadTemplateBtn" href="{{ url_for('settings.download_import_template', import_type=active_tab) }}" class="btn btn-secondary w-full" style="justify-content:center; margin-bottom:24px;">
+      <i data-feather="download" style="width:14px;height:14px;"></i> Download CSV Template
+    </a>
+
+    <div style="border-top:1px solid var(--border); padding-top:16px;">
+      <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="upload-cloud" style="width:16px;height:16px; color:var(--gold);"></i>
+        Step 2: Upload CSV File
+      </div>
+      
+      <form id="uploadForm" enctype="multipart/form-data">
+        <input type="hidden" name="import_type" id="currentImportType" value="{{ active_tab }}">
+        <div style="border:2px dashed var(--border); border-radius:8px; padding:24px 16px; text-align:center; background:#fafafa; margin-bottom:16px; cursor:pointer;" onclick="document.getElementById('csvFileInput').click();">
+          <i data-feather="file-text" style="width:28px;height:28px; color:var(--gold); margin:0 auto 8px;"></i>
+          <div style="font-size:13px; font-weight:600; color:var(--text-primary);" id="fileNameDisplay">Click or drag CSV file here</div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Supported: .csv files (UTF-8)</div>
+          <input type="file" id="csvFileInput" name="file" accept=".csv" style="display:none;" onchange="handleFileSelected(this)">
+        </div>
+
+        <button type="button" id="validateBtn" onclick="uploadAndValidate()" class="btn btn-primary w-full" style="justify-content:center;" disabled>
+          <i data-feather="check-circle" style="width:14px;height:14px;"></i> Validate & Preview Data
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right Column: Validation Preview & Execution -->
+  <div class="card" style="padding:20px;">
+    <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid var(--border);">
+      <div>
+        <h3 style="margin:0; font-size:16px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <i data-feather="list" style="width:16px;height:16px; color:var(--gold);"></i>
+          Data Validation Preview
+        </h3>
+        <div id="previewSubtitle" style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+          Upload a file to review rows and validation status before importing.
+        </div>
+      </div>
+      <div id="summaryBadges" style="display:none; gap:8px;">
+        <span id="badgeValid" class="badge badge-active" style="padding:5px 10px;">0 Valid</span>
+        <span id="badgeErrors" class="badge badge-overdue" style="padding:5px 10px;">0 Errors</span>
+      </div>
+    </div>
+
+    <!-- Empty State / Placeholder -->
+    <div id="previewPlaceholder" style="text-align:center; padding:48px 16px; color:var(--text-muted);">
+      <i data-feather="file" style="width:40px;height:40px; stroke-width:1; margin-bottom:12px; opacity:0.5;"></i>
+      <div style="font-size:14px; font-weight:600;">No file uploaded yet</div>
+      <div style="font-size:12px; margin-top:4px;">Download the template, fill in your records, and upload to preview.</div>
+    </div>
+
+    <!-- Preview Table -->
+    <div id="previewTableContainer" style="display:none; max-height:420px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; margin-bottom:20px;">
+      <table class="table" id="previewTable">
+        <thead id="previewThead" style="position:sticky; top:0; background:#f9fafb; z-index:10;">
+          <!-- Dynamically populated -->
+        </thead>
+        <tbody id="previewTbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Action Bar -->
+    <div id="previewActions" style="display:none; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--border);">
+      <div id="actionStatusText" style="font-size:12.5px; color:var(--text-secondary);">
+        Ready to import. Click execute to save records into the ERP database.
+      </div>
+      <button type="button" id="executeImportBtn" onclick="executeImport()" class="btn btn-primary" style="padding:9px 20px;">
+        <i data-feather="zap" style="width:14px;height:14px;"></i> Execute Import
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentValidatedRows = [];
+let currentType = '{{ active_tab }}';
+
+function switchImportTab(type) {
+  currentType = type;
+  document.getElementById('currentImportType').value = type;
+  document.getElementById('downloadTemplateBtn').href = "{{ url_for('settings.download_import_template', import_type='PLACEHOLDER') }}".replace('PLACEHOLDER', type);
+  
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  
+  // Reset preview
+  resetPreview();
+}
+
+function handleFileSelected(input) {
+  if (input.files && input.files[0]) {
+    document.getElementById('fileNameDisplay').innerText = input.files[0].name;
+    document.getElementById('validateBtn').disabled = false;
+  }
+}
+
+function resetPreview() {
+  currentValidatedRows = [];
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('fileNameDisplay').innerText = 'Click or drag CSV file here';
+  document.getElementById('validateBtn').disabled = true;
+  document.getElementById('previewPlaceholder').style.display = 'block';
+  document.getElementById('previewTableContainer').style.display = 'none';
+  document.getElementById('summaryBadges').style.display = 'none';
+  document.getElementById('previewActions').style.display = 'none';
+}
+
+function uploadAndValidate() {
+  const form = document.getElementById('uploadForm');
+  const formData = new FormData(form);
+  
+  const validateBtn = document.getElementById('validateBtn');
+  validateBtn.disabled = true;
+  validateBtn.innerHTML = '<i data-feather="loader"></i> Validating...';
+  feather.replace();
+
+  fetch("{{ url_for('settings.upload_import_file') }}", {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    validateBtn.disabled = false;
+    validateBtn.innerHTML = '<i data-feather="check-circle" style="width:14px;height:14px;"></i> Validate & Preview Data';
+    feather.replace();
+
+    if (!data.success) {
+      alert(data.error || 'Validation failed');
+      return;
+    }
+
+    currentValidatedRows = data.rows;
+    renderPreviewTable(data);
+  })
+  .catch(err => {
+    validateBtn.disabled = false;
+    validateBtn.innerHTML = '<i data-feather="check-circle" style="width:14px;height:14px;"></i> Validate & Preview Data';
+    feather.replace();
+    alert('Upload error: ' + err);
+  });
+}
+
+function renderPreviewTable(data) {
+  document.getElementById('previewPlaceholder').style.display = 'none';
+  document.getElementById('previewTableContainer').style.display = 'block';
+  document.getElementById('summaryBadges').style.display = 'flex';
+  document.getElementById('previewActions').style.display = 'flex';
+
+  document.getElementById('badgeValid').innerText = data.valid_count + ' Valid';
+  document.getElementById('badgeErrors').innerText = data.error_count + ' Errors';
+
+  const thead = document.getElementById('previewThead');
+  const tbody = document.getElementById('previewTbody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  let headers = [];
+  if (data.import_type === 'items') {
+    headers = ['#', 'Status', 'Item Code', 'Item Name', 'Group', 'UOM', 'Cost', 'Price', 'Message'];
+  } else if (data.import_type === 'partners') {
+    headers = ['#', 'Status', 'CardCode', 'CardName', 'Type', 'Phone', 'Tax PIN', 'Credit Limit', 'Message'];
+  } else if (data.import_type === 'stock') {
+    headers = ['#', 'Status', 'Item Code', 'Warehouse Code', 'Quantity', 'Unit Cost', 'Message'];
+  } else if (data.import_type === 'coa') {
+    headers = ['#', 'Status', 'Account Code', 'Account Name', 'Type', 'Parent', 'Message'];
+  }
+
+  let headRow = '<tr>';
+  headers.forEach(h => { headRow += `<th>${h}</th>`; });
+  headRow += '</tr>';
+  thead.innerHTML = headRow;
+
+  data.rows.forEach(r => {
+    let tr = document.createElement('tr');
+    if (r.status === 'Error') {
+      tr.style.background = '#fef2f2';
+    }
+
+    let statusBadge = '';
+    if (r.status === 'New') statusBadge = '<span class="badge badge-active">New</span>';
+    else if (r.status === 'Update') statusBadge = '<span class="badge badge-pending">Update</span>';
+    else if (r.status === 'Valid') statusBadge = '<span class="badge badge-active">Valid</span>';
+    else statusBadge = '<span class="badge badge-overdue">Error</span>';
+
+    if (data.import_type === 'items') {
+      tr.innerHTML = `
+        <td>${r.row}</td>
+        <td>${statusBadge}</td>
+        <td class="font-bold">${r.code}</td>
+        <td>${r.name}</td>
+        <td>${r.group}</td>
+        <td>${r.uom}</td>
+        <td>${r.cost.toFixed(2)}</td>
+        <td>${r.price.toFixed(2)}</td>
+        <td style="font-size:11.5px; color:${r.status === 'Error' ? '#dc2626' : 'var(--text-secondary)'};">${r.message}</td>
+      `;
+    } else if (data.import_type === 'partners') {
+      tr.innerHTML = `
+        <td>${r.row}</td>
+        <td>${statusBadge}</td>
+        <td class="font-bold">${r.code}</td>
+        <td>${r.name}</td>
+        <td>${r.type}</td>
+        <td>${r.phone || '—'}</td>
+        <td>${r.tax_id || '—'}</td>
+        <td>${r.credit_limit.toFixed(2)}</td>
+        <td style="font-size:11.5px; color:${r.status === 'Error' ? '#dc2626' : 'var(--text-secondary)'};">${r.message}</td>
+      `;
+    } else if (data.import_type === 'stock') {
+      tr.innerHTML = `
+        <td>${r.row}</td>
+        <td>${statusBadge}</td>
+        <td class="font-bold">${r.item_code}</td>
+        <td>${r.warehouse_code}</td>
+        <td>${r.quantity}</td>
+        <td>${r.unit_cost.toFixed(2)}</td>
+        <td style="font-size:11.5px; color:${r.status === 'Error' ? '#dc2626' : 'var(--text-secondary)'};">${r.message}</td>
+      `;
+    } else if (data.import_type === 'coa') {
+      tr.innerHTML = `
+        <td>${r.row}</td>
+        <td>${statusBadge}</td>
+        <td class="font-bold">${r.code}</td>
+        <td>${r.name}</td>
+        <td>${r.type}</td>
+        <td>${r.parent_code || '—'}</td>
+        <td style="font-size:11.5px; color:${r.status === 'Error' ? '#dc2626' : 'var(--text-secondary)'};">${r.message}</td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+
+  const validCount = data.valid_count;
+  const execBtn = document.getElementById('executeImportBtn');
+  if (validCount === 0) {
+    execBtn.disabled = true;
+    document.getElementById('actionStatusText').innerHTML = '<span style="color:#dc2626; font-weight:600;">No valid rows found to import. Correct CSV errors and re-upload.</span>';
+  } else {
+    execBtn.disabled = false;
+    document.getElementById('actionStatusText').innerHTML = `Found <strong>${validCount} valid record(s)</strong> ready for database commit.`;
+  }
+}
+
+function executeImport() {
+  if (currentValidatedRows.length === 0) return;
+
+  const execBtn = document.getElementById('executeImportBtn');
+  execBtn.disabled = true;
+  execBtn.innerHTML = '<i data-feather="loader"></i> Importing...';
+  feather.replace();
+
+  fetch("{{ url_for('settings.execute_import') }}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      import_type: currentType,
+      rows: currentValidatedRows
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    execBtn.innerHTML = '<i data-feather="zap" style="width:14px;height:14px;"></i> Execute Import';
+    feather.replace();
+
+    if (data.success) {
+      alert(data.message);
+      resetPreview();
+      window.location.reload();
+    } else {
+      alert(data.error || 'Import execution failed');
+      execBtn.disabled = false;
+    }
+  })
+  .catch(err => {
+    execBtn.disabled = false;
+    execBtn.innerHTML = '<i data-feather="zap" style="width:14px;height:14px;"></i> Execute Import';
+    feather.replace();
+    alert('Import execution error: ' + err);
+  });
+}
+</script>
+{% endblock %}

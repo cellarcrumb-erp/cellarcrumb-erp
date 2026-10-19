@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if uom %}Edit{% else %}New{% endif %} UOM{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.uom') }}">Units of Measure</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if uom %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Code *</label>
+        <input type="text" name="code" class="form-control" value="{{ uom.code if uom else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" name="name" class="form-control" value="{{ uom.name if uom else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Base UOM</label>
+        <select name="base_uom" class="form-control">
+          <option value="">None</option>
+          {% for u in uoms %}
+          {% if not uom or u.id != uom.id %}
+          <option value="{{ u.code }}" {% if uom and uom.base_uom == u.code %}selected{% endif %}>{{ u.code }} - {{ u.name }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('settings.uom') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

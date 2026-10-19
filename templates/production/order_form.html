@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}New Production Order{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>New Production Order</h2>
+    <a href="{{ url_for('production.order_list') }}" class="btn btn-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Date *</label>
+                    <input type="date" name="doc_date" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bill of Materials *</label>
+                    <select name="bom_id" class="form-select" required>
+                        <option value="">Select BOM...</option>
+                        {% for b in boms %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Warehouse *</label>
+                    <select name="warehouse_id" class="form-select" required>
+                        <option value="">Select Warehouse...</option>
+                        {% for w in warehouses %}
+                        <option value="{{ w.id }}">{{ w.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Planned Quantity *</label>
+                    <input type="number" step="any" name="planned_qty" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Batch No</label>
+                    <input type="text" name="batch_no" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Remarks</label>
+                    <input type="text" name="remarks" class="form-control">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Order</button>
+        </form>
+    </div>
+</div>
+<script>
+    document.querySelector('input[name="doc_date"]').valueAsDate = new Date();
+</script>
+{% endblock %}

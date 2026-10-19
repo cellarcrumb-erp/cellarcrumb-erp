@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block page_title %}Bank Reconciliation{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Bank Reconciliation</span>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <form method="GET" style="display:flex; gap:10px; align-items:flex-end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Bank Account</label>
+      <select name="account_id" class="form-control" required>
+        <option value="">Select Account</option>
+        {% for a in accounts %}
+        <option value="{{ a.id }}" {% if request.args.get('account_id')|int == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-secondary">Load Transactions</button>
+  </form>
+</div>
+{% if account %}
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
+  <div class="stat-card"><div class="stat-label">Book Balance</div><div class="stat-value">KES {{ account.current_balance }}</div></div>
+  <div class="stat-card"><div class="stat-label">Unreconciled Txs</div><div class="stat-value">{{ unreconciled|length }}</div></div>
+</div>
+<div class="card table-card">
+  <form method="POST" action="{{ url_for('banking.reconcile_transactions') }}">
+    <input type="hidden" name="account_id" value="{{ account.id }}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selectAll"></th>
+          <th>Date</th>
+          <th>Ref</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in unreconciled %}
+        <tr>
+          <td><input type="checkbox" name="txn_ids" value="{{ t.id }}" class="txn-cb"></td>
+          <td>{{ t.doc_date }}</td>
+          <td>{{ t.doc_ref }}</td>
+          <td>{{ t.txn_type }}</td>
+          <td>{{ t.description }}</td>
+          <td>{{ t.amount }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;">No unreconciled transactions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if unreconciled %}
+    <div style="padding:16px;">
+      <button type="submit" class="btn btn-primary">Mark Reconciled</button>
+    </div>
+    {% endif %}
+  </form>
+</div>
+<script>
+document.getElementById('selectAll').addEventListener('change', function(e) {
+  var cbs = document.querySelectorAll('.txn-cb');
+  for (var i = 0; i < cbs.length; i++) {
+    cbs[i].checked = e.target.checked;
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ account.name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('banking.accounts') }}">Accounts</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ account.name }}</span>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <h2>{{ account.name }}</h2>
+    <div style="color:var(--text-secondary);">{{ account.bank_name }} | {{ account.account_number }}</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:14px; color:var(--text-secondary);">Current Balance</div>
+    <div style="font-size:28px; font-weight:bold; color:var(--gold);">KES {{ account.current_balance }}</div>
+  </div>
+</div>
+<div class="actions-bar" style="margin-bottom:20px;">
+  <a href="{{ url_for('banking.new_deposit') }}?account_id={{ account.id }}" class="btn btn-primary">Record Deposit</a>
+  <a href="{{ url_for('banking.new_withdrawal') }}?account_id={{ account.id }}" class="btn btn-danger">Record Withdrawal</a>
+</div>
+<div class="card table-card">
+  <div class="card-header"><div class="card-title">Transactions</div></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Ref</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Amount</th>
+        <th>Reconciled</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td>{{ t.doc_date }}</td>
+        <td>{{ t.doc_ref }}</td>
+        <td>{{ t.txn_type }}</td>
+        <td>{{ t.description }}</td>
+        <td style="color:{% if t.amount > 0 %}green{% else %}red{% endif %}; font-weight:bold;">
+          {{ t.amount }}
+        </td>
+        <td><span class="badge {% if t.is_reconciled %}badge-posted{% else %}badge-pending{% endif %}">{{ 'Yes' if t.is_reconciled else 'No' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

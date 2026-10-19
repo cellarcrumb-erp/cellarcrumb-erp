@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}New Journal Entry{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>New Journal Entry</h2>
+    <a href="{{ url_for('finance.journal_list') }}" class="btn btn-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Date *</label>
+                    <input type="date" name="doc_date" class="form-control" required>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Description *</label>
+                    <input type="text" name="description" class="form-control" required>
+                </div>
+            </div>
+            
+            <h5 class="mb-3">Journal Lines</h5>
+            <table class="table table-bordered" id="lines-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Account</th>
+                        <th>Debit</th>
+                        <th>Credit</th>
+                        <th>Description</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <select name="account_id[]" class="form-select" required>
+                                <option value="">Select Account...</option>
+                                {% for a in accounts %}
+                                <option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" step="any" name="debit[]" class="form-control dr-input" value="0"></td>
+                        <td><input type="number" step="any" name="credit[]" class="form-control cr-input" value="0"></td>
+                        <td><input type="text" name="line_description[]" class="form-control"></td>
+                        <td><button type="button" class="btn btn-danger btn-sm remove-line"><i data-feather="trash"></i></button></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <select name="account_id[]" class="form-select" required>
+                                <option value="">Select Account...</option>
+                                {% for a in accounts %}
+                                <option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" step="any" name="debit[]" class="form-control dr-input" value="0"></td>
+                        <td><input type="number" step="any" name="credit[]" class="form-control cr-input" value="0"></td>
+                        <td><input type="text" name="line_description[]" class="form-control"></td>
+                        <td><button type="button" class="btn btn-danger btn-sm remove-line"><i data-feather="trash"></i></button></td>
+                    </tr>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th class="text-end">Totals:</th>
+                        <th id="total-dr">0.00</th>
+                        <th id="total-cr">0.00</th>
+                        <th colspan="2"></th>
+                    </tr>
+                </tfoot>
+            </table>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-4" id="add-line"><i data-feather="plus"></i> Add Line</button>
+            <hr>
+            <button type="submit" class="btn btn-primary" id="btn-save">Post Journal</button>
+        </form>
+    </div>
+</div>
+<script>
+document.querySelector('input[name="doc_date"]').valueAsDate = new Date();
+
+function updateTotals() {
+    let dr = 0; let cr = 0;
+    document.querySelectorAll('.dr-input').forEach(i => dr += parseFloat(i.value || 0));
+    document.querySelectorAll('.cr-input').forEach(i => cr += parseFloat(i.value || 0));
+    document.getElementById('total-dr').textContent = dr.toFixed(2);
+    document.getElementById('total-cr').textContent = cr.toFixed(2);
+    
+    const btn = document.getElementById('btn-save');
+    if (Math.abs(dr - cr) > 0.01) {
+        btn.disabled = true;
+        btn.textContent = 'Journal must balance';
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'Post Journal';
+    }
+}
+
+document.getElementById('lines-table').addEventListener('input', updateTotals);
+
+document.getElementById('add-line').addEventListener('click', function() {
+    var tbody = document.querySelector('#lines-table tbody');
+    var row = tbody.rows[0].cloneNode(true);
+    row.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? '0' : ''));
+    row.querySelectorAll('select').forEach(i => i.value = '');
+    tbody.appendChild(row);
+    updateTotals();
+});
+
+document.querySelector('#lines-table').addEventListener('click', function(e) {
+    if(e.target.closest('.remove-line')) {
+        if(document.querySelectorAll('#lines-table tbody tr').length > 2) {
+            e.target.closest('tr').remove();
+            updateTotals();
+        }
+    }
+});
+updateTotals();
+</script>
+{% endblock %}

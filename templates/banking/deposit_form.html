@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block page_title %}Record Deposit{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>New Deposit</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('banking.new_deposit') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Bank Account *</label>
+        <select name="bank_account_id" class="form-control" required>
+          {% for a in accounts %}
+          <option value="{{ a.id }}" {% if request.args.get('account_id')|int == a.id %}selected{% endif %}>{{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input type="date" name="doc_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount *</label>
+        <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reference</label>
+        <input type="text" name="reference" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Partner (Optional)</label>
+        <select name="partner_id" class="form-control">
+          <option value="">None</option>
+          {% for p in partners %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control"></textarea>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('banking.index') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save & Post</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

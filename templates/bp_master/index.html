@@ -1,0 +1,113 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Business Partner Master{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('overview.dashboard') }}">Dashboard</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Business Partners</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Business Partner Master</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Manage Customers, Suppliers and other business contacts</div>
+  </div>
+  <div class="flex gap-2">
+    <a href="{{ url_for('bp_master.export_csv') }}" class="btn btn-secondary btn-sm">
+      <i data-feather="download" style="width:14px;height:14px;"></i> Export CSV
+    </a>
+    <a href="{{ url_for('bp_master.new_partner') }}" class="btn btn-primary btn-sm">
+      <i data-feather="plus" style="width:14px;height:14px;"></i> New Partner
+    </a>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="table-toolbar">
+    <form method="GET" class="flex gap-3 items-center flex-wrap" style="width:100%;">
+      <input type="text" name="search" placeholder="Search by CardCode, name, phone..." value="{{ search }}" class="search-input" style="flex:1; min-width:220px;">
+      <select name="type" class="filter-select" style="min-width:180px;">
+        <option value="">All Partner Types</option>
+        <option value="Customer" {% if type == 'Customer' %}selected{% endif %}>Customers (CUS)</option>
+        <option value="Supplier" {% if type == 'Supplier' %}selected{% endif %}>Suppliers (SUP)</option>
+        <option value="Customer & Supplier" {% if type == 'Customer & Supplier' %}selected{% endif %}>Customer &amp; Supplier (BPS)</option>
+        <option value="Employee" {% if type == 'Employee' %}selected{% endif %}>Employees (EMP)</option>
+        <option value="Other" {% if type == 'Other' %}selected{% endif %}>Other (OTH)</option>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm">
+        <i data-feather="filter" style="width:14px;height:14px;"></i> Filter
+      </button>
+      {% if search or type %}
+      <a href="{{ url_for('bp_master.index') }}" class="btn btn-secondary btn-sm">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:120px;">CardCode</th>
+        <th>Partner Name</th>
+        <th style="width:160px;">Type</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th class="text-right" style="width:140px;">Balance (KES)</th>
+        <th style="width:100px;">Status</th>
+        <th class="text-right" style="width:140px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if partners %}
+        {% for p in partners %}
+        <tr>
+          <td>
+            <span class="font-bold" style="color:var(--gold-dark); letter-spacing:0.03em;">{{ p.code }}</span>
+          </td>
+          <td>
+            <a href="{{ url_for('bp_master.partner_detail', id=p.id) }}" class="font-semibold" style="color:var(--text-primary); text-decoration:none;">
+              {{ p.name }}
+            </a>
+          </td>
+          <td>
+            <span class="badge 
+              {% if p.partner_type == 'Customer' %}badge-open
+              {% elif p.partner_type == 'Supplier' %}badge-pending
+              {% elif p.partner_type == 'Customer & Supplier' %}badge-posted
+              {% else %}badge-draft{% endif %}">
+              {{ p.partner_type }}
+            </span>
+          </td>
+          <td style="color:var(--text-secondary);">{{ p.phone or '—' }}</td>
+          <td style="color:var(--text-secondary);">{{ p.email or '—' }}</td>
+          <td class="text-right font-bold" style="color:{% if (p.balance or 0) > 0 %}#dc2626{% elif (p.balance or 0) < 0 %}#059669{% else %}var(--text-muted){% endif %};">
+            {{ "%.2f"|format(p.balance or 0) }}
+          </td>
+          <td>
+            <span class="badge {% if p.status == 'Active' %}badge-active{% else %}badge-archived{% endif %}">
+              {{ p.status }}
+            </span>
+          </td>
+          <td class="text-right">
+            <div class="flex gap-2 justify-end">
+              <a href="{{ url_for('bp_master.partner_detail', id=p.id) }}" class="btn btn-secondary btn-sm" title="View Detail">
+                <i data-feather="eye" style="width:13px;height:13px;"></i>
+              </a>
+              <a href="{{ url_for('bp_master.edit_partner', id=p.id) }}" class="btn btn-secondary btn-sm" title="Edit Partner">
+                <i data-feather="edit-2" style="width:13px;height:13px;"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="8" class="text-center" style="padding:32px; color:var(--text-muted); font-style:italic;">
+            No business partners found matching your search.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

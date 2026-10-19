@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Production Order {{ order.doc_ref }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Production Order: {{ order.doc_ref }}</h2>
+    <div class="d-flex gap-2">
+        {% if order.status == 'Draft' %}
+        <form method="POST" action="{{ url_for('production.order_start', id=order.id) }}">
+            <button type="submit" class="btn btn-primary">Start Production</button>
+        </form>
+        <form method="POST" action="{{ url_for('production.order_cancel', id=order.id) }}">
+            <button type="submit" class="btn btn-danger">Cancel</button>
+        </form>
+        {% elif order.status == 'In Progress' %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#completeModal">
+            Complete Production
+        </button>
+        {% endif %}
+        <a href="{{ url_for('production.order_list') }}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Order Details</strong></div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr><th>Status:</th><td><span class="badge bg-{{ 'secondary' if order.status=='Draft' else 'primary' if order.status=='In Progress' else 'success' if order.status=='Completed' else 'danger' }}">{{ order.status }}</span></td></tr>
+                    <tr><th>Date:</th><td>{{ order.doc_date }}</td></tr>
+                    <tr><th>Product:</th><td>{{ order.product_name }}</td></tr>
+                    <tr><th>BOM:</th><td>{{ order.bom_name }}</td></tr>
+                    <tr><th>Warehouse:</th><td>{{ order.warehouse_name }}</td></tr>
+                    <tr><th>Batch No:</th><td>{{ order.batch_no or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Quantities & Cost</strong></div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr><th>Planned Qty:</th><td>{{ order.planned_qty }}</td></tr>
+                    <tr><th>Produced Qty:</th><td>{{ order.produced_qty or '-' }}</td></tr>
+                    <tr><th>Wastage Qty:</th><td>{{ order.wastage_qty or '-' }}</td></tr>
+                    <tr><th>Total Cost:</th><td>{{ order.total_cost or total_est_cost }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4>Material Requirements</h4>
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Item</th>
+                    <th>Required Qty</th>
+                    <th>Unit Cost (Est)</th>
+                    <th>Total Cost (Est)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in materials %}
+                <tr>
+                    <td>{{ m.name }}</td>
+                    <td>{{ m.req_qty }}</td>
+                    <td>{{ m.unit_cost }}</td>
+                    <td>{{ m.est_cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th colspan="3" class="text-end">Total Estimated Cost:</th>
+                    <th>{{ total_est_cost }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Complete Modal -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('production.order_complete', id=order.id) }}">
+          <div class="modal-header">
+            <h5 class="modal-title">Complete Production</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label">Produced Quantity *</label>
+                <input type="number" step="any" name="produced_qty" class="form-control" value="{{ order.planned_qty }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Wastage Quantity</label>
+                <input type="number" step="any" name="wastage_qty" class="form-control" value="0">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-success">Complete</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

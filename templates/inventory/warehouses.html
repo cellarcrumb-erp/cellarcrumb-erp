@@ -1,0 +1,76 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Warehouses{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('inventory.index') }}">Inventory</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Warehouses</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Warehouses & Storage Locations</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Manage stock storage sites and branch locations</div>
+  </div>
+  <a href="{{ url_for('inventory.new_warehouse') }}" class="btn btn-primary btn-sm">
+    <i data-feather="plus" style="width:14px;height:14px;"></i> New Warehouse
+  </a>
+</div>
+
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:120px;">Code</th>
+        <th>Warehouse Name</th>
+        <th>Physical Location</th>
+        <th style="width:180px;">Operating Branch</th>
+        <th style="width:100px;">Status</th>
+        <th class="text-right" style="width:100px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if warehouses %}
+        {% for w in warehouses %}
+        <tr>
+          <td>
+            <span class="font-bold" style="color:var(--gold-dark); letter-spacing:0.04em;">{{ w.code }}</span>
+          </td>
+          <td>
+            <div class="font-bold" style="color:var(--text-primary);">{{ w.name }}</div>
+          </td>
+          <td style="color:var(--text-secondary);">{{ w.location or '—' }}</td>
+          <td>
+            {% if w.branch_name %}
+            <span class="badge badge-open" style="font-size:11px;">
+              <i data-feather="map-pin" style="width:10px;height:10px; margin-right:3px;"></i>
+              {{ w.branch_name }} ({{ w.branch_code }})
+            </span>
+            {% else %}
+            <span style="color:var(--text-muted); font-size:12px;">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if w.is_active %}badge-active{% else %}badge-archived{% endif %}">
+              {{ 'Active' if w.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td class="text-right">
+            <a href="{{ url_for('inventory.edit_warehouse', id=w.id) }}" class="btn btn-secondary btn-sm" title="Edit Warehouse">
+              <i data-feather="edit-2" style="width:13px;height:13px;"></i> Edit
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="6" class="text-center" style="padding:32px; color:var(--text-muted);">
+            No warehouses found.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Tax & VAT Report — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1 class="page-title">Tax &amp; VAT Report</h1>
+    <p class="page-subtitle">VAT Output (Sales) vs VAT Input (Purchases) reconciliation statement</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button onclick="window.print()" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="printer" style="width:16px;height:16px;"></i> Print
+    </button>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-6" style="padding:16px 20px;">
+  <form method="GET" action="{{ url_for('finance.tax_report') }}" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">From Date</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="width:170px;">
+    </div>
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">To Date</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="width:170px;">
+    </div>
+    {% if branches %}
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">Branch</label>
+      <select name="branch_id" class="form-control filter-select" style="width:200px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <button type="submit" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-feather="filter" style="width:15px;height:15px;"></i> Generate Tax Report
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Tax Summary Cards -->
+<div class="grid grid-cols-3 gap-6 mb-6">
+  <div class="stat-card gold">
+    <span class="stat-label">Output VAT (Sales)</span>
+    <p class="stat-value">{{ currency }} {{ "%.2f"|format(output_vat) }}</p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Collected from {{ sales_vat.doc_cnt }} sales invoices</span>
+  </div>
+
+  <div class="stat-card blue">
+    <span class="stat-label">Input VAT (Purchases)</span>
+    <p class="stat-value">{{ currency }} {{ "%.2f"|format(input_vat) }}</p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Paid on {{ purch_vat.doc_cnt }} supplier bills</span>
+  </div>
+
+  <div class="stat-card {% if net_vat_payable >= 0 %}red{% else %}green{% endif %}">
+    <span class="stat-label">{% if net_vat_payable >= 0 %}Net VAT Payable{% else %}Net VAT Refund Claim{% endif %}</span>
+    <p class="stat-value" style="color:{% if net_vat_payable >= 0 %}#f87171{% else %}#34d399{% endif %};">
+      {{ currency }} {{ "%.2f"|format(net_vat_payable|abs) }}
+    </p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+      {% if net_vat_payable >= 0 %}Payable to Revenue Authority{% else %}Input tax credit carried forward{% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- Detailed Table -->
+<div class="card" style="padding:24px;">
+  <div style="border-bottom: 1px solid var(--border); padding-bottom:14px; margin-bottom:18px;">
+    <h2 style="font-size:16px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.04em;">Tax Return Summary Schedule</h2>
+  </div>
+
+  <table class="table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="text-align:left; padding:12px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Tax Component</th>
+        <th style="text-align:right; padding:12px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Count</th>
+        <th style="text-align:right; padding:12px; width:200px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Taxable Amount</th>
+        <th style="text-align:right; padding:12px; width:200px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Tax Total ({{ currency }})</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+        <td style="padding:14px 12px; font-weight:700; color:var(--gold);">Output VAT (Sales &amp; Invoicing)</td>
+        <td style="padding:14px 12px; text-align:right;">{{ sales_vat.doc_cnt }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace;">{{ "%.2f"|format(sales_vat.taxable_sales) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; font-weight:700; color:var(--gold);">{{ "%.2f"|format(output_vat) }}</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+        <td style="padding:14px 12px; font-weight:700; color:#38bdf8;">Input VAT (Purchases &amp; Supplier Bills)</td>
+        <td style="padding:14px 12px; text-align:right;">{{ purch_vat.doc_cnt }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace;">{{ "%.2f"|format(purch_vat.taxable_purchases) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; font-weight:700; color:#38bdf8;">{{ "%.2f"|format(input_vat) }}</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr style="border-top:2px solid var(--border); background:rgba(255,255,255,0.03); font-weight:900;">
+        <td colspan="3" style="padding:16px 12px; text-transform:uppercase; font-size:14px;">
+          {% if net_vat_payable >= 0 %}NET VAT PAYABLE TO REVENUE AUTHORITY{% else %}NET VAT REFUND CLAIMABLE{% endif %}
+        </td>
+        <td style="padding:16px 12px; text-align:right; font-family:monospace; font-size:17px; color:{% if net_vat_payable >= 0 %}#f87171{% else %}#34d399{% endif %};">
+          {{ "%.2f"|format(net_vat_payable) }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

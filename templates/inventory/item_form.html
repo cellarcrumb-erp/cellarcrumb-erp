@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ 'Edit' if item else 'New' }} Item</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label>Code (Unique)</label>
+        <input type="text" name="code" class="form-control" value="{{ item.code if item else '' }}" {{ 'readonly' if item else 'required' }}>
+    </div>
+    <div class="mb-3">
+        <label>Name</label>
+        <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" required>
+    </div>
+    <div class="mb-3">
+        <label>Type</label>
+        <select name="item_type" class="form-control">
+            <option value="Trading Item" {% if item and item.item_type == 'Trading Item' %}selected{% endif %}>Trading Item</option>
+            <option value="Raw Material" {% if item and item.item_type == 'Raw Material' %}selected{% endif %}>Raw Material</option>
+            <option value="Finished Good" {% if item and item.item_type == 'Finished Good' %}selected{% endif %}>Finished Good</option>
+            <option value="Service" {% if item and item.item_type == 'Service' %}selected{% endif %}>Service</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Cost</label>
+        <input type="number" step="0.01" name="cost" class="form-control" value="{{ item.cost if item else 0 }}">
+    </div>
+    <div class="mb-3">
+        <label>Price</label>
+        <input type="number" step="0.01" name="price" class="form-control" value="{{ item.price if item else 0 }}">
+    </div>
+    <div class="mb-3">
+        <label>Reorder Level</label>
+        <input type="number" name="reorder_level" class="form-control" value="{{ item.reorder_level if item else 0 }}">
+    </div>
+    <div class="mb-3">
+        <input type="checkbox" name="is_stock_item" {% if not item or item.is_stock_item %}checked{% endif %}> Stock Item?
+    </div>
+    <div class="mb-3">
+        <input type="checkbox" name="is_active" {% if not item or item.is_active %}checked{% endif %}> Active?
+    </div>
+    <button class="btn btn-primary" type="submit">Save</button>
+</form>
+{% endblock %}

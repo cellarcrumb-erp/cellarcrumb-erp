@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ emp.full_name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('hr.employees') }}">Employees</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ emp.full_name }}</span>
+</div>
+<div class="card" style="margin-bottom:20px; padding:20px; display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <h2>{{ emp.full_name }} <span class="badge {% if emp.status=='Active' %}badge-posted{% elif emp.status=='Inactive' %}badge-cancelled{% else %}badge-pending{% endif %}">{{ emp.status }}</span></h2>
+    <div style="color:var(--text-secondary);">{{ emp.emp_no }} | {{ emp.department_name }} | {{ emp.job_title_name }}</div>
+  </div>
+  <div>
+    <a href="{{ url_for('hr.edit_employee', id=emp.id) }}" class="btn btn-primary">Edit</a>
+  </div>
+</div>
+<div class="tab-bar">
+  <div class="tab-btn active" onclick="showTab('details')">Details</div>
+  <div class="tab-btn" onclick="showTab('leaves')">Leave Records</div>
+</div>
+<div class="tab-content" id="tab-details" style="display:block;">
+  <div class="card" style="padding:20px; margin-bottom:20px;">
+    <h3>Personal Info</h3>
+    <div class="detail-grid">
+      <div class="detail-label">Email</div><div class="detail-value">{{ emp.email }}</div>
+      <div class="detail-label">Phone</div><div class="detail-value">{{ emp.phone }}</div>
+      <div class="detail-label">Address</div><div class="detail-value">{{ emp.address }}</div>
+      <div class="detail-label">National ID</div><div class="detail-value">{{ emp.national_id }}</div>
+      <div class="detail-label">KRA PIN</div><div class="detail-value">{{ emp.kra_pin }}</div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin-bottom:20px;">
+    <h3>Employment Info</h3>
+    <div class="detail-grid">
+      <div class="detail-label">Date Hired</div><div class="detail-value">{{ emp.date_hired }}</div>
+      <div class="detail-label">Employment Type</div><div class="detail-value">{{ emp.employment_type }}</div>
+      <div class="detail-label">Monthly Salary</div><div class="detail-value">KES {{ emp.monthly_salary }}</div>
+    </div>
+  </div>
+</div>
+<div class="tab-content" id="tab-leaves" style="display:none;">
+  <div class="actions-bar" style="margin-bottom:10px;">
+    <a href="{{ url_for('hr.new_leave') }}?employee_id={{ emp.id }}" class="btn btn-sm btn-primary">New Leave Request</a>
+  </div>
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for l in leaves %}
+        <tr>
+          <td>{{ l.leave_type }}</td><td>{{ l.start_date }}</td><td>{{ l.end_date }}</td><td>{{ l.days }}</td>
+          <td><span class="badge">{{ l.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function showTab(t){
+  document.getElementById('tab-details').style.display = t=='details' ? 'block' : 'none';
+  document.getElementById('tab-leaves').style.display = t=='leaves' ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if method %}Edit{% else %}New{% endif %} Payment Method{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.payment_methods') }}">Payment Methods</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if method %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" name="name" class="form-control" value="{{ method.name if method else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Method Type</label>
+        <select name="method_type" class="form-control">
+          <option value="Cash" {% if method and method.method_type=='Cash' %}selected{% endif %}>Cash</option>
+          <option value="Bank" {% if method and method.method_type=='Bank' %}selected{% endif %}>Bank</option>
+          <option value="Mobile" {% if method and method.method_type=='Mobile' %}selected{% endif %}>Mobile</option>
+          <option value="Card" {% if method and method.method_type=='Card' %}selected{% endif %}>Card</option>
+          <option value="Cheque" {% if method and method.method_type=='Cheque' %}selected{% endif %}>Cheque</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Is Active</label>
+        <input type="checkbox" name="is_active" {% if not method or method.is_active %}checked{% endif %}>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('settings.payment_methods') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ payment.doc_ref }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('payments.index') }}">Payments</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ payment.doc_ref }}</span>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-start;">
+  <div>
+    <h2>{{ payment.doc_ref }} <span class="badge {% if payment.status=='Posted' %}badge-posted{% elif payment.status=='Cancelled' %}badge-cancelled{% else %}badge-draft{% endif %}">{{ payment.status }}</span></h2>
+    <div style="color:var(--text-secondary); margin-top:5px;">Date: {{ payment.doc_date }} | Partner: {{ payment.partner_name or '-' }}</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:14px; color:var(--text-secondary);">Amount</div>
+    <div style="font-size:28px; font-weight:bold; color:var(--gold);">KES {{ payment.amount }}</div>
+  </div>
+</div>
+<div class="actions-bar" style="margin-bottom:20px;">
+  {% if payment.status == 'Draft' %}
+  <form method="POST" action="{{ url_for('payments.post_payment', id=payment.id) }}" style="display:inline;">
+    <button type="submit" class="btn btn-primary">Post Payment</button>
+  </form>
+  {% endif %}
+  <a href="{{ url_for('payments.print_payment', id=payment.id) }}" target="_blank" class="btn btn-secondary">Print</a>
+  {% if payment.status != 'Cancelled' %}
+  <button class="btn btn-danger">Cancel Payment</button>
+  {% endif %}
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <h3>Payment Details</h3>
+  <div class="detail-grid">
+    <div class="detail-label">Payment Method</div><div class="detail-value">{{ payment.payment_method_name }}</div>
+    <div class="detail-label">Bank Account</div><div class="detail-value">{{ payment.bank_account_name }}</div>
+    <div class="detail-label">Reference</div><div class="detail-value">{{ payment.reference or '-' }}</div>
+    <div class="detail-label">Remarks</div><div class="detail-value">{{ payment.remarks or '-' }}</div>
+    <div class="detail-label">Allocated</div><div class="detail-value">{{ payment.amount_allocated }}</div>
+    <div class="detail-label">Unallocated</div><div class="detail-value">{{ payment.unallocated }}</div>
+  </div>
+</div>
+{% if payment.status == 'Posted' and payment.payment_type in ['Incoming', 'Outgoing'] and payment.unallocated > 0 %}
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <h3>Allocate Payment</h3>
+  <form method="POST" action="{{ url_for('payments.allocate_payment', id=payment.id) }}">
+    <table class="table">
+      <thead><tr><th>Doc Ref</th><th>Date</th><th>Total</th><th>Balance Due</th><th>Allocate Amount</th></tr></thead>
+      <tbody>
+        {% for d in outstanding_docs %}
+        <tr>
+          <td>{{ d.doc_ref }}</td><td>{{ d.doc_date }}</td><td>{{ d.total }}</td><td>{{ d.balance_due }}</td>
+          <td><input type="number" step="0.01" min="0" max="{{ [d.balance_due, payment.unallocated]|min }}" name="alloc_{{ d.id }}" class="form-control"></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No outstanding documents to allocate.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if outstanding_docs %}
+    <div style="margin-top:16px;"><button type="submit" class="btn btn-primary">Submit Allocations</button></div>
+    {% endif %}
+  </form>
+</div>
+{% endif %}
+{% if allocations %}
+<div class="card table-card">
+  <div class="card-header"><div class="card-title">Existing Allocations</div></div>
+  <table class="table">
+    <thead><tr><th>Document</th><th>Amount Allocated</th></tr></thead>
+    <tbody>
+      {% for a in allocations %}
+      <tr><td>{{ a.doc_type }} #{{ a.doc_id }}</td><td>{{ a.amount }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

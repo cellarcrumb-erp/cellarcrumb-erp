@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit Account' if account else 'New Account' }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ 'Edit Account' if account else 'New Account' }}</h2>
+    <a href="{{ url_for('finance.coa_list') }}" class="btn btn-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Account Code *</label>
+                    <input type="text" name="code" class="form-control" required value="{{ account.code if account else '' }}" {% if account %}readonly{% endif %}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Account Name *</label>
+                    <input type="text" name="name" class="form-control" required value="{{ account.name if account else '' }}">
+                </div>
+            </div>
+            {% if not account %}
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Account Type *</label>
+                    <select name="account_type" class="form-select" required>
+                        <option value="Asset">Asset</option>
+                        <option value="Liability">Liability</option>
+                        <option value="Equity">Equity</option>
+                        <option value="Revenue">Revenue</option>
+                        <option value="Expense">Expense</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Parent Account</label>
+                    <select name="parent_id" class="form-select">
+                        <option value="">None</option>
+                        {% for p in parents %}
+                        <option value="{{ p.id }}">{{ p.code }} - {{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="is_posting" value="1" id="isPosting" checked>
+                        <label class="form-check-label" for="isPosting">Is Posting Account?</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Opening Balance</label>
+                    <input type="number" step="any" name="opening_balance" class="form-control" value="0">
+                </div>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Save Account</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

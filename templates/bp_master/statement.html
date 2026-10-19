@@ -1,0 +1,159 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}Statement – {{ partner.name }}{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+  <a href="{{ url_for('bp_master.index') }}">BP Master</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('bp_master.partner_detail', id=partner.id) }}">{{ partner.name }}</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Statement of Account</span>
+</div>
+
+<div class="flex justify-between items-center mb-4 d-print-none">
+  <h2 style="margin:0;font-size:22px;font-weight:700;color:#f1f5f9;">Statement of Account</h2>
+  <div class="flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()">
+      <i data-feather="printer" style="width:14px;height:14px;"></i> Print
+    </button>
+    <a href="{{ url_for('bp_master.partner_detail', id=partner.id) }}" class="btn btn-secondary btn-sm">
+      <i data-feather="arrow-left" style="width:14px;height:14px;"></i> Back
+    </a>
+  </div>
+</div>
+
+<div class="card p-4 mb-4 d-print-none">
+  <form method="GET" class="flex gap-3 items-center flex-wrap">
+    <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+      <label class="form-label">From Date</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+      <label class="form-label">To Date</label>
+      <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div style="padding-top:22px;">
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      <a href="{{ request.path }}" class="btn btn-secondary btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="card p-6" id="printArea">
+  <div class="text-center mb-4" style="border-bottom:2px solid var(--border);padding-bottom:20px;">
+    <h2 style="margin:0 0 4px 0;font-size:22px;font-weight:800;color:var(--text-primary);">Cellar &amp; Crumb Operations</h2>
+    <div style="color:var(--text-secondary);font-size:13px;">Statement of Account</div>
+    {% if date_from or date_to %}
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+      Period: {{ date_from or 'All time' }} &mdash; {{ date_to or 'Present' }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="two-col mb-4" style="gap:24px;">
+    <div>
+      <div class="detail-label">Customer / Supplier</div>
+      <div class="detail-value" style="font-size:17px;">{{ partner.name }}</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">{{ partner.address or '' }}</div>
+      <div style="font-size:13px;color:var(--text-secondary);">
+        {{ partner.phone or '' }}{% if partner.phone and partner.email %} &middot; {% endif %}{{ partner.email or '' }}
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div class="detail-label">Account Code</div>
+      <div class="detail-value">{{ partner.code }}</div>
+      <div style="margin-top:12px;">
+        <div class="detail-label">Closing Balance</div>
+        <div class="detail-value text-erp-gold" style="font-size:22px;font-weight:800;">
+          KES {{ "%.2f"|format(closing_balance) }}
+        </div>
+        {% if closing_balance > 0 %}
+        <span class="badge badge-pending" style="margin-top:4px;">Amount Owed</span>
+        {% elif closing_balance < 0 %}
+        <span class="badge badge-posted" style="margin-top:4px;">Credit on Account</span>
+        {% else %}
+        <span class="badge badge-draft" style="margin-top:4px;">Nil Balance</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card border rounded" style="margin-bottom:0;">
+    <table class="table" style="font-size:13.5px;">
+      <thead>
+        <tr>
+          <th style="width:110px;">Date</th>
+          <th style="width:130px;">Reference</th>
+          <th>Type</th>
+          <th class="text-right" style="width:130px;">Debit (KES)</th>
+          <th class="text-right" style="width:130px;">Credit (KES)</th>
+          <th class="text-right" style="width:140px;">Balance (KES)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if ledger %}
+          {% for row in ledger %}
+          <tr>
+            <td style="color:var(--text-secondary);font-size:12.5px;">{{ row.date }}</td>
+            <td class="font-bold" style="color:var(--gold-dark);">{{ row.ref }}</td>
+            <td>
+              <span class="badge {% if row.type == 'Invoice' %}badge-pending{% elif row.type == 'Credit Note' %}badge-posted{% else %}badge-draft{% endif %}" style="font-size:11px;">
+                {{ row.type }}
+              </span>
+            </td>
+            <td class="text-right">
+              {% if row.debit > 0 %}
+              <span style="color:#dc2626;font-weight:600;">{{ "%.2f"|format(row.debit) }}</span>
+              {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+            </td>
+            <td class="text-right">
+              {% if row.credit > 0 %}
+              <span style="color:#059669;font-weight:600;">{{ "%.2f"|format(row.credit) }}</span>
+              {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+            </td>
+            <td class="text-right font-bold"
+                style="color:{% if row.balance > 0 %}#dc2626{% elif row.balance < 0 %}#059669{% else %}var(--text-muted){% endif %};">
+              {{ "%.2f"|format(row.balance) }}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr style="background:#f8fafc;border-top:2px solid var(--border);">
+            <td colspan="3" class="text-right font-bold" style="padding:14px 18px;color:var(--text-secondary);">TOTAL / CLOSING BALANCE</td>
+            <td class="text-right font-bold" style="color:#dc2626;padding:14px 18px;">
+              KES {{ "%.2f"|format(ledger|sum(attribute='debit')) }}
+            </td>
+            <td class="text-right font-bold" style="color:#059669;padding:14px 18px;">
+              KES {{ "%.2f"|format(ledger|sum(attribute='credit')) }}
+            </td>
+            <td class="text-right font-bold text-erp-gold" style="font-size:15px;padding:14px 18px;">
+              KES {{ "%.2f"|format(closing_balance) }}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center" style="padding:32px;color:var(--text-muted);font-style:italic;">
+              No transactions found for this partner{% if date_from or date_to %} in the selected period{% endif %}.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:20px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px;">
+    This statement shows posted transactions only. Unposted drafts are excluded.
+  </div>
+</div>
+
+<style>
+@media print {
+  .sidebar, .topbar, .breadcrumb, .d-print-none { display: none !important; }
+  .main-wrapper { margin-left: 0 !important; width: 100% !important; }
+  .content { padding: 0 !important; background: white !important; }
+  body { background: white !important; color: black !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  .text-erp-gold { color: #b3923b !important; }
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit BOM' if bom else 'New BOM' }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ 'Edit BOM' if bom else 'New BOM' }}</h2>
+    <a href="{{ url_for('production.bom_list') }}" class="btn btn-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Finished Item *</label>
+                    <select name="finished_item_id" class="form-select" required {% if bom %}disabled{% endif %}>
+                        <option value="">Select Item...</option>
+                        {% for i in items %}
+                        <option value="{{ i.id }}" {% if bom and bom.finished_item_id == i.id %}selected{% endif %}>{{ i.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">BOM Name *</label>
+                    <input type="text" name="name" class="form-control" required value="{{ bom.name if bom else '' }}">
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Quantity Produced *</label>
+                    <input type="number" step="any" name="quantity_produced" class="form-control" required value="{{ bom.quantity_produced if bom else '1' }}">
+                </div>
+            </div>
+            
+            <h5 class="mb-3">Raw Materials</h5>
+            <table class="table table-bordered" id="lines-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>UOM</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if lines %}
+                        {% for line in lines %}
+                        <tr>
+                            <td>
+                                <select name="item_id[]" class="form-select" required>
+                                    <option value="">Select...</option>
+                                    {% for i in items %}
+                                    <option value="{{ i.id }}" {% if line.item_id == i.id %}selected{% endif %}>{{ i.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="number" step="any" name="quantity[]" class="form-control" required value="{{ line.quantity }}"></td>
+                            <td>
+                                <select name="uom_id[]" class="form-select">
+                                    <option value="">None</option>
+                                    {% for u in uoms %}
+                                    <option value="{{ u.id }}" {% if line.uom_id == u.id %}selected{% endif %}>{{ u.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-line"><i data-feather="trash"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td>
+                                <select name="item_id[]" class="form-select" required>
+                                    <option value="">Select...</option>
+                                    {% for i in items %}
+                                    <option value="{{ i.id }}">{{ i.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="number" step="any" name="quantity[]" class="form-control" required></td>
+                            <td>
+                                <select name="uom_id[]" class="form-select">
+                                    <option value="">None</option>
+                                    {% for u in uoms %}
+                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-line"><i data-feather="trash"></i></button></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-4" id="add-line"><i data-feather="plus"></i> Add Line</button>
+            <hr>
+            <button type="submit" class="btn btn-primary">Save BOM</button>
+        </form>
+    </div>
+</div>
+<script>
+document.getElementById('add-line').addEventListener('click', function() {
+    var tbody = document.querySelector('#lines-table tbody');
+    var row = tbody.rows[0].cloneNode(true);
+    var inputs = row.querySelectorAll('input, select');
+    inputs.forEach(function(input) { input.value = ''; });
+    tbody.appendChild(row);
+});
+document.querySelector('#lines-table').addEventListener('click', function(e) {
+    if(e.target.closest('.remove-line')) {
+        if(document.querySelectorAll('#lines-table tbody tr').length > 1) {
+            e.target.closest('tr').remove();
+        }
+    }
+});
+</script>
+{% endblock %}

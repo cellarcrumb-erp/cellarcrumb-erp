@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block page_title %}Numbering Series{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Numbering Series</span>
+</div>
+<div class="card table-card">
+  <form method="POST">
+    <table class="table">
+      <thead>
+        <tr><th>Module</th><th>Doc Type</th><th>Prefix</th><th>Next Number</th></tr>
+      </thead>
+      <tbody>
+        {% for s in series %}
+        <tr>
+          <td><input type="hidden" name="module[]" value="{{ s.module }}">{{ s.module }}</td>
+          <td><input type="hidden" name="doc_type[]" value="{{ s.doc_type }}">{{ s.doc_type }}</td>
+          <td><input type="text" name="prefix[]" class="form-control" value="{{ s.prefix }}"></td>
+          <td><input type="number" name="next_num[]" class="form-control" value="{{ s.next_num }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="padding:16px;">
+      <button type="submit" class="btn btn-primary">Save All</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

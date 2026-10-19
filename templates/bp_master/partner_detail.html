@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ partner.name }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('bp_master.index') }}">BP Master</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ partner.name }} ({{ partner.code }})</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div class="flex items-center gap-3">
+    <h2 style="margin:0; font-size:22px; font-weight:700;">{{ partner.name }} ({{ partner.code }})</h2>
+    <span class="badge {% if partner.status=='Active' %}badge-active{% else %}badge-archived{% endif %}">{{ partner.status }}</span>
+    <span class="badge badge-draft">{{ partner.partner_type }}</span>
+  </div>
+  <div class="flex gap-2">
+    <form method="POST" action="{{ url_for('bp_master.archive_partner', id=partner.id) }}" style="display:inline;">
+      <button class="btn btn-secondary btn-sm">{{ 'Activate' if partner.status == 'Archived' else 'Archive' }}</button>
+    </form>
+    <a href="{{ url_for('bp_master.partner_statement', id=partner.id) }}" class="btn btn-primary btn-sm">
+      <i data-feather="file-text" style="width:14px;height:14px;"></i> View Statement
+    </a>
+  </div>
+</div>
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 24px;">
+  <div class="card p-4 m-0">
+    <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Contact Information</h4>
+    <div class="detail-grid" style="padding:0; background:transparent; border:none; margin:0;">
+      <div><div class="detail-label">Phone</div><div class="detail-value">{{ partner.phone or 'None' }}</div></div>
+      <div><div class="detail-label">Email</div><div class="detail-value">{{ partner.email or 'None' }}</div></div>
+      <div><div class="detail-label">Address</div><div class="detail-value">{{ partner.address or 'None' }}</div></div>
+      <div><div class="detail-label">Tax ID</div><div class="detail-value">{{ partner.tax_id or 'None' }}</div></div>
+    </div>
+  </div>
+
+  <div class="card p-4 m-0">
+    <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Financial Summary</h4>
+    <div class="detail-grid" style="padding:0; background:transparent; border:none; margin:0;">
+      <div><div class="detail-label">Outstanding Balance</div><div class="detail-value text-erp-gold font-bold">KES {{ "%.2f"|format(partner.balance or 0) }}</div></div>
+      <div><div class="detail-label">Credit Limit</div><div class="detail-value">KES {{ "%.2f"|format(partner.credit_limit or 0) }}</div></div>
+      <div><div class="detail-label">Payment Terms</div><div class="detail-value">{{ partner.payment_terms or 'None' }}</div></div>
+      <div><div class="detail-label">Currency</div><div class="detail-value">{{ partner.currency or 'KES' }}</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div style="padding: 16px 20px 0; border-bottom: 1px solid var(--border);">
+    <ul class="nav-tabs" style="margin:0; border:none;">
+      <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sales" type="button">
+          <i data-feather="shopping-cart" style="width:15px;height:15px;"></i> Sales Transactions
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#purchases" type="button">
+          <i data-feather="truck" style="width:15px;height:15px;"></i> Purchases
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#payments" type="button">
+          <i data-feather="dollar-sign" style="width:15px;height:15px;"></i> Payments
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div class="tab-content" style="padding:0;">
+    <div class="tab-pane active show" id="sales" style="display:block;">
+      <table class="table">
+        <thead>
+          <tr><th>Doc Ref</th><th>Date</th><th>Type</th><th>Total</th><th>Balance Due</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for s in sales %}
+          <tr>
+            <td><strong>{{ s.doc_ref }}</strong></td>
+            <td>{{ s.doc_date }}</td>
+            <td>{{ s.doc_type }}</td>
+            <td>KES {{ "%.2f"|format(s.total) }}</td>
+            <td>KES {{ "%.2f"|format(s.balance_due or 0) }}</td>
+            <td><span class="badge {% if s.status=='Posted' or s.status=='Paid' %}badge-posted{% elif s.status=='Partial' %}badge-pending{% else %}badge-draft{% endif %}">{{ s.status }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="padding:24px; color:var(--text-muted);">No sales transactions found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="purchases" style="display:none;">
+      <table class="table">
+        <thead>
+          <tr><th>Doc Ref</th><th>Date</th><th>Type</th><th>Total</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for p in purchases %}
+          <tr>
+            <td><strong>{{ p.doc_ref }}</strong></td>
+            <td>{{ p.doc_date }}</td>
+            <td>{{ p.doc_type }}</td>
+            <td>KES {{ "%.2f"|format(p.total) }}</td>
+            <td><span class="badge {% if p.status=='Posted' %}badge-posted{% else %}badge-draft{% endif %}">{{ p.status }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center" style="padding:24px; color:var(--text-muted);">No purchase records found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="payments" style="display:none;">
+      <table class="table">
+        <thead>
+          <tr><th>Payment Ref</th><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td><strong>{{ p.doc_ref }}</strong></td>
+            <td>{{ p.doc_date }}</td>
+            <td>{{ p.payment_type }}</td>
+            <td>KES {{ "%.2f"|format(p.amount) }}</td>
+            <td><span class="badge badge-posted">{{ p.status }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center" style="padding:24px; color:var(--text-muted);">No payment records found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

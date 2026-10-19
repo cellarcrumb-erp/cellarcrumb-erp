@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block page_title %}Units of Measure{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Units of Measure</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_uom') }}" class="btn btn-primary">New UOM</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>Code</th><th>Name</th><th>Base UOM</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for u in uoms %}
+      <tr>
+        <td>{{ u.code }}</td>
+        <td>{{ u.name }}</td>
+        <td>{{ u.base_uom or '-' }}</td>
+        <td><a href="{{ url_for('settings.edit_uom', id=u.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

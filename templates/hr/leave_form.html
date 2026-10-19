@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if leave %}Edit{% else %}New{% endif %} Leave Request{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('hr.leaves') }}">Leave Requests</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if leave %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="{{ action }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Employee *</label>
+        <select name="employee_id" class="form-control" required>
+          {% for e in employees %}
+          <option value="{{ e.id }}" {% if (leave and leave.employee_id == e.id) or (request.args.get('employee_id')|int == e.id) %}selected{% endif %}>{{ e.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Leave Type *</label>
+        <select name="leave_type" class="form-control" required>
+          <option value="Annual">Annual</option>
+          <option value="Sick">Sick</option>
+          <option value="Unpaid">Unpaid</option>
+          <option value="Maternity">Maternity</option>
+          <option value="Paternity">Paternity</option>
+          <option value="Compassionate">Compassionate</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Start Date *</label>
+        <input type="date" name="start_date" id="start_date" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date *</label>
+        <input type="date" name="end_date" id="end_date" class="form-control" required>
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Remarks</label>
+        <textarea name="remarks" class="form-control"></textarea>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('hr.leaves') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

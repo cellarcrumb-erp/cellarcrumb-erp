@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Journal Entry Detail{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Journal: {{ journal.doc_ref }}</h2>
+    <a href="{{ url_for('finance.journal_list') }}" class="btn btn-secondary">Back</a>
+</div>
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <table class="table table-borderless table-sm mb-0">
+            <tr><th>Date:</th><td>{{ journal.doc_date }}</td><th>Status:</th><td>{{ journal.status }}</td></tr>
+            <tr><th>Module:</th><td>{{ journal.module }}</td><th>Source:</th><td>{{ journal.source_doc_type }} #{{ journal.source_doc_id or '-' }}</td></tr>
+            <tr><th>Description:</th><td colspan="3">{{ journal.description }}</td></tr>
+        </table>
+    </div>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Account</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total_dr = 0 %}
+                {% set total_cr = 0 %}
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.code }} - {{ line.account_name }}</td>
+                    <td>{{ line.debit }}</td>
+                    <td>{{ line.credit }}</td>
+                    <td>{{ line.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Trial Balance — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1 class="page-title">Trial Balance</h1>
+    <p class="page-subtitle">Summary of all debit and credit movements and closing account balances</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button onclick="window.print()" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="printer" style="width:16px;height:16px;"></i> Print
+    </button>
+    <a href="{{ url_for('finance.trial_balance', start_date=start_date, end_date=end_date, branch_id=selected_branch, export='csv') }}" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="download" style="width:16px;height:16px;"></i> Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-6" style="padding:16px 20px;">
+  <form method="GET" action="{{ url_for('finance.trial_balance') }}" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">From Date</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="width:170px;">
+    </div>
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">To Date</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="width:170px;">
+    </div>
+    {% if branches %}
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">Branch</label>
+      <select name="branch_id" class="form-control filter-select" style="width:200px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <button type="submit" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-feather="filter" style="width:15px;height:15px;"></i> Apply Filter
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Statement Table -->
+<div class="card" style="padding:24px;">
+  <div style="border-bottom: 1px solid var(--border); padding-bottom:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
+    <h2 style="font-size:16px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.04em;">Trial Balance Accounts</h2>
+    <span style="font-size:13px; color:var(--text-secondary); font-weight:600;">{{ start_date }} to {{ end_date }}</span>
+  </div>
+
+  <table class="table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="text-align:left; padding:12px 14px; width:100px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Code</th>
+        <th style="text-align:left; padding:12px 14px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Account Name</th>
+        <th style="text-align:left; padding:12px 14px; width:120px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Type</th>
+        <th style="text-align:right; padding:12px 14px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Period Debit</th>
+        <th style="text-align:right; padding:12px 14px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Period Credit</th>
+        <th style="text-align:right; padding:12px 14px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Closing Debit</th>
+        <th style="text-align:right; padding:12px 14px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Closing Credit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if tb_rows %}
+        {% for r in tb_rows %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:10px 14px; font-family:monospace; font-weight:600;">
+            <a href="{{ url_for('finance.gl_list', account_id=r.id, start_date=start_date, end_date=end_date) }}" style="color:#38bdf8; text-decoration:none;" title="View General Ledger drill-down">
+              {{ r.code }}
+            </a>
+          </td>
+          <td style="padding:10px 14px; font-weight:600;">{{ r.name }}</td>
+          <td style="padding:10px 14px;">
+            <span style="font-size:11px; padding:3px 8px; border-radius:12px; font-weight:600; 
+              {% if r.account_type == 'Asset' %}background:rgba(56,189,248,0.15); color:#38bdf8;
+              {% elif r.account_type == 'Liability' %}background:rgba(239,68,68,0.15); color:#f87171;
+              {% elif r.account_type == 'Equity' %}background:rgba(201,168,76,0.15); color:var(--gold);
+              {% elif r.account_type == 'Revenue' %}background:rgba(16,185,129,0.15); color:#34d399;
+              {% else %}background:rgba(168,85,247,0.15); color:#c084fc;{% endif %}">
+              {{ r.account_type }}
+            </span>
+          </td>
+          <td style="padding:10px 14px; text-align:right; font-family:monospace;">{% if r.period_debit > 0 %}{{ "%.2f"|format(r.period_debit) }}{% else %}-{% endif %}</td>
+          <td style="padding:10px 14px; text-align:right; font-family:monospace;">{% if r.period_credit > 0 %}{{ "%.2f"|format(r.period_credit) }}{% else %}-{% endif %}</td>
+          <td style="padding:10px 14px; text-align:right; font-family:monospace; font-weight:700; color:{% if r.closing_debit > 0 %}#38bdf8{% else %}inherit{% endif %};">
+            {% if r.closing_debit > 0 %}{{ "%.2f"|format(r.closing_debit) }}{% else %}-{% endif %}
+          </td>
+          <td style="padding:10px 14px; text-align:right; font-family:monospace; font-weight:700; color:{% if r.closing_credit > 0 %}var(--gold){% else %}inherit{% endif %};">
+            {% if r.closing_credit > 0 %}{{ "%.2f"|format(r.closing_credit) }}{% else %}-{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="7" style="padding:20px 14px; text-align:center; color:var(--text-secondary); font-style:italic;">
+            No posted ledger entries found for this period.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+    <tfoot>
+      <tr style="border-top:2px solid var(--border); background:rgba(255,255,255,0.03); font-weight:800;">
+        <td colspan="3" style="padding:14px; text-transform:uppercase; color:var(--text-primary); font-size:13px;">TOTALS</td>
+        <td style="padding:14px; text-align:right; font-family:monospace; font-size:14px;">{{ "%.2f"|format(tot_dr) }}</td>
+        <td style="padding:14px; text-align:right; font-family:monospace; font-size:14px;">{{ "%.2f"|format(tot_cr) }}</td>
+        <td style="padding:14px; text-align:right; font-family:monospace; font-size:15px; color:#38bdf8;">{{ "%.2f"|format(tot_cl_dr) }}</td>
+        <td style="padding:14px; text-align:right; font-family:monospace; font-size:15px; color:var(--gold);">{{ "%.2f"|format(tot_cl_cr) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

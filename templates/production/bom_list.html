@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Bill of Materials{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Bill of Materials</h2>
+    <a href="{{ url_for('production.bom_new') }}" class="btn btn-primary"><i data-feather="plus"></i> New BOM</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <form class="d-flex" method="GET">
+            <input type="text" name="search" class="form-control me-2" placeholder="Search BOMs..." value="{{ search }}">
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Finished Item</th>
+                    <th>Qty Produced</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in boms %}
+                <tr>
+                    <td>{{ b.id }}</td>
+                    <td>{{ b.name }}</td>
+                    <td>{{ b.finished_item_name }}</td>
+                    <td>{{ b.quantity_produced }}</td>
+                    <td>
+                        {% if b.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('production.bom_detail', id=b.id) }}" class="btn btn-sm btn-outline-info">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">No BOMs found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

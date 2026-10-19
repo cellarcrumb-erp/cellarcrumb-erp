@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block page_title %}Departments{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Departments</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('hr.new_department') }}" class="btn btn-primary">New Department</a>
+</div>
+<div class="table-card card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Manager</th>
+        <th>Employee Count</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in departments %}
+      <tr>
+        <td>{{ d.id }}</td>
+        <td>{{ d.name }}</td>
+        <td>{{ d.manager_name or 'N/A' }}</td>
+        <td>{{ d.emp_count }}</td>
+        <td><span class="badge {% if d.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Yes' if d.is_active else 'No' }}</span></td>
+        <td>
+          <a href="{{ url_for('hr.edit_department', id=d.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

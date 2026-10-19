@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block page_title %}Payment Methods{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Payment Methods</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_payment_method') }}" class="btn btn-primary">New Method</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>Name</th><th>Type</th><th>Active</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for m in payment_methods %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.method_type }}</td>
+        <td><span class="badge {% if m.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Yes' if m.is_active else 'No' }}</span></td>
+        <td><a href="{{ url_for('settings.edit_payment_method', id=m.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

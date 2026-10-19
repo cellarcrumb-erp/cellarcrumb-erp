@@ -1,0 +1,118 @@
+﻿{% extends "base.html" %}
+{% block page_title %}{{ doc_type }}s{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('sales.index') }}">Sales</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ doc_type }}s</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">{{ doc_type }}s</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Manage and track all {{ doc_type|lower }} records</div>
+  </div>
+  <a href="{{ url_for('sales.doc_new', doc_kind=doc_kind) }}" class="btn btn-primary btn-sm">
+    <i data-feather="plus" style="width:14px;height:14px;"></i> New {{ doc_type }}
+  </a>
+</div>
+
+<div class="card table-card">
+  <div class="table-toolbar">
+    <form method="GET" class="flex gap-3 items-center flex-wrap" style="width:100%;">
+      <select name="customer_id" class="filter-select" style="min-width:200px;">
+        <option value="">All Customers</option>
+        {% for c in customers %}
+        <option value="{{ c.id }}" {% if request.args.get('customer_id')|string == c.id|string %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>
+        {% endfor %}
+      </select>
+
+      <select name="branch_id" class="filter-select" style="min-width:180px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if current_branch_id|string == b.id|string %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+
+      <select name="status" class="filter-select" style="min-width:140px;">
+        <option value="">All Statuses</option>
+        <option value="Draft" {% if request.args.get('status') == 'Draft' %}selected{% endif %}>Draft</option>
+        <option value="Posted" {% if request.args.get('status') == 'Posted' %}selected{% endif %}>Posted</option>
+        <option value="Paid" {% if request.args.get('status') == 'Paid' %}selected{% endif %}>Paid</option>
+        <option value="Partial" {% if request.args.get('status') == 'Partial' %}selected{% endif %}>Partial</option>
+        <option value="Cancelled" {% if request.args.get('status') == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+
+      <button type="submit" class="btn btn-secondary btn-sm">
+        <i data-feather="filter" style="width:14px;height:14px;"></i> Filter
+      </button>
+
+      {% if request.args.get('customer_id') or request.args.get('branch_id') or request.args.get('status') %}
+      <a href="{{ url_for('sales.doc_list', doc_kind=doc_kind) }}" class="btn btn-secondary btn-sm">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:140px;">Doc Ref</th>
+        <th style="width:110px;">Date</th>
+        <th>Customer</th>
+        <th style="width:160px;">Branch</th>
+        <th class="text-right" style="width:130px;">Total (KES)</th>
+        <th style="width:100px;">Status</th>
+        <th class="text-right" style="width:100px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if docs %}
+        {% for d in docs %}
+        <tr>
+          <td>
+            <a href="{{ url_for('sales.doc_detail', doc_kind=doc_kind, id=d.id) }}" class="font-bold" style="color:var(--gold-dark); text-decoration:none; letter-spacing:0.03em;">
+              {{ d.doc_ref }}
+            </a>
+          </td>
+          <td style="color:var(--text-secondary);">{{ d.doc_date }}</td>
+          <td>
+            <span class="font-semibold" style="color:var(--text-primary);">{{ d.customer_name }}</span>
+          </td>
+          <td>
+            <span class="badge badge-open" style="font-size:11px;">
+              <i data-feather="map-pin" style="width:10px;height:10px; margin-right:3px;"></i>
+              {{ d.branch_name or 'Main HQ' }}
+            </span>
+          </td>
+          <td class="text-right font-bold" style="color:var(--text-primary);">
+            {{ "%.2f"|format(d.total) }}
+          </td>
+          <td>
+            <span class="badge 
+              {% if d.status == 'Draft' %}badge-draft
+              {% elif d.status in ['Posted', 'Paid'] %}badge-posted
+              {% elif d.status == 'Partial' %}badge-pending
+              {% elif d.status == 'Cancelled' %}badge-cancelled
+              {% else %}badge-closed{% endif %}">
+              {{ d.status }}
+            </span>
+          </td>
+          <td class="text-right">
+            <a href="{{ url_for('sales.doc_detail', doc_kind=doc_kind, id=d.id) }}" class="btn btn-secondary btn-sm" title="View Document">
+              <i data-feather="eye" style="width:13px;height:13px;"></i> View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="7" class="text-center" style="padding:32px; color:var(--text-muted); font-style:italic;">
+            No {{ doc_type|lower }} records found.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

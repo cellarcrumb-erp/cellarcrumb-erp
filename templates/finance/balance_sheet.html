@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Balance Sheet — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1 class="page-title">Balance Sheet</h1>
+    <p class="page-subtitle">Statement of Financial Position: Assets = Liabilities + Shareholder Equity</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button onclick="window.print()" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="printer" style="width:16px;height:16px;"></i> Print
+    </button>
+    <a href="{{ url_for('finance.balance_sheet', as_of_date=as_of_date, branch_id=selected_branch, export='csv') }}" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="download" style="width:16px;height:16px;"></i> Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-6" style="padding:16px 20px;">
+  <form method="GET" action="{{ url_for('finance.balance_sheet') }}" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">As Of Date</label>
+      <input type="date" name="as_of_date" value="{{ as_of_date }}" class="form-control" style="width:180px;">
+    </div>
+    {% if branches %}
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">Branch</label>
+      <select name="branch_id" class="form-control filter-select" style="width:200px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <button type="submit" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-feather="filter" style="width:15px;height:15px;"></i> Apply Filter
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Balance Status Banner -->
+<div class="card mb-6" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-left: 4px solid {% if is_balanced %}var(--success){% else %}var(--danger){% endif %};">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:{% if is_balanced %}rgba(16,185,129,0.15){% else %}rgba(239,68,68,0.15){% endif %};">
+      <i data-feather="{% if is_balanced %}check-circle{% else %}alert-triangle{% endif %}" style="width:20px;height:20px;color:{% if is_balanced %}#10b981{% else %}#ef4444{% endif %};"></i>
+    </span>
+    <div>
+      <h3 style="font-size:15px; font-weight:700; margin:0; color:{% if is_balanced %}#34d399{% else %}#f87171{% endif %};">
+        {% if is_balanced %}Balance Sheet is in Balance (Assets = Liabilities + Equity){% else %}Balance Sheet Out of Balance (Difference: {{ currency }} {{ "%.2f"|format(diff) }}){% endif %}
+      </h3>
+      <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0;">
+        Total Assets: {{ currency }} {{ "%.2f"|format(total_assets) }} | Total Liabilities &amp; Equity: {{ currency }} {{ "%.2f"|format(total_liabilities_and_equity) }}
+      </p>
+    </div>
+  </div>
+  <span style="font-size:13px; font-weight:600; color:var(--text-secondary);">As of {{ as_of_date }}</span>
+</div>
+
+<!-- Statement Columns Layout -->
+<div class="grid grid-cols-2 gap-6 mb-6">
+  
+  <!-- LEFT: ASSETS -->
+  <div class="card" style="padding:22px;">
+    <h2 style="font-size:16px; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 16px; border-bottom:2px solid rgba(56,189,248,0.2); padding-bottom:10px;">
+      1. ASSETS
+    </h2>
+
+    <!-- Current Assets -->
+    <div style="margin-bottom:20px;">
+      <h3 style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">Current Assets</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        {% if current_assets %}
+          {% for a in current_assets %}
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+            <td style="padding:8px 0; font-size:13px;">{{ a.name }} <span style="color:var(--text-secondary); font-family:monospace; font-size:11px;">({{ a.code }})</span></td>
+            <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px;">{{ "%.2f"|format(a.amount) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" style="padding:8px 0; color:var(--text-secondary); font-style:italic;">No current asset balances</td></tr>
+        {% endif %}
+        <tr style="border-top:1px solid var(--border); font-weight:700;">
+          <td style="padding:10px 0; color:var(--text-primary); font-size:13px;">Total Current Assets</td>
+          <td style="padding:10px 0; text-align:right; font-size:14px; color:#38bdf8;">{{ "%.2f"|format(total_current_assets) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Fixed Assets -->
+    <div style="margin-bottom:20px;">
+      <h3 style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">Non-Current &amp; Fixed Assets</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        {% if fixed_assets %}
+          {% for a in fixed_assets %}
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+            <td style="padding:8px 0; font-size:13px;">{{ a.name }} <span style="color:var(--text-secondary); font-family:monospace; font-size:11px;">({{ a.code }})</span></td>
+            <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px;">{{ "%.2f"|format(a.amount) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" style="padding:8px 0; color:var(--text-secondary); font-style:italic;">No fixed asset balances</td></tr>
+        {% endif %}
+        <tr style="border-top:1px solid var(--border); font-weight:700;">
+          <td style="padding:10px 0; color:var(--text-primary); font-size:13px;">Total Fixed Assets</td>
+          <td style="padding:10px 0; text-align:right; font-size:14px; color:#38bdf8;">{{ "%.2f"|format(total_fixed_assets) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Total Assets Summary Bar -->
+    <div style="background:rgba(56,189,248,0.12); border-radius:8px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(56,189,248,0.3); margin-top:14px;">
+      <span style="font-size:15px; font-weight:800; color:#38bdf8;">TOTAL ASSETS</span>
+      <span style="font-size:17px; font-weight:800; color:#38bdf8;">{{ currency }} {{ "%.2f"|format(total_assets) }}</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: LIABILITIES & EQUITY -->
+  <div class="card" style="padding:22px;">
+    <h2 style="font-size:16px; font-weight:800; color:#c9a84c; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 16px; border-bottom:2px solid rgba(201,168,76,0.2); padding-bottom:10px;">
+      2. LIABILITIES &amp; EQUITY
+    </h2>
+
+    <!-- Current Liabilities -->
+    <div style="margin-bottom:16px;">
+      <h3 style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">Current Liabilities</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        {% if current_liabilities %}
+          {% for l in current_liabilities %}
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+            <td style="padding:8px 0; font-size:13px;">{{ l.name }} <span style="color:var(--text-secondary); font-family:monospace; font-size:11px;">({{ l.code }})</span></td>
+            <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px;">{{ "%.2f"|format(l.amount) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" style="padding:8px 0; color:var(--text-secondary); font-style:italic;">No current liabilities recorded</td></tr>
+        {% endif %}
+        <tr style="border-top:1px solid var(--border); font-weight:700;">
+          <td style="padding:10px 0; color:var(--text-primary); font-size:13px;">Total Current Liabilities</td>
+          <td style="padding:10px 0; text-align:right; font-size:14px; color:#f87171;">{{ "%.2f"|format(total_current_liabilities) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Long Term Liabilities -->
+    <div style="margin-bottom:16px;">
+      <h3 style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">Long-Term Liabilities</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        {% if long_term_liabilities %}
+          {% for l in long_term_liabilities %}
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+            <td style="padding:8px 0; font-size:13px;">{{ l.name }} <span style="color:var(--text-secondary); font-family:monospace; font-size:11px;">({{ l.code }})</span></td>
+            <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px;">{{ "%.2f"|format(l.amount) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" style="padding:8px 0; color:var(--text-secondary); font-style:italic;">No long-term liabilities recorded</td></tr>
+        {% endif %}
+        <tr style="border-top:1px solid var(--border); font-weight:700;">
+          <td style="padding:10px 0; color:var(--text-primary); font-size:13px;">Total Long-Term Liabilities</td>
+          <td style="padding:10px 0; text-align:right; font-size:14px; color:#f87171;">{{ "%.2f"|format(total_long_term_liabilities) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Total Liabilities -->
+    <div style="background:rgba(239,68,68,0.08); border-radius:6px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <span style="font-size:13px; font-weight:700; color:#f87171;">TOTAL LIABILITIES</span>
+      <span style="font-size:14px; font-weight:700; color:#f87171;">{{ "%.2f"|format(total_liabilities) }}</span>
+    </div>
+
+    <!-- Equity -->
+    <div style="margin-bottom:16px;">
+      <h3 style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">Shareholder Equity</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        {% for e in equity_items %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:8px 0; font-size:13px;">{{ e.name }} <span style="color:var(--text-secondary); font-family:monospace; font-size:11px;">({{ e.code }})</span></td>
+          <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px;">{{ "%.2f"|format(e.amount) }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:8px 0; font-size:13px; color:#34d399;">Current Period Retained Earnings (Net Profit)</td>
+          <td style="padding:8px 0; text-align:right; font-weight:600; font-size:13px; color:#34d399;">{{ "%.2f"|format(current_earnings) }}</td>
+        </tr>
+        <tr style="border-top:1px solid var(--border); font-weight:700;">
+          <td style="padding:10px 0; color:var(--text-primary); font-size:13px;">Total Equity</td>
+          <td style="padding:10px 0; text-align:right; font-size:14px; color:#c9a84c;">{{ "%.2f"|format(total_equity) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Total Liabilities & Equity Summary Bar -->
+    <div style="background:rgba(201,168,76,0.12); border-radius:8px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(201,168,76,0.3); margin-top:14px;">
+      <span style="font-size:15px; font-weight:800; color:var(--gold);">TOTAL LIABILITIES &amp; EQUITY</span>
+      <span style="font-size:17px; font-weight:800; color:var(--gold);">{{ currency }} {{ "%.2f"|format(total_liabilities_and_equity) }}</span>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

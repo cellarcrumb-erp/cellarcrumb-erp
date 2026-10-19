@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block page_title %}Leave Summary{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Leave Summary</span>
+</div>
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <form method="GET" style="display:flex; gap:10px; align-items:flex-end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">From Date</label>
+      <input type="date" name="from_date" class="form-control" value="{{ request.args.get('from_date','') }}">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">To Date</label>
+      <input type="date" name="to_date" class="form-control" value="{{ request.args.get('to_date','') }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Apply Filter</button>
+  </form>
+</div>
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Annual Used</th>
+        <th>Sick Used</th>
+        <th>Other Used</th>
+        <th>Total Days</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in leave_summary %}
+      <tr>
+        <td>{{ r.employee_name }}</td>
+        <td>{{ r.annual }}</td>
+        <td>{{ r.sick }}</td>
+        <td>{{ r.other }}</td>
+        <td>{{ r.total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

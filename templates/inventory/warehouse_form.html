@@ -1,0 +1,77 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}{{ 'Edit Warehouse' if warehouse else 'New Warehouse' }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('inventory.index') }}">Inventory</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('inventory.warehouses') }}">Warehouses</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ 'Edit ' + warehouse.name if warehouse else 'New Warehouse' }}</span>
+</div>
+
+<div class="card form-card" style="max-width: 680px;">
+  <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:20px;">
+    <h3 class="card-title" style="font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;">
+      <i data-feather="package" style="width:18px;height:18px; color:var(--gold);"></i>
+      {{ 'Edit Warehouse: ' + warehouse.name if warehouse else 'Create Warehouse' }}
+    </h3>
+  </div>
+
+  <form method="POST">
+    <div class="form-grid">
+      {% if not warehouse %}
+      <div class="form-group">
+        <label class="form-label">Warehouse Code *</label>
+        <input type="text" name="code" class="form-control font-bold" 
+               placeholder="e.g. WH-WEST, WH-BAKERY" required
+               style="text-transform:uppercase; color:var(--gold-dark);">
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Warehouse Name *</label>
+        <input type="text" name="name" class="form-control" 
+               placeholder="e.g. Westlands Store, Bakery Warehouse" 
+               value="{{ warehouse.name if warehouse else '' }}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Assigned Branch (Business Place)</label>
+        <select name="branch_id" class="form-control">
+          <option value="">-- No Branch (General/Shared) --</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if warehouse and warehouse.branch_id == b.id %}selected{% elif not warehouse and active_branch_id == b.id %}selected{% endif %}>
+            {{ b.name }} ({{ b.code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Physical Location / Notes</label>
+        <input type="text" name="location" class="form-control" 
+               placeholder="e.g. Building A, Room 102" 
+               value="{{ warehouse.location if warehouse else '' }}">
+      </div>
+
+      {% if warehouse %}
+      <div class="form-group" style="grid-column: 1 / -1; margin-top:6px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-primary);">
+          <input type="checkbox" name="is_active" value="1" {% if warehouse.is_active %}checked{% endif %}>
+          <span>Warehouse is Active</span>
+        </label>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;">
+      <a href="{{ url_for('inventory.warehouses') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-feather="check" style="width:14px;height:14px;"></i>
+        {{ 'Save Changes' if warehouse else 'Create Warehouse' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

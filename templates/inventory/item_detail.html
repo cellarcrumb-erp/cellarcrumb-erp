@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ item.name }} ({{ item.code }})</h2>
+<p>Type: {{ item.item_type }} | Cost: ${{ item.cost }} | Price: ${{ item.price }}</p>
+<hr>
+<h4>Stock Balances</h4>
+<table class="table">
+    <tr><th>Warehouse</th><th>Quantity</th></tr>
+    {% for b in balances %}
+    <tr><td>{{ b.name }}</td><td>{{ b.quantity }}</td></tr>
+    {% endfor %}
+</table>
+
+<h4>Stock Ledger (Recent 20)</h4>
+<table class="table table-sm">
+    <tr><th>Doc</th><th>Ref</th><th>In</th><th>Out</th><th>Bal</th></tr>
+    {% for l in ledger %}
+    <tr>
+        <td>{{ l.doc_type }}</td>
+        <td>{{ l.doc_ref }}</td>
+        <td>{{ l.qty_in }}</td>
+        <td>{{ l.qty_out }}</td>
+        <td>{{ l.balance }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block page_title %}Bank Accounts{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Accounts</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('banking.new_account') }}" class="btn btn-primary">New Account</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Bank Name</th>
+        <th>Account Number</th>
+        <th>Balance</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in accounts %}
+      <tr>
+        <td>{{ a.code }}</td>
+        <td>{{ a.name }}</td>
+        <td>{{ a.account_type }}</td>
+        <td>{{ a.bank_name }}</td>
+        <td>{{ a.account_number }}</td>
+        <td>KES {{ a.current_balance }}</td>
+        <td><span class="badge {% if a.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Yes' if a.is_active else 'No' }}</span></td>
+        <td>
+          <a href="{{ url_for('banking.view_account', id=a.id) }}" class="btn btn-sm btn-secondary">View</a>
+          <a href="{{ url_for('banking.edit_account', id=a.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block page_title %}Banking{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <span>Banking</span>
+</div>
+<div class="actions-bar" style="margin-bottom:20px;">
+  <a href="{{ url_for('banking.new_deposit') }}" class="btn btn-primary">Record Deposit</a>
+  <a href="{{ url_for('banking.new_withdrawal') }}" class="btn btn-danger">Record Withdrawal</a>
+  <a href="{{ url_for('banking.new_transfer') }}" class="btn btn-secondary">Transfer Funds</a>
+  <a href="{{ url_for('banking.reconciliation') }}" class="btn btn-secondary">Reconciliation</a>
+  <a href="{{ url_for('banking.cashbook') }}" class="btn btn-secondary">Cashbook</a>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;">
+  {% for acc in accounts %}
+  <a href="{{ url_for('banking.view_account', id=acc.id) }}" class="card stat-card" style="text-decoration:none; display:block;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div class="stat-label">{{ acc.name }}</div>
+        <div class="stat-value" style="font-size:24px;">KES {{ acc.current_balance }}</div>
+      </div>
+      <i data-feather="{% if acc.account_type=='Bank' %}briefcase{% elif acc.account_type=='Mobile Money' %}smartphone{% else %}dollar-sign{% endif %}" style="width:32px; height:32px; color:var(--gold);"></i>
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:10px;">{{ acc.account_number or acc.code }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

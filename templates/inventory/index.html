@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block page_title %}Inventory & Warehouse{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('overview.dashboard') }}">Overview</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Inventory</span>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card gold">
+    <div class="stat-label">Total Items</div>
+    <div class="stat-value">{{ total_items }}</div>
+    <a href="{{ url_for('inventory.items') }}">View Item Master →</a>
+  </div>
+  
+  <div class="stat-card blue">
+    <div class="stat-label">Total Warehouses</div>
+    <div class="stat-value">{{ total_warehouses }}</div>
+    <a href="{{ url_for('inventory.warehouses') }}">View Warehouses →</a>
+  </div>
+  
+  <div class="stat-card red">
+    <div class="stat-label">Low Stock Alerts</div>
+    <div class="stat-value">{{ low_stock }}</div>
+    <a href="{{ url_for('inventory.report_low_stock') }}">View Alerts →</a>
+  </div>
+  
+  <div class="stat-card green">
+    <div class="stat-label">Total Stock Value</div>
+    <div class="stat-value">KES {{ "%.2f"|format(total_value) }}</div>
+    <a href="{{ url_for('inventory.report_stock_valuation') }}">View Valuation →</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Warehouse Quick Actions</h3>
+  </div>
+  <div class="quick-actions">
+    <a href="{{ url_for('inventory.new_receipt') }}" class="quick-action-btn">
+      <i data-feather="plus-circle"></i>
+      <span>Goods Receipt</span>
+    </a>
+    <a href="{{ url_for('inventory.new_issue') }}" class="quick-action-btn">
+      <i data-feather="minus-circle"></i>
+      <span>Goods Issue</span>
+    </a>
+    <a href="{{ url_for('inventory.new_transfer') }}" class="quick-action-btn">
+      <i data-feather="refresh-cw"></i>
+      <span>Stock Transfer</span>
+    </a>
+    <a href="{{ url_for('inventory.new_count') }}" class="quick-action-btn">
+      <i data-feather="check-square"></i>
+      <span>Inventory Count</span>
+    </a>
+    <a href="{{ url_for('inventory.stock_balances') }}" class="quick-action-btn">
+      <i data-feather="layers"></i>
+      <span>Stock Balances</span>
+    </a>
+    <a href="{{ url_for('inventory.report_stock_ledger') }}" class="quick-action-btn">
+      <i data-feather="file-text"></i>
+      <span>Stock Ledger</span>
+    </a>
+  </div>
+</div>
+{% endblock %}

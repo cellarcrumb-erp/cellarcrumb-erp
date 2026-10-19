@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if dept %}Edit{% else %}New{% endif %} Department{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('hr.departments') }}">Departments</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if dept %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="{{ action }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" name="name" class="form-control" value="{{ dept.name if dept else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Manager</label>
+        <select name="manager_id" class="form-control">
+          <option value="">None</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}" {% if dept and dept.manager_id == e.id %}selected{% endif %}>{{ e.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('hr.departments') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

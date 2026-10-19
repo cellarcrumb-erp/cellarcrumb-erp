@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Stock Transfer: {{ transfer.doc_ref }}</h2>
+<p>Status: {{ transfer.status }} | Date: {{ transfer.doc_date }} | From: {{ transfer.from_wh }} | To: {{ transfer.to_wh }}</p>
+
+{% if transfer.status == 'Draft' %}
+<form method="POST" action="{{ url_for('inventory.post_transfer', id=transfer.id) }}" class="mb-3">
+    <button class="btn btn-success">Post Transfer</button>
+</form>
+{% endif %}
+
+<table class="table">
+    <tr><th>Code</th><th>Item</th><th>Qty</th></tr>
+    {% for l in lines %}
+    <tr>
+        <td>{{ l.item_code }}</td>
+        <td>{{ l.item_name }}</td>
+        <td>{{ l.quantity }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

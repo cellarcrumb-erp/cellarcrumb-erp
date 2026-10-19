@@ -1,0 +1,175 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}System Settings{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <span>Settings</span>
+</div>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Administration & Settings</h2>
+    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+      Configure system parameters, permissions, multiple branches, data migrations, and backups
+    </div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px;">
+  <a href="{{ url_for('settings.company') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="home" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Company Profile</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Company info, address & tax PIN</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.branches') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="map-pin" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Branches (Business Places)</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Manage operating branches & outlets</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.authorizations') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="lock" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">General Authorizations</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">SAP-style role restrictions & permissions</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.users') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="users" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Users & Branch Access</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">User accounts & branch assignments</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.data_import') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="upload-cloud" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Data Import Workbench (DTW)</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Bulk CSV import for items, BPs, stock</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.backups') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="database" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Database Backup & Restore</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Live snapshots, downloads & recovery</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.roles') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="shield" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Roles & Groups</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Define job titles and role groups</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.num_series') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="hash" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Numbering Series</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Document prefixes & sequences</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.taxes') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="percent" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Tax Settings</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Manage VAT & sales tax rates</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.payment_methods') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="credit-card" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Payment Methods</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">M-Pesa, Cash, Bank Transfer, Cheque</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.currencies') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="dollar-sign" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Currencies & Rates</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">KES, USD, EUR exchange rates</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.uom') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="box" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Units of Measure (UOM)</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">PCS, KG, LTR, BTL packaging</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('settings.audit_log') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.12); display:flex; align-items:center; justify-content:center;">
+        <i data-feather="clock" style="color:var(--gold);width:22px;height:22px;"></i>
+      </div>
+      <div>
+        <div class="card-title" style="font-size:14px; font-weight:700;">Audit Trail</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">System operations & security logs</div>
+      </div>
+    </div>
+  </a>
+</div>
+{% endblock %}

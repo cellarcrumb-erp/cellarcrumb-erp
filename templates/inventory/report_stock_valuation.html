@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Stock Valuation</h2>
+<table class="table">
+    <tr><th>Warehouse</th><th>Code</th><th>Item</th><th>Qty</th><th>Cost</th><th>Value</th></tr>
+    {% for r in data %}
+    <tr>
+        <td>{{ r.warehouse }}</td>
+        <td>{{ r.code }}</td>
+        <td>{{ r.item }}</td>
+        <td>{{ r.quantity }}</td>
+        <td>${{ r.cost }}</td>
+        <td>${{ r.value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

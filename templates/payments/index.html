@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block page_title %}Payments{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <span>Payments</span>
+</div>
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
+  <div class="stat-card"><div class="stat-label">Total Received (MTD)</div><div class="stat-value" style="color:green;">KES {{ total_received }}</div></div>
+  <div class="stat-card"><div class="stat-label">Total Paid (MTD)</div><div class="stat-value" style="color:red;">KES {{ total_paid }}</div></div>
+  <div class="stat-card"><div class="stat-label">Unallocated Amount</div><div class="stat-value gold">KES {{ unallocated }}</div></div>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;">
+  <a href="{{ url_for('payments.incoming') }}" class="card" style="text-decoration:none;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="arrow-down-left" style="color:green;width:32px;height:32px;"></i><div><div class="card-title">Incoming Payments</div><div style="font-size:12px;color:var(--text-secondary);">Receipts from customers</div></div></div>
+  </a>
+  <a href="{{ url_for('payments.outgoing') }}" class="card" style="text-decoration:none;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="arrow-up-right" style="color:red;width:32px;height:32px;"></i><div><div class="card-title">Outgoing Payments</div><div style="font-size:12px;color:var(--text-secondary);">Payments to suppliers</div></div></div>
+  </a>
+  <a href="{{ url_for('payments.expenses') }}" class="card" style="text-decoration:none;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="credit-card" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Expenses</div><div style="font-size:12px;color:var(--text-secondary);">Direct expense payments</div></div></div>
+  </a>
+</div>
+<div class="card table-card">
+  <div class="card-header"><div class="card-title">Recent Payments</div></div>
+  <table class="table">
+    <thead>
+      <tr><th>Date</th><th>Ref</th><th>Type</th><th>Partner</th><th>Amount</th><th>Method</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for p in recent_payments %}
+      <tr>
+        <td>{{ p.doc_date }}</td>
+        <td><a href="{{ url_for('payments.payment_detail', id=p.id) }}">{{ p.doc_ref }}</a></td>
+        <td>{{ p.payment_type }}</td>
+        <td>{{ p.partner_name or '-' }}</td>
+        <td>{{ p.amount }}</td>
+        <td>{{ p.payment_method_name }}</td>
+        <td><span class="badge {% if p.status=='Posted' %}badge-posted{% else %}badge-pending{% endif %}">{{ p.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

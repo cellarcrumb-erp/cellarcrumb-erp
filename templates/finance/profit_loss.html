@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Profit & Loss Statement — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1 class="page-title">Profit &amp; Loss Statement</h1>
+    <p class="page-subtitle">Income Statement showing operational revenue, cost of goods sold, and net profitability</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button onclick="window.print()" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="printer" style="width:16px;height:16px;"></i> Print
+    </button>
+    <a href="{{ url_for('finance.profit_loss', start_date=start_date, end_date=end_date, branch_id=selected_branch, export='csv') }}" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="download" style="width:16px;height:16px;"></i> Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-6" style="padding:16px 20px;">
+  <form method="GET" action="{{ url_for('finance.profit_loss') }}" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">From Date</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="width:170px;">
+    </div>
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">To Date</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="width:170px;">
+    </div>
+    {% if branches %}
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">Branch</label>
+      <select name="branch_id" class="form-control filter-select" style="width:200px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <button type="submit" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-feather="filter" style="width:15px;height:15px;"></i> Apply Filter
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="grid grid-cols-4 gap-4 mb-6">
+  <div class="stat-card gold">
+    <span class="stat-label">Total Revenue</span>
+    <p class="stat-value">{{ currency }} {{ "%.2f"|format(total_revenue) }}</p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Gross top-line sales</span>
+  </div>
+
+  <div class="stat-card blue">
+    <span class="stat-label">Cost of Goods Sold</span>
+    <p class="stat-value">{{ currency }} {{ "%.2f"|format(total_cogs) }}</p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Direct material &amp; bakery costs</span>
+  </div>
+
+  <div class="stat-card green">
+    <span class="stat-label">Gross Profit</span>
+    <p class="stat-value">{{ currency }} {{ "%.2f"|format(gross_profit) }}</p>
+    <span style="font-size:12px; color:var(--success); font-weight:700; margin-top:4px;">
+      {{ "%.1f"|format(gross_margin) }}% Gross Margin
+    </span>
+  </div>
+
+  <div class="stat-card {% if net_profit >= 0 %}green{% else %}red{% endif %}">
+    <span class="stat-label">Net Profit / (Loss)</span>
+    <p class="stat-value" style="color:{% if net_profit >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+      {{ currency }} {{ "%.2f"|format(net_profit) }}
+    </p>
+    <span style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+      {{ "%.1f"|format(net_margin) }}% Net Margin
+    </span>
+  </div>
+</div>
+
+<!-- Detailed Statement Table -->
+<div class="card" style="padding:24px;">
+  <div style="border-bottom: 1px solid var(--border); padding-bottom:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
+    <h2 style="font-size:16px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.04em;">Financial Statement Breakdown</h2>
+    <span style="font-size:13px; color:var(--text-secondary); font-weight:600;">For period: {{ start_date }} to {{ end_date }}</span>
+  </div>
+
+  <table class="table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="text-align:left; padding:12px 14px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Account Description</th>
+        <th style="text-align:left; padding:12px 14px; width:120px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Code</th>
+        <th style="text-align:right; padding:12px 14px; width:180px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Amount ({{ currency }})</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- REVENUE SECTION -->
+      <tr style="background:rgba(201,168,76,0.08); font-weight:700;">
+        <td colspan="3" style="padding:12px 14px; color:var(--gold); font-size:14px;">1. OPERATING REVENUE</td>
+      </tr>
+      {% if revenues %}
+        {% for r in revenues %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:10px 14px; padding-left:28px;">
+            <a href="{{ url_for('finance.gl_list', account_id=r.id if r.id else '', start_date=start_date, end_date=end_date) }}" style="color:var(--text-primary); text-decoration:none;">{{ r.name }}</a>
+          </td>
+          <td style="padding:10px 14px; color:var(--text-secondary); font-family:monospace;">{{ r.code }}</td>
+          <td style="padding:10px 14px; text-align:right; font-weight:600;">{{ "%.2f"|format(r.amount) }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="3" style="padding:10px 14px; padding-left:28px; color:var(--text-secondary); font-style:italic;">No revenue entries recorded for this period.</td>
+        </tr>
+      {% endif %}
+      <tr style="background:rgba(201,168,76,0.12); font-weight:700; border-top:1px solid var(--border);">
+        <td style="padding:12px 14px; color:var(--gold);">TOTAL REVENUE</td>
+        <td></td>
+        <td style="padding:12px 14px; text-align:right; color:var(--gold); font-size:15px;">{{ "%.2f"|format(total_revenue) }}</td>
+      </tr>
+
+      <!-- COGS SECTION -->
+      <tr style="background:rgba(14,165,233,0.08); font-weight:700;">
+        <td colspan="3" style="padding:14px 14px 10px; color:#38bdf8; font-size:14px;">2. COST OF GOODS SOLD (COGS)</td>
+      </tr>
+      {% if cogs %}
+        {% for c in cogs %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:10px 14px; padding-left:28px;">{{ c.name }}</td>
+          <td style="padding:10px 14px; color:var(--text-secondary); font-family:monospace;">{{ c.code }}</td>
+          <td style="padding:10px 14px; text-align:right; font-weight:600;">{{ "%.2f"|format(c.amount) }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="3" style="padding:10px 14px; padding-left:28px; color:var(--text-secondary); font-style:italic;">No direct COGS recorded for this period.</td>
+        </tr>
+      {% endif %}
+      <tr style="background:rgba(14,165,233,0.12); font-weight:700; border-top:1px solid var(--border);">
+        <td style="padding:12px 14px; color:#38bdf8;">TOTAL COST OF GOODS SOLD</td>
+        <td></td>
+        <td style="padding:12px 14px; text-align:right; color:#38bdf8; font-size:15px;">{{ "%.2f"|format(total_cogs) }}</td>
+      </tr>
+
+      <!-- GROSS PROFIT ROW -->
+      <tr style="background:rgba(16,185,129,0.14); font-weight:800; border-top:2px solid var(--border); border-bottom:2px solid var(--border);">
+        <td style="padding:14px 14px; color:#34d399; font-size:15px;">GROSS PROFIT</td>
+        <td style="padding:14px 14px; color:#34d399; font-size:12px;">({{ "%.1f"|format(gross_margin) }}% Margin)</td>
+        <td style="padding:14px 14px; text-align:right; color:#34d399; font-size:16px;">{{ "%.2f"|format(gross_profit) }}</td>
+      </tr>
+
+      <!-- OPERATING EXPENSES SECTION -->
+      <tr style="background:rgba(239,68,68,0.08); font-weight:700;">
+        <td colspan="3" style="padding:14px 14px 10px; color:#f87171; font-size:14px;">3. OPERATING &amp; ADMINISTRATIVE EXPENSES</td>
+      </tr>
+      {% if operating_expenses %}
+        {% for e in operating_expenses %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:10px 14px; padding-left:28px;">{{ e.name }}</td>
+          <td style="padding:10px 14px; color:var(--text-secondary); font-family:monospace;">{{ e.code }}</td>
+          <td style="padding:10px 14px; text-align:right; font-weight:600;">{{ "%.2f"|format(e.amount) }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="3" style="padding:10px 14px; padding-left:28px; color:var(--text-secondary); font-style:italic;">No operating expenses recorded for this period.</td>
+        </tr>
+      {% endif %}
+      <tr style="background:rgba(239,68,68,0.12); font-weight:700; border-top:1px solid var(--border);">
+        <td style="padding:12px 14px; color:#f87171;">TOTAL OPERATING EXPENSES</td>
+        <td></td>
+        <td style="padding:12px 14px; text-align:right; color:#f87171; font-size:15px;">{{ "%.2f"|format(total_operating_expenses) }}</td>
+      </tr>
+
+      <!-- NET PROFIT ROW -->
+      <tr style="background:{% if net_profit >= 0 %}rgba(16,185,129,0.22){% else %}rgba(239,68,68,0.22){% endif %}; font-weight:900; border-top:3px solid var(--border); border-bottom:3px double var(--border);">
+        <td style="padding:16px 14px; color:{% if net_profit >= 0 %}#34d399{% else %}#f87171{% endif %}; font-size:16px;">NET OPERATING PROFIT / (LOSS)</td>
+        <td style="padding:16px 14px; color:{% if net_profit >= 0 %}#34d399{% else %}#f87171{% endif %}; font-size:12px;">({{ "%.1f"|format(net_margin) }}% Net Margin)</td>
+        <td style="padding:16px 14px; text-align:right; color:{% if net_profit >= 0 %}#34d399{% else %}#f87171{% endif %}; font-size:18px;">
+          {{ "%.2f"|format(net_profit) }}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+    <h2>Items</h2>
+    <div>
+        <a href="{{ url_for('inventory.new_item') }}" class="btn btn-primary">New Item</a>
+    </div>
+</div>
+
+<form method="GET" class="mb-3">
+    <input type="text" name="search" placeholder="Search items..." value="{{ search }}" class="form-control d-inline-block w-auto">
+    <button type="submit" class="btn btn-secondary">Search</button>
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Cost</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.code }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.item_type }}</td>
+            <td>{{ item.cost }}</td>
+            <td>{{ item.price }}</td>
+            <td>{{ item.total_stock or 0 }}</td>
+            <td>
+                <a href="{{ url_for('inventory.item_detail', id=item.id) }}">View</a> | 
+                <a href="{{ url_for('inventory.edit_item', id=item.id) }}">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

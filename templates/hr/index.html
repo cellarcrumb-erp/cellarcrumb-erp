@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block page_title %}Human Resources{% endblock %}
+{% block content %}
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+  <div class="stat-card"><div class="stat-label">Total Employees</div><div class="stat-value">{{ total_employees }}</div></div>
+  <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value blue">{{ active_employees }}</div></div>
+  <div class="stat-card"><div class="stat-label">On Leave</div><div class="stat-value gold">{{ on_leave }}</div></div>
+  <div class="stat-card"><div class="stat-label">Departments</div><div class="stat-value">{{ dept_count }}</div></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+  <a href="{{ url_for('hr.employees') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="users" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Employees</div><div style="font-size:12px;color:var(--text-secondary);">Manage employee records</div></div></div>
+  </a>
+  <a href="{{ url_for('hr.departments') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="briefcase" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Departments</div><div style="font-size:12px;color:var(--text-secondary);">Manage departments</div></div></div>
+  </a>
+  <a href="{{ url_for('hr.job_titles') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="award" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Job Titles</div><div style="font-size:12px;color:var(--text-secondary);">Manage job titles</div></div></div>
+  </a>
+  <a href="{{ url_for('hr.leaves') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="calendar" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Leave Requests</div><div style="font-size:12px;color:var(--text-secondary);">Track leave & attendance</div></div></div>
+  </a>
+  <a href="{{ url_for('hr.report_headcount') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="bar-chart-2" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Headcount Report</div><div style="font-size:12px;color:var(--text-secondary);">Staff analysis</div></div></div>
+  </a>
+  <a href="{{ url_for('hr.report_leave') }}" class="card" style="text-decoration:none;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:12px;"><i data-feather="file-text" style="color:var(--gold);width:32px;height:32px;"></i><div><div class="card-title">Leave Summary</div><div style="font-size:12px;color:var(--text-secondary);">Leave usage by employee</div></div></div>
+  </a>
+</div>
+{% endblock %}

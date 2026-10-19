@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if user %}Edit{% else %}New{% endif %} User{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.users') }}">Users</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{% if user %}Edit{% else %}New{% endif %}</span>
+</div>
+<div class="card form-card">
+  <form method="POST" action="">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" name="username" class="form-control" value="{{ user.username if user else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="full_name" class="form-control" value="{{ user.full_name if user else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <select name="role_id" class="form-control" required>
+          {% for r in roles %}
+          <option value="{{ r.id }}" {% if user and user.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if not user %}
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <input type="password" name="confirm_password" class="form-control" required>
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label class="form-label">Is Active</label>
+        <input type="checkbox" name="is_active" {% if not user or user.is_active %}checked{% endif %}>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('settings.users') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

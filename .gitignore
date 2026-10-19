@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Database & secrets (NEVER commit these)
+*.db
+*.sqlite
+*.sqlite3
+.secret_key
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Build artifacts from dev scripts
+build_routes.py
+build_templates.py
+build_templates2.py
+fix_urls.py
+fix_urls2.py
+verify_all_routes.py

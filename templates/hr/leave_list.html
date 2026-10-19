@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block page_title %}Leave Requests{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Leave Requests</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('hr.new_leave') }}" class="btn btn-primary">New Leave Request</a>
+</div>
+<div class="card table-card">
+  <div class="table-toolbar" style="padding:16px; border-bottom:1px solid var(--border);">
+    <form method="GET" style="display:flex; gap:10px;">
+      <input type="text" name="q" class="form-control search-input" placeholder="Search employee" value="{{ request.args.get('q','') }}">
+      <select name="status" class="form-control filter-select">
+        <option value="">All Statuses</option>
+        <option value="Pending" {% if request.args.get('status') == 'Pending' %}selected{% endif %}>Pending</option>
+        <option value="Approved" {% if request.args.get('status') == 'Approved' %}selected{% endif %}>Approved</option>
+        <option value="Rejected" {% if request.args.get('status') == 'Rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Employee</th>
+        <th>Leave Type</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Days</th>
+        <th>Status</th>
+        <th>Approved By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leaves %}
+      <tr>
+        <td>{{ l.id }}</td>
+        <td>{{ l.employee_name }}</td>
+        <td>{{ l.leave_type }}</td>
+        <td>{{ l.start_date }}</td>
+        <td>{{ l.end_date }}</td>
+        <td>{{ l.days }}</td>
+        <td><span class="badge {% if l.status=='Approved' %}badge-posted{% elif l.status=='Rejected' %}badge-cancelled{% else %}badge-pending{% endif %}">{{ l.status }}</span></td>
+        <td>{{ l.approved_by_name or '-' }}</td>
+        <td>
+          {% if l.status == 'Pending' %}
+          <form method="POST" action="{{ url_for('hr.approve_leave', id=l.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-primary">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('hr.reject_leave', id=l.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

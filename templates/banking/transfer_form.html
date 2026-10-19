@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block page_title %}Transfer Funds{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('banking.index') }}">Banking</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>New Transfer</span>
+</div>
+<div class="card form-card">
+  <div class="alert alert-info">Note: Transfers are immediate and will update both account balances.</div>
+  <form method="POST" action="{{ url_for('banking.new_transfer') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">From Account *</label>
+        <select name="from_account_id" id="from_account" class="form-control" required>
+          <option value="">Select Account</option>
+          {% for a in accounts %}
+          <option value="{{ a.id }}">{{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">To Account *</label>
+        <select name="to_account_id" id="to_account" class="form-control" required>
+          <option value="">Select Account</option>
+          {% for a in accounts %}
+          <option value="{{ a.id }}">{{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input type="date" name="doc_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount *</label>
+        <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reference</label>
+        <input type="text" name="reference" class="form-control">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control"></textarea>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+      <a href="{{ url_for('banking.index') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Transfer</button>
+    </div>
+  </form>
+</div>
+<script>
+document.getElementById('from_account').addEventListener('change', function() {
+    var fromVal = this.value;
+    var toSelect = document.getElementById('to_account');
+    for (var i=0; i<toSelect.options.length; i++) {
+        if (toSelect.options[i].value == fromVal && fromVal != "") {
+            toSelect.options[i].disabled = true;
+        } else {
+            toSelect.options[i].disabled = false;
+        }
+    }
+});
+</script>
+{% endblock %}

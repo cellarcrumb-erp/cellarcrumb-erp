@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block page_title %}Roles & Permissions{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Roles</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_role') }}" class="btn btn-primary">New Role</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for r in roles %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.description }}</td>
+        <td><a href="{{ url_for('settings.edit_role', id=r.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

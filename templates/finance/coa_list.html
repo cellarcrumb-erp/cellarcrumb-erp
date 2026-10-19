@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Chart of Accounts{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Chart of Accounts</h2>
+    <a href="{{ url_for('finance.coa_new') }}" class="btn btn-primary"><i data-feather="plus"></i> New Account</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Is Posting</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in accounts %}
+                <tr class="{{ 'fw-bold bg-light' if not a.is_posting else '' }}">
+                    <td>{{ a.code }}</td>
+                    <td>
+                        {% if a.parent_id %}&nbsp;&nbsp;&nbsp;&nbsp;{% endif %}
+                        {{ a.name }}
+                    </td>
+                    <td>{{ a.account_type }}</td>
+                    <td>{{ 'Yes' if a.is_posting else 'No' }}</td>
+                    <td>
+                        <a href="{{ url_for('finance.coa_detail', id=a.id) }}" class="btn btn-sm btn-outline-info">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

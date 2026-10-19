@@ -1,0 +1,100 @@
+﻿{% extends 'base.html' %}
+{% block page_title %}{{ 'Edit Branch' if branch else 'New Branch' }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('settings.branches') }}">Branches</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ 'Edit ' + branch.name if branch else 'New Branch' }}</span>
+</div>
+
+<div class="card form-card" style="max-width: 800px;">
+  <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:20px;">
+    <h3 class="card-title" style="font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;">
+      <i data-feather="home" style="width:18px;height:18px; color:var(--gold);"></i>
+      {{ 'Edit Branch: ' + branch.name if branch else 'Create New Branch / Business Place' }}
+    </h3>
+  </div>
+
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Branch Code *</label>
+        <input type="text" name="code" class="form-control font-bold" 
+               placeholder="e.g. WEST, KIL, CBD" 
+               value="{{ branch.code if branch else '' }}" required
+               style="text-transform:uppercase; color:var(--gold-dark);">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Branch Name *</label>
+        <input type="text" name="name" class="form-control" 
+               placeholder="e.g. Westlands Outlet, Kilimani Branch" 
+               value="{{ branch.name if branch else '' }}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="text" name="phone" class="form-control" 
+               placeholder="e.g. +254 711 000 000" 
+               value="{{ branch.phone if branch else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control" 
+               placeholder="e.g. westlands@cellarncrumb.co.ke" 
+               value="{{ branch.email if branch else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Branch PIN / Tax ID</label>
+        <input type="text" name="tax_id" class="form-control" 
+               placeholder="e.g. P051234567A" 
+               value="{{ branch.tax_id if branch else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Default Warehouse</label>
+        <select name="default_warehouse_id" class="form-control">
+          <option value="">-- None Selected --</option>
+          {% for w in warehouses %}
+          <option value="{{ w.id }}" {% if branch and branch.default_warehouse_id == w.id %}selected{% endif %}>
+            {{ w.name }} ({{ w.code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Physical Location / Address</label>
+        <textarea name="address" class="form-control" rows="2" placeholder="e.g. Ground Floor, Sarit Centre, Westlands">{{ branch.address if branch else '' }}</textarea>
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1; display:flex; gap:24px; margin-top:8px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-primary);">
+          <input type="checkbox" name="is_main" value="1" {% if branch and branch.is_main %}checked{% endif %}>
+          <span>Set as Main Headquarter Branch (HQ)</span>
+        </label>
+
+        {% if branch %}
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-primary);">
+          <input type="checkbox" name="is_active" value="1" {% if branch.is_active %}checked{% endif %}>
+          <span>Branch is Active</span>
+        </label>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;">
+      <a href="{{ url_for('settings.branches') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-feather="check" style="width:14px;height:14px;"></i>
+        {{ 'Save Changes' if branch else 'Create Branch' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

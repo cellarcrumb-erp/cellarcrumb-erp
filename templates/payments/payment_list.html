@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('payments.index') }}">Payments</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>{{ title }}</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ new_url }}" class="btn btn-primary">New Payment</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Ref</th>
+        <th>Partner</th>
+        <th>Amount</th>
+        <th>Method</th>
+        <th>Allocated</th>
+        <th>Unallocated</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.doc_date }}</td>
+        <td>{{ p.doc_ref }}</td>
+        <td>{{ p.partner_name or '-' }}</td>
+        <td>{{ p.amount }}</td>
+        <td>{{ p.payment_method_name }}</td>
+        <td>{{ p.amount_allocated }}</td>
+        <td>{{ p.unallocated }}</td>
+        <td><span class="badge {% if p.status=='Posted' %}badge-posted{% elif p.status=='Cancelled' %}badge-cancelled{% else %}badge-draft{% endif %}">{{ p.status }}</span></td>
+        <td>
+          <a href="{{ url_for('payments.payment_detail', id=p.id) }}" class="btn btn-sm btn-secondary">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

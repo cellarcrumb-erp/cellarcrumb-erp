@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Accounts Receivable (AR) Aging — CellarCrumb ERP{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1 class="page-title">Accounts Receivable (AR) Aging</h1>
+    <p class="page-subtitle">Aging analysis of unpaid customer invoices by overdue buckets</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button onclick="window.print()" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="printer" style="width:16px;height:16px;"></i> Print
+    </button>
+    <a href="{{ url_for('finance.ar_list', as_of_date=as_of_date, branch_id=selected_branch, export='csv') }}" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:6px;">
+      <i data-feather="download" style="width:16px;height:16px;"></i> Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-6" style="padding:16px 20px;">
+  <form method="GET" action="{{ url_for('finance.ar_list') }}" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">As Of Date</label>
+      <input type="date" name="as_of_date" value="{{ as_of_date }}" class="form-control" style="width:180px;">
+    </div>
+    {% if branches %}
+    <div>
+      <label style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">Branch</label>
+      <select name="branch_id" class="form-control filter-select" style="width:200px;">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <button type="submit" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-feather="filter" style="width:15px;height:15px;"></i> Recalculate Aging
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Aging Summary Cards -->
+<div class="grid grid-cols-6 gap-3 mb-6">
+  <div class="stat-card green" style="padding:14px 16px;">
+    <span class="stat-label">Current / Not Due</span>
+    <p class="stat-value" style="font-size:19px;">{{ "%.2f"|format(totals.current) }}</p>
+    <span style="font-size:11px; color:var(--text-secondary);">Within credit terms</span>
+  </div>
+
+  <div class="stat-card blue" style="padding:14px 16px;">
+    <span class="stat-label">1 - 30 Days</span>
+    <p class="stat-value" style="font-size:19px;">{{ "%.2f"|format(totals.b1_30) }}</p>
+    <span style="font-size:11px; color:var(--text-secondary);">Recently overdue</span>
+  </div>
+
+  <div class="stat-card gold" style="padding:14px 16px;">
+    <span class="stat-label">31 - 60 Days</span>
+    <p class="stat-value" style="font-size:19px;">{{ "%.2f"|format(totals.b31_60) }}</p>
+    <span style="font-size:11px; color:var(--text-secondary);">Follow-up needed</span>
+  </div>
+
+  <div class="stat-card red" style="padding:14px 16px;">
+    <span class="stat-label">61 - 90 Days</span>
+    <p class="stat-value" style="font-size:19px;">{{ "%.2f"|format(totals.b61_90) }}</p>
+    <span style="font-size:11px; color:var(--text-secondary);">At-risk aging</span>
+  </div>
+
+  <div class="stat-card red" style="padding:14px 16px;">
+    <span class="stat-label">90+ Days</span>
+    <p class="stat-value" style="font-size:19px; color:#ef4444;">{{ "%.2f"|format(totals.b90_plus) }}</p>
+    <span style="font-size:11px; color:#ef4444; font-weight:700;">Critical / Bad debt</span>
+  </div>
+
+  <div class="stat-card gold" style="padding:14px 16px; background:rgba(201,168,76,0.12);">
+    <span class="stat-label" style="color:var(--gold);">Total AR Due</span>
+    <p class="stat-value" style="font-size:20px; color:var(--gold);">{{ currency }} {{ "%.2f"|format(totals.total) }}</p>
+    <span style="font-size:11px; color:var(--text-secondary);">Total receivables</span>
+  </div>
+</div>
+
+<!-- Detailed Customer Aging Table -->
+<div class="card" style="padding:24px;">
+  <div style="border-bottom: 1px solid var(--border); padding-bottom:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
+    <h2 style="font-size:16px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.04em;">Customer Receivables Aging Schedule</h2>
+    <span style="font-size:13px; color:var(--text-secondary); font-weight:600;">As of {{ as_of_date }}</span>
+  </div>
+
+  <table class="table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="text-align:left; padding:12px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Customer</th>
+        <th style="text-align:right; padding:12px; width:130px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Current</th>
+        <th style="text-align:right; padding:12px; width:130px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">1 - 30 Days</th>
+        <th style="text-align:right; padding:12px; width:130px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">31 - 60 Days</th>
+        <th style="text-align:right; padding:12px; width:130px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">61 - 90 Days</th>
+        <th style="text-align:right; padding:12px; width:130px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">90+ Days</th>
+        <th style="text-align:right; padding:12px; width:150px; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">Total Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if customers %}
+        {% for c in customers %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:12px;">
+            <a href="{{ url_for('bp_master.bp_detail', id=c.id) }}" style="color:var(--text-primary); text-decoration:none; font-weight:700;">
+              {{ c.name }}
+            </a>
+            {% if c.phone %}<span style="font-size:11px; color:var(--text-secondary); display:block;">{{ c.phone }}</span>{% endif %}
+          </td>
+          <td style="padding:12px; text-align:right; font-family:monospace;">{% if c.current > 0 %}{{ "%.2f"|format(c.current) }}{% else %}-{% endif %}</td>
+          <td style="padding:12px; text-align:right; font-family:monospace;">{% if c.b1_30 > 0 %}{{ "%.2f"|format(c.b1_30) }}{% else %}-{% endif %}</td>
+          <td style="padding:12px; text-align:right; font-family:monospace; color:{% if c.b31_60 > 0 %}var(--gold){% else %}inherit{% endif %};">
+            {% if c.b31_60 > 0 %}{{ "%.2f"|format(c.b31_60) }}{% else %}-{% endif %}
+          </td>
+          <td style="padding:12px; text-align:right; font-family:monospace; color:{% if c.b61_90 > 0 %}#f87171{% else %}inherit{% endif %};">
+            {% if c.b61_90 > 0 %}{{ "%.2f"|format(c.b61_90) }}{% else %}-{% endif %}
+          </td>
+          <td style="padding:12px; text-align:right; font-family:monospace; font-weight:700; color:{% if c.b90_plus > 0 %}#ef4444{% else %}inherit{% endif %};">
+            {% if c.b90_plus > 0 %}{{ "%.2f"|format(c.b90_plus) }}{% else %}-{% endif %}
+          </td>
+          <td style="padding:12px; text-align:right; font-family:monospace; font-weight:800; font-size:14px; color:#38bdf8;">
+            {{ "%.2f"|format(c.total) }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="7" style="padding:24px 12px; text-align:center; color:var(--text-secondary); font-style:italic;">
+            No outstanding customer receivables as of {{ as_of_date }}.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+    <tfoot>
+      <tr style="border-top:2px solid var(--border); background:rgba(255,255,255,0.03); font-weight:900;">
+        <td style="padding:14px 12px; text-transform:uppercase;">TOTALS</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace;">{{ "%.2f"|format(totals.current) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace;">{{ "%.2f"|format(totals.b1_30) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; color:var(--gold);">{{ "%.2f"|format(totals.b31_60) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; color:#f87171;">{{ "%.2f"|format(totals.b61_90) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; color:#ef4444;">{{ "%.2f"|format(totals.b90_plus) }}</td>
+        <td style="padding:14px 12px; text-align:right; font-family:monospace; font-size:16px; color:var(--gold);">{{ "%.2f"|format(totals.total) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

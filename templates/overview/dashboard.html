@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card blue">
+    <div class="stat-label">Total Sales (MTD)</div>
+    <div class="stat-value">{{ total_sales | default('0.00') }}</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Total Purchases (MTD)</div>
+    <div class="stat-value">{{ total_purchases | default('0.00') }}</div>
+  </div>
+  <div class="stat-card gold">
+    <div class="stat-label">Stock Value</div>
+    <div class="stat-value">{{ stock_value | default('0.00') }}</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">Low Stock Items</div>
+    <div class="stat-value">{{ low_stock_count | default('0') }}</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Open Receivables</div>
+    <div class="stat-value">{{ open_receivables | default('0.00') }}</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">Open Payables</div>
+    <div class="stat-value">{{ open_payables | default('0.00') }}</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Cash Balance</div>
+    <div class="stat-value">{{ cash_balance | default('0.00') }}</div>
+  </div>
+  <div class="stat-card gold">
+    <div class="stat-label">Pending Approvals</div>
+    <div class="stat-value">{{ pending_count | default('0') }}</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="mb-4">
+  <h3 class="form-section-title">Quick Actions</h3>
+  <div class="quick-actions">
+    <a href="{{ url_for('sales.doc_new', doc_kind='invoices') }}" class="quick-action-btn">
+      <i data-feather="file-plus"></i>
+      <span>New Sale Invoice</span>
+    </a>
+    <a href="{{ url_for('purchases.doc_new', doc_kind='orders') }}" class="quick-action-btn">
+      <i data-feather="shopping-bag"></i>
+      <span>New Purchase Order</span>
+    </a>
+    <a href="{{ url_for('inventory.new_receipt') }}" class="quick-action-btn">
+      <i data-feather="download"></i>
+      <span>Receive Goods</span>
+    </a>
+    <a href="{{ url_for('inventory.new_issue') }}" class="quick-action-btn">
+      <i data-feather="upload"></i>
+      <span>Issue Stock</span>
+    </a>
+    <a href="{{ url_for('bp_master.new_partner') }}" class="quick-action-btn">
+      <i data-feather="user-plus"></i>
+      <span>Add Business Partner</span>
+    </a>
+    <a href="{{ url_for('payments.new_incoming') }}" class="quick-action-btn">
+      <i data-feather="dollar-sign"></i>
+      <span>Record Payment</span>
+    </a>
+  </div>
+</div>
+
+<!-- Two Columns Area -->
+<div class="two-col">
+  <!-- Recent Transactions -->
+  <div class="card p-0">
+    <div class="card-header p-4 m-0 border-b">
+      <h3 class="card-title m-0">Recent Transactions</h3>
+    </div>
+    <div class="overflow-auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reference</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for txn in recent_txns | default([]) %}
+          <tr>
+            <td>{{ txn.doc_date }}</td>
+            <td>{{ txn.doc_type }}</td>
+            <td>{{ txn.doc_ref }}</td>
+            <td class="number-right">{{ txn.total }}</td>
+            <td>
+              <span class="badge badge-{{ txn.status|lower }}">{{ txn.status }}</span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">No recent transactions</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- Low Stock Alerts -->
+  <div class="card p-0">
+    <div class="card-header p-4 m-0 border-b">
+      <h3 class="card-title m-0">Low Stock Alerts</h3>
+    </div>
+    <div class="overflow-auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th class="number-right">Stock</th>
+            <th class="number-right">Reorder Lvl</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in low_stock_items | default([]) %}
+          <tr>
+            <td>{{ item.code }}</td>
+            <td>{{ item.name }}</td>
+            <td class="number-right text-danger font-bold">{{ item.stock_qty }}</td>
+            <td class="number-right">{{ item.reorder_level }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted">No low stock alerts</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h3 class="card-title">Monthly Sales vs Purchases</h3>
+  </div>
+  <div style="height: 300px; width: 100%;">
+    <canvas id="monthlyChart"></canvas>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    
+    // Default safe parsing of chart data passed from jinja
+    const labels = {{ chart_labels | default(['Jan', 'Feb', 'Mar']) | tojson }};
+    const salesData = {{ chart_sales | default([0, 0, 0]) | tojson }};
+    const purchasesData = {{ chart_purchases | default([0, 0, 0]) | tojson }};
+    
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Sales',
+            data: salesData,
+            backgroundColor: '#c9a84c',
+            borderRadius: 4
+          },
+          {
+            label: 'Purchases',
+            data: purchasesData,
+            backgroundColor: '#3b82f6',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: '#e5e7eb'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

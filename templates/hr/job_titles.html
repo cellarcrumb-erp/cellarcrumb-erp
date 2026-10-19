@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block page_title %}Job Titles{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('hr.index') }}">HR</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Job Titles</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('hr.new_job_title') }}" class="btn btn-primary">New Job Title</a>
+</div>
+<div class="table-card card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Department</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for jt in job_titles %}
+      <tr>
+        <td>{{ jt.id }}</td>
+        <td>{{ jt.name }}</td>
+        <td>{{ jt.department_name }}</td>
+        <td>
+          <a href="{{ url_for('hr.edit_job_title', id=jt.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

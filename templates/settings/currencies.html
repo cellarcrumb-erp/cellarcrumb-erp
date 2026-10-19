@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block page_title %}Currencies{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Currencies</span>
+</div>
+<div class="actions-bar">
+  <a href="{{ url_for('settings.new_currency') }}" class="btn btn-primary">New Currency</a>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr><th>Code</th><th>Name</th><th>Symbol</th><th>Exchange Rate vs Base</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for c in currencies %}
+      <tr>
+        <td>{{ c.code }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.symbol }}</td>
+        <td>{{ c.exchange_rate }}</td>
+        <td><a href="{{ url_for('settings.edit_currency', id=c.id) }}" class="btn btn-sm btn-secondary">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

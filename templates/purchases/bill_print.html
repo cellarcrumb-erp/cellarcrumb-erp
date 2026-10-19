@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ doc.doc_type }} - {{ doc.doc_ref }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-10 shadow-lg relative">
+        <div class="no-print absolute top-4 right-4">
+            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Print</button>
+        </div>
+        
+        <div class="flex justify-between items-start border-b pb-6 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Cellar & Crumb</h1>
+                <p class="text-gray-500 text-sm">123 ERP Street, Business City</p>
+                <p class="text-gray-500 text-sm">Phone: +1 234 567 890</p>
+                <p class="text-gray-500 text-sm">Email: hello@cellarcrumb.com</p>
+            </div>
+            <div class="text-right">
+                <h2 class="text-4xl font-bold text-gray-300 uppercase tracking-widest">{{ doc.doc_type }}</h2>
+                <p class="text-xl font-semibold text-gray-800 mt-2">{{ doc.doc_ref }}</p>
+                <p class="text-gray-500">Date: {{ doc.doc_date }}</p>
+                {% if doc.due_date %}<p class="text-gray-500">Due Date: {{ doc.due_date }}</p>{% endif %}
+            </div>
+        </div>
+        
+        <div class="mb-8">
+            <h3 class="text-gray-500 text-sm font-semibold uppercase mb-2">Supplier</h3>
+            <p class="text-lg font-bold text-gray-800">{{ doc.supplier_name or 'N/A' }}</p>
+            {% if doc.supplier_address %}<p class="text-gray-600 whitespace-pre-line">{{ doc.supplier_address }}</p>{% endif %}
+            {% if doc.supplier_phone %}<p class="text-gray-600">{{ doc.supplier_phone }}</p>{% endif %}
+        </div>
+        
+        <table class="w-full text-left border-collapse mb-8">
+            <thead>
+                <tr class="bg-gray-100 border-b-2 border-gray-300">
+                    <th class="p-3 text-sm font-semibold text-gray-700">Description</th>
+                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Qty</th>
+                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Unit Cost</th>
+                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lines %}
+                <tr class="border-b">
+                    <td class="p-3 text-sm">
+                        <div class="font-bold text-gray-800">{{ l.item_name }}</div>
+                    </td>
+                    <td class="p-3 text-sm text-right">{{ l.quantity }}</td>
+                    <td class="p-3 text-sm text-right">${{ "%.2f"|format(l.unit_price) }}</td>
+                    <td class="p-3 text-sm text-right font-bold">${{ "%.2f"|format(l.line_total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="flex justify-end mb-12">
+            <div class="w-64">
+                <div class="flex justify-between py-2 bg-gray-100 px-2 mt-2">
+                    <span class="font-bold text-gray-800 text-lg">Total:</span>
+                    <span class="font-bold text-gray-800 text-lg">${{ "%.2f"|format(doc.total) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>New Inventory Count</h2>
+<form method="POST">
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label>Warehouse</label>
+            <select name="warehouse_id" class="form-control" required>
+                {% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label>Date</label>
+            <input type="date" name="doc_date" class="form-control" required>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Start Count (Load Items)</button>
+</form>
+{% endblock %}

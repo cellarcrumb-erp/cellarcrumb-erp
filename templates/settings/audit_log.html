@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block page_title %}Audit Log{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Audit Log</span>
+</div>
+<div class="card table-card">
+  <div class="table-toolbar" style="padding:16px; border-bottom:1px solid var(--border);">
+    <form method="GET" style="display:flex; gap:10px;">
+      <select name="user_id" class="form-control filter-select">
+        <option value="">All Users</option>
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if request.args.get('user_id')|int == u.id %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+      <select name="module" class="form-control filter-select">
+        <option value="">All Modules</option>
+        <option value="HR" {% if request.args.get('module') == 'HR' %}selected{% endif %}>HR</option>
+        <option value="Banking" {% if request.args.get('module') == 'Banking' %}selected{% endif %}>Banking</option>
+        <option value="Payments" {% if request.args.get('module') == 'Payments' %}selected{% endif %}>Payments</option>
+        <option value="Settings" {% if request.args.get('module') == 'Settings' %}selected{% endif %}>Settings</option>
+        <option value="Sales" {% if request.args.get('module') == 'Sales' %}selected{% endif %}>Sales</option>
+      </select>
+      <input type="date" name="from_date" class="form-control" value="{{ request.args.get('from_date','') }}">
+      <input type="date" name="to_date" class="form-control" value="{{ request.args.get('to_date','') }}">
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>User</th>
+        <th>Module</th>
+        <th>Action</th>
+        <th>Doc Type</th>
+        <th>Doc ID</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in audit_entries %}
+      <tr>
+        <td>{{ a.ts }}</td>
+        <td>{{ a.username }}</td>
+        <td>{{ a.module }}</td>
+        <td>{{ a.action }}</td>
+        <td>{{ a.doc_type }}</td>
+        <td>{{ a.doc_id }}</td>
+        <td>{{ a.description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
