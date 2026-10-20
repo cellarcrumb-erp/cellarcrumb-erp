@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block page_title %}Special Prices for Business Partners (SAP SPP1){% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('inventory.index') }}">Inventory</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('inventory.price_lists') }}">Price Lists</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Special Prices</span>
+</div>
+
+<div class="actions-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <div>
+    <h2 style="font-size:18px; font-weight:700; color:var(--text);">Special Prices for Business Partners (SAP SPP1)</h2>
+    <p style="font-size:12px; color:var(--text-muted); margin:0;">Define contracted prices or discounts for specific customers or suppliers.</p>
+  </div>
+  <a href="{{ url_for('inventory.new_special_price') }}" class="btn btn-primary">
+    <i data-feather="plus" style="width:14px;height:14px;"></i> New Special Price
+  </a>
+</div>
+
+<!-- Partner Filter Bar -->
+<div class="card" style="margin-bottom:16px; padding:12px 16px;">
+  <form method="GET" style="display:flex; gap:12px; align-items:center;">
+    <label class="form-label" style="margin:0; font-size:13px;">Filter by Partner:</label>
+    <select name="partner_id" class="form-control" style="max-width:300px;" onchange="this.form.submit()">
+      <option value="">-- All Business Partners --</option>
+      {% for p in partners %}
+      <option value="{{ p.id }}" {% if current_partner_id == p.id %}selected{% endif %}>
+        {{ p.name }} ({{ p.code }})
+      </option>
+      {% endfor %}
+    </select>
+    {% if current_partner_id %}
+    <a href="{{ url_for('inventory.special_prices') }}" class="btn btn-sm btn-secondary">Clear Filter</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Business Partner</th>
+        <th>Item Code</th>
+        <th>Item Name</th>
+        <th style="text-align:right;">Default Price</th>
+        <th style="text-align:right;">Special Price</th>
+        <th style="text-align:right;">Discount (%)</th>
+        <th>Valid Period</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sp in special_prices %}
+      <tr>
+        <td class="font-bold">{{ sp.partner_name }} <span style="font-size:11px; color:var(--text-muted);">({{ sp.partner_code }})</span></td>
+        <td class="font-bold" style="color:var(--gold-dark);">{{ sp.item_code }}</td>
+        <td>{{ sp.item_name }}</td>
+        <td style="text-align:right; color:var(--text-muted);">{{ "%.2f"|format(sp.base_price or 0) }}</td>
+        <td style="text-align:right; font-weight:700; color:var(--gold-dark);">{{ "%.2f"|format(sp.price or 0) }}</td>
+        <td style="text-align:right;">{{ "%.1f"|format(sp.discount_pct or 0) }}%</td>
+        <td style="font-size:12px;">
+          {% if sp.valid_from or sp.valid_to %}
+            {{ sp.valid_from or 'Start' }} → {{ sp.valid_to or 'No expiry' }}
+          {% else %}
+            <span class="text-muted">Always valid</span>
+          {% endif %}
+        </td>
+        <td><span class="badge {% if sp.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Active' if sp.is_active else 'Inactive' }}</span></td>
+        <td>
+          <form method="POST" action="{{ url_for('inventory.delete_special_price', id=sp.id) }}" onsubmit="return confirm('Delete this special price?');" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">
+          No special prices defined. Click <strong>New Special Price</strong> to configure customer or vendor specific pricing.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

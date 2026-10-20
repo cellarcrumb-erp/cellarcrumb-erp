@@ -138,7 +138,7 @@ def new_deposit():
             except Exception as e:
                 flash(f'Error recording deposit: {e}', 'error')
     accs = conn.execute('SELECT * FROM bank_accounts WHERE is_active=1').fetchall()
-    partners = conn.execute('SELECT * FROM partners WHERE status="Active" ORDER BY name').fetchall()
+    partners = conn.execute("SELECT * FROM partners WHERE status='Active' ORDER BY name").fetchall()
     return render_template('banking/deposit_form.html', accounts=accs, partners=partners)
 
 @banking_bp.route('/deposits/<int:id>')
@@ -214,7 +214,7 @@ def new_withdrawal():
             except Exception as e:
                 flash(f'Error recording withdrawal: {e}', 'error')
     accs = conn.execute('SELECT * FROM bank_accounts WHERE is_active=1').fetchall()
-    partners = conn.execute('SELECT * FROM partners WHERE status="Active" ORDER BY name').fetchall()
+    partners = conn.execute("SELECT * FROM partners WHERE status='Active' ORDER BY name").fetchall()
     return render_template('banking/withdrawal_form.html', accounts=accs, partners=partners)
 
 @banking_bp.route('/withdrawals/<int:id>')

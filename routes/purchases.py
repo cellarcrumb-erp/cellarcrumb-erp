@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from functools import wraps
 from database import get_db, next_ref, update_stock, post_journal, log_audit
 from datetime import datetime, date
@@ -10,9 +10,11 @@ from auth import login_required, require_permission
 
 DOC_TYPES = {
     'requests': 'Request',
+    'quotations': 'Purchase Quotation',
     'orders': 'Purchase Order',
     'receipts': 'Receipt',
     'bills': 'Invoice',
+    'down_payments': 'Down Payment Invoice',
     'returns': 'Purchase Return'
 }
 
@@ -20,9 +22,11 @@ DOC_KIND_FROM_TYPE = {v: k for k, v in DOC_TYPES.items()}
 
 # Allowed forward transitions: Current Doc Type -> Valid Target Doc Types
 COPY_TO_MAP = {
-    'Request': ['Purchase Order'],
-    'Purchase Order': ['Receipt', 'Invoice'],
+    'Request': ['Purchase Quotation', 'Purchase Order'],
+    'Purchase Quotation': ['Purchase Order'],
+    'Purchase Order': ['Receipt', 'Invoice', 'Down Payment Invoice'],
     'Receipt': ['Invoice'],
+    'Down Payment Invoice': ['Invoice'],
     'Invoice': ['Purchase Return'],
     'Purchase Return': []
 }
@@ -30,9 +34,11 @@ COPY_TO_MAP = {
 # Allowed backward transitions: Current Doc Type -> Valid Source Doc Types
 COPY_FROM_MAP = {
     'Request': [],
-    'Purchase Order': ['Request'],
+    'Purchase Quotation': ['Request'],
+    'Purchase Order': ['Purchase Quotation', 'Request'],
     'Receipt': ['Purchase Order'],
-    'Invoice': ['Receipt', 'Purchase Order'],
+    'Down Payment Invoice': ['Purchase Order'],
+    'Invoice': ['Receipt', 'Purchase Order', 'Down Payment Invoice'],
     'Purchase Return': ['Invoice']
 }
 
@@ -261,11 +267,13 @@ def doc_new(doc_kind):
         tax_total = 0.0
         grand_total = 0.0
         
+        contact_id = request.form.get('contact_id', type=int) or None
+        initial_status = 'Draft'
         cursor.execute("""
             INSERT INTO purchase_docs 
-            (doc_ref, doc_type, doc_date, due_date, supplier_id, warehouse_id, branch_id, status, subtotal, tax_total, total, balance_due, remarks, source_doc_id, source_doc_type, source_doc_ref, posted_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Draft', 0, 0, 0, 0, ?, ?, ?, ?, ?)
-        """, (doc_ref, doc_type, doc_date, due_date, supplier_id, warehouse_id, branch_id, remarks, source_doc_id, source_doc_type, source_doc_ref, session.get('user_id')))
+            (doc_ref, doc_type, doc_date, due_date, supplier_id, warehouse_id, branch_id, status, subtotal, tax_total, total, balance_due, remarks, source_doc_id, source_doc_type, source_doc_ref, posted_by, contact_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?, ?)
+        """, (doc_ref, doc_type, doc_date, due_date, supplier_id, warehouse_id, branch_id, initial_status, remarks, source_doc_id, source_doc_type, source_doc_ref, session.get('user_id'), contact_id))
         doc_id = cursor.lastrowid
         
         for i in range(len(item_ids)):
@@ -462,6 +470,28 @@ def doc_post(doc_kind, id):
         post_journal(conn, doc['doc_ref'], doc['doc_date'], 'Purchases', doc_type, id, f"Purchase Return {doc['doc_ref']}", j_lines, session.get('user_id'), branch_id=doc['branch_id'])
         conn.execute("UPDATE partners SET balance = balance - ? WHERE id = ?", (doc['total'], doc['supplier_id']))
         
+    elif doc_type == 'Down Payment Invoice':
+        # AP Down Payment: Debits Vendor Advances (1210), Credits Accounts Payable (2110)
+        ap_acc = conn.execute("SELECT id FROM coa WHERE code='2110'").fetchone()
+        dp_acc = conn.execute("SELECT id FROM coa WHERE code='1210'").fetchone()
+        tax_acc = conn.execute("SELECT id FROM coa WHERE code='2210'").fetchone()
+        
+        ap_id = ap_acc['id'] if ap_acc else 4
+        dp_id = dp_acc['id'] if dp_acc else 5
+        tax_id = tax_acc['id'] if tax_acc else 3
+        
+        j_lines = [
+            (dp_id, doc['supplier_id'], doc['subtotal'], 0, f"Vendor Advance {doc['doc_ref']}"),
+            (ap_id, doc['supplier_id'], 0, doc['total'], f"AP Down Payment {doc['doc_ref']}")
+        ]
+        if doc['tax_total'] > 0:
+            j_lines.append((tax_id, None, doc['tax_total'], 0, f"VAT Claimable {doc['doc_ref']}"))
+        post_journal(conn, doc['doc_ref'], doc['doc_date'], 'Purchases', doc_type, id, f"Down Payment {doc['doc_ref']}", j_lines, session.get('user_id'), branch_id=doc['branch_id'])
+        conn.execute("UPDATE partners SET balance = balance + ? WHERE id = ?", (doc['total'], doc['supplier_id']))
+        
+    elif doc_type in ('Request', 'Purchase Quotation', 'Purchase Order'):
+        pass
+        
     conn.execute("UPDATE purchase_docs SET status = 'Posted', posted_at = datetime('now') WHERE id = ?", (id,))
     conn.commit()
     log_audit(conn, session.get('user_id'), 'Purchases', 'Post', doc_type, id, f"Posted {doc_type} {doc['doc_ref']}")
@@ -478,6 +508,8 @@ def doc_print(doc_kind, id):
         LEFT JOIN partners p ON d.supplier_id = p.id
         WHERE d.id = ?
     """, (id,)).fetchone()
+    if not doc:
+        abort(404)
     
     lines = conn.execute("""
         SELECT l.*, i.name as item_name, i.code as item_code

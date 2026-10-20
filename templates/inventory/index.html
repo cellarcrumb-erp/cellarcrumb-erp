@@ -63,6 +63,15 @@
       <i data-feather="file-text"></i>
       <span>Stock Ledger</span>
     </a>
+    <a href="{{ url_for('inventory.price_lists') }}" class="quick-action-btn">
+      <i data-feather="dollar-sign"></i>
+      <span>Price Lists (OPLN)</span>
+    </a>
+    <a href="{{ url_for('inventory.special_prices') }}" class="quick-action-btn">
+      <i data-feather="tag"></i>
+      <span>Special Prices (SPP1)</span>
+    </a>
+
   </div>
 </div>
 {% endblock %}

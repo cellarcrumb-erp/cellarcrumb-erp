@@ -57,6 +57,85 @@ def get_db():
         return conn
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PostgreSQL boolean coercion
+#   The app was written for SQLite, which stores booleans as 0/1. PostgreSQL
+#   rejects an integer for a BOOLEAN column, so for every `is_*` column we turn
+#   0/1 (SQL literals *and* bound parameters) into real booleans.
+# ─────────────────────────────────────────────────────────────────────────────
+_BOOL_COL = re.compile(r'^is_\w+$', re.IGNORECASE)
+
+
+def _split_top_level(body):
+    """Split a VALUES(...) body on commas that are not inside quotes/parentheses."""
+    parts, depth, cur, in_q = [], 0, [], False
+    for ch in body:
+        if ch == "'":
+            in_q = not in_q
+        if not in_q:
+            if ch == '(':
+                depth += 1
+            elif ch == ')':
+                depth -= 1
+            elif ch == ',' and depth == 0:
+                parts.append(''.join(cur))
+                cur = []
+                continue
+        cur.append(ch)
+    parts.append(''.join(cur))
+    return parts
+
+
+def _count_ph(text):
+    return text.count('?') + text.count('%s')
+
+
+def _bool_plan(sql):
+    """Return (sql, positions): positions are indexes of bound params that must be bool."""
+    m = re.search(r'\bINSERT(?:\s+OR\s+\w+)?\s+INTO\s+\w+\s*\(([^)]*)\)\s*VALUES\s*\(', sql, re.IGNORECASE)
+    if m:
+        cols = [c.strip() for c in m.group(1).split(',')]
+        start, depth, i, in_q = m.end(), 1, m.end(), False
+        while i < len(sql) and depth > 0:
+            ch = sql[i]
+            if ch == "'":
+                in_q = not in_q
+            elif not in_q:
+                if ch == '(':
+                    depth += 1
+                elif ch == ')':
+                    depth -= 1
+            i += 1
+        vals = _split_top_level(sql[start:i - 1])
+        if len(vals) == len(cols):
+            positions, out, idx = [], [], _count_ph(sql[:start])
+            for col, val in zip(cols, vals):
+                v = val.strip()
+                if _BOOL_COL.match(col):
+                    if v in ('?', '%s'):
+                        positions.append(idx)
+                    elif v == '1':
+                        val = val.replace('1', 'TRUE')
+                    elif v == '0':
+                        val = val.replace('0', 'FALSE')
+                idx += _count_ph(v)
+                out.append(val)
+            return sql[:start] + ','.join(out) + sql[i - 1:], positions
+    positions = [_count_ph(sql[:mm.start(2)])
+                 for mm in re.finditer(r'\b(is_\w+)\s*=\s*(\?|%s)', sql, re.IGNORECASE)]
+    return sql, positions
+
+
+def _coerce_params(params, positions):
+    if not positions or not params:
+        return params
+    p = list(params)
+    for i in positions:
+        if i < len(p) and isinstance(p[i], int) and not isinstance(p[i], bool) and p[i] in (0, 1):
+            p[i] = bool(p[i])
+    return tuple(p)
+
+
 class _PgWrapper:
     """
     Thin wrapper around a psycopg2 connection that makes it behave
@@ -76,6 +155,8 @@ class _PgWrapper:
         if not sql:
             return sql
         s = sql.replace('?', '%s')
+        # SQLite last_insert_rowid() -> PostgreSQL lastval()
+        s = re.sub(r'\blast_insert_rowid\(\)', 'lastval()', s, flags=re.IGNORECASE)
         # SQLite datetime('now') and date('now')
         s = re.sub(r"\bdatetime\('now'\)", "NOW()", s, flags=re.IGNORECASE)
         s = re.sub(r"\bdate\('now'\)", "CURRENT_DATE", s, flags=re.IGNORECASE)
@@ -100,7 +181,8 @@ class _PgWrapper:
 
     def execute(self, sql, params=()):
         cur = self._conn.cursor()
-        cur.execute(self._fix(sql), params)
+        sql, positions = _bool_plan(sql)
+        cur.execute(self._fix(sql), _coerce_params(params, positions))
         return _PgCursor(cur)
 
     def cursor(self):
@@ -109,6 +191,9 @@ class _PgWrapper:
 
     def commit(self):
         self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
 
     def close(self):
         self._conn.close()
@@ -122,6 +207,34 @@ class _PgWrapper:
         else:
             self._conn.rollback()
         self._conn.close()
+
+
+def _pg_lastrowid(cur):
+    """Emulate sqlite3's cursor.lastrowid on PostgreSQL.
+
+    A plain INSERT returns no rows, so use lastval() (the last sequence value
+    handed out in this session). A savepoint keeps a failure here from aborting
+    the surrounding transaction.
+    """
+    if cur.description:  # statement already returned rows (e.g. INSERT ... RETURNING id)
+        try:
+            row = cur.fetchone()
+            if row:
+                return list(row.values())[0] if hasattr(row, 'values') else row[0]
+        except Exception:
+            pass
+    try:
+        cur.execute("SAVEPOINT _lastrowid")
+        cur.execute("SELECT lastval() AS v")
+        row = cur.fetchone()
+        cur.execute("RELEASE SAVEPOINT _lastrowid")
+        return row['v'] if row else None
+    except Exception:
+        try:
+            cur.execute("ROLLBACK TO SAVEPOINT _lastrowid")
+        except Exception:
+            pass
+        return None
 
 
 class _PgCursor:
@@ -140,7 +253,7 @@ class _PgCursor:
 
     @property
     def lastrowid(self):
-        return self._cur.fetchone()[0] if self._cur.description else None
+        return _pg_lastrowid(self._cur)
 
 
 class _PgCursorProxy:
@@ -150,11 +263,13 @@ class _PgCursorProxy:
         self._fix = fix_fn
 
     def execute(self, sql, params=()):
-        self._cur.execute(self._fix(sql), params)
+        sql, positions = _bool_plan(sql)
+        self._cur.execute(self._fix(sql), _coerce_params(params, positions))
         return self
 
     def executemany(self, sql, seq):
-        self._cur.executemany(self._fix(sql), seq)
+        sql, positions = _bool_plan(sql)
+        self._cur.executemany(self._fix(sql), [_coerce_params(r, positions) for r in seq])
 
     def fetchone(self):
         row = self._cur.fetchone()
@@ -165,14 +280,7 @@ class _PgCursorProxy:
 
     @property
     def lastrowid(self):
-        # After INSERT ... RETURNING id we can get it; otherwise use currval trick
-        try:
-            row = self._cur.fetchone()
-            if row:
-                return list(row.values())[0]
-        except Exception:
-            pass
-        return None
+        return _pg_lastrowid(self._cur)
 
     @property
     def rowcount(self):
@@ -707,6 +815,7 @@ def _seed_data(c, conn, sqlite_mode=True):
     if row and (row['count'] if hasattr(row, '__getitem__') else list(row.values())[0]) > 0:
         # Still run branch migration on existing DBs
         _ensure_main_branch(c, conn, sqlite_mode)
+        _ensure_sap_schema(c, conn, sqlite_mode)
         _seed_role_permissions(c, conn)
         return
 
@@ -929,7 +1038,179 @@ def _seed_data(c, conn, sqlite_mode=True):
             ex("INSERT INTO user_branches (user_id, branch_id, is_default) VALUES (%s,%s,true) ON CONFLICT DO NOTHING", (uid, branch_id))
 
     conn.commit()
+    _ensure_sap_schema(c, conn, sqlite_mode)
     _seed_role_permissions(c, conn)
+
+def _ensure_sap_schema(c, conn, sqlite_mode=True):
+    """Ensure SAP Business One parity schema elements (tables, columns, seed data)."""
+    ph = '?' if sqlite_mode else '%s'
+
+    # 1. Base tables
+    if sqlite_mode:
+        c.execute("""CREATE TABLE IF NOT EXISTS bp_groups (
+            id INTEGER PRIMARY KEY, name TEXT UNIQUE, group_type TEXT, created_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS payment_terms (
+            id INTEGER PRIMARY KEY, code TEXT UNIQUE, name TEXT, due_days INTEGER DEFAULT 30,
+            discount_days INTEGER DEFAULT 0, discount_pct REAL DEFAULT 0, is_active BOOLEAN DEFAULT 1)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS bp_contacts (
+            id INTEGER PRIMARY KEY, partner_id INTEGER REFERENCES partners(id) ON DELETE CASCADE,
+            name TEXT, first_name TEXT, last_name TEXT, email TEXT, phone TEXT, mobile TEXT,
+            position TEXT, is_default BOOLEAN DEFAULT 0)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS price_lists (
+            id INTEGER PRIMARY KEY, code TEXT UNIQUE, name TEXT, currency TEXT,
+            is_active BOOLEAN DEFAULT 1, created_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS item_prices (
+            id INTEGER PRIMARY KEY, price_list_id INTEGER REFERENCES price_lists(id) ON DELETE CASCADE,
+            item_id INTEGER REFERENCES items(id) ON DELETE CASCADE, price REAL,
+            UNIQUE(price_list_id, item_id))""")
+        c.execute("""CREATE TABLE IF NOT EXISTS special_prices (
+            id INTEGER PRIMARY KEY, partner_id INTEGER REFERENCES partners(id) ON DELETE CASCADE,
+            item_id INTEGER REFERENCES items(id) ON DELETE CASCADE, price REAL,
+            discount_pct REAL DEFAULT 0, valid_from TEXT, valid_to TEXT, is_active BOOLEAN DEFAULT 1)""")
+    else:
+        c.execute("""CREATE TABLE IF NOT EXISTS bp_groups (
+            id SERIAL PRIMARY KEY, name TEXT UNIQUE, group_type TEXT, created_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS payment_terms (
+            id SERIAL PRIMARY KEY, code TEXT UNIQUE, name TEXT, due_days INTEGER DEFAULT 30,
+            discount_days INTEGER DEFAULT 0, discount_pct REAL DEFAULT 0, is_active BOOLEAN DEFAULT TRUE)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS bp_contacts (
+            id SERIAL PRIMARY KEY, partner_id INTEGER REFERENCES partners(id) ON DELETE CASCADE,
+            name TEXT, first_name TEXT, last_name TEXT, email TEXT, phone TEXT, mobile TEXT,
+            position TEXT, is_default BOOLEAN DEFAULT FALSE)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS price_lists (
+            id SERIAL PRIMARY KEY, code TEXT UNIQUE, name TEXT, currency TEXT,
+            is_active BOOLEAN DEFAULT TRUE, created_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS item_prices (
+            id SERIAL PRIMARY KEY, price_list_id INTEGER REFERENCES price_lists(id) ON DELETE CASCADE,
+            item_id INTEGER REFERENCES items(id) ON DELETE CASCADE, price REAL,
+            UNIQUE(price_list_id, item_id))""")
+        c.execute("""CREATE TABLE IF NOT EXISTS special_prices (
+            id SERIAL PRIMARY KEY, partner_id INTEGER REFERENCES partners(id) ON DELETE CASCADE,
+            item_id INTEGER REFERENCES items(id) ON DELETE CASCADE, price REAL,
+            discount_pct REAL DEFAULT 0, valid_from TEXT, valid_to TEXT, is_active BOOLEAN DEFAULT TRUE)""")
+
+    # 2. Add columns to existing tables
+    if sqlite_mode:
+        c.execute("PRAGMA table_info(partners)")
+        existing_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
+        for col, col_def in [('group_id', 'INTEGER'), ('payment_term_id', 'INTEGER'), ('price_list_id', 'INTEGER')]:
+            if col not in existing_cols:
+                try:
+                    c.execute(f"ALTER TABLE partners ADD COLUMN {col} {col_def}")
+                except Exception:
+                    pass
+
+        c.execute("PRAGMA table_info(sales_docs)")
+        s_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
+        if 'contact_id' not in s_cols:
+            try:
+                c.execute("ALTER TABLE sales_docs ADD COLUMN contact_id INTEGER")
+            except Exception:
+                pass
+
+        c.execute("PRAGMA table_info(purchase_docs)")
+        p_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
+        if 'contact_id' not in p_cols:
+            try:
+                c.execute("ALTER TABLE purchase_docs ADD COLUMN contact_id INTEGER")
+            except Exception:
+                pass
+    else:
+        for col in ['group_id', 'payment_term_id', 'price_list_id']:
+            try:
+                c.execute(f"ALTER TABLE partners ADD COLUMN IF NOT EXISTS {col} INTEGER")
+            except Exception:
+                pass
+        try:
+            c.execute("ALTER TABLE sales_docs ADD COLUMN IF NOT EXISTS contact_id INTEGER")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE purchase_docs ADD COLUMN IF NOT EXISTS contact_id INTEGER")
+        except Exception:
+            pass
+
+    # 3. Seed Payment terms
+    default_terms = [
+        ('COD', 'Cash on Delivery', 0, 0, 0),
+        ('NET15', 'Net 15 Days', 15, 0, 0),
+        ('NET30', 'Net 30 Days', 30, 0, 0),
+        ('NET60', 'Net 60 Days', 60, 0, 0),
+        ('210NET30', '2% 10 Net 30', 30, 10, 2.0),
+    ]
+    for code, name, due, d_days, d_pct in default_terms:
+        if sqlite_mode:
+            c.execute("INSERT OR IGNORE INTO payment_terms (code, name, due_days, discount_days, discount_pct, is_active) VALUES (?,?,?,?,?,1)",
+                      (code, name, due, d_days, d_pct))
+        else:
+            c.execute("INSERT INTO payment_terms (code, name, due_days, discount_days, discount_pct, is_active) VALUES (%s,%s,%s,%s,%s,TRUE) ON CONFLICT (code) DO NOTHING",
+                      (code, name, due, d_days, d_pct))
+
+    # 4. Seed BP Groups
+    default_groups = [
+        ('Wholesale Customers', 'Customer'),
+        ('Retail Customers', 'Customer'),
+        ('Corporate & Events', 'Customer'),
+        ('Raw Material Vendors', 'Supplier'),
+        ('Packaging Suppliers', 'Supplier'),
+        ('Service Providers', 'Supplier'),
+    ]
+    for gname, gtype in default_groups:
+        if sqlite_mode:
+            c.execute("INSERT OR IGNORE INTO bp_groups (name, group_type, created_at) VALUES (?,?,datetime('now'))",
+                      (gname, gtype))
+        else:
+            c.execute("INSERT INTO bp_groups (name, group_type, created_at) VALUES (%s,%s,now()) ON CONFLICT (name) DO NOTHING",
+                      (gname, gtype))
+
+    # 5. Seed Price Lists
+    default_plists = [
+        ('BASE', 'Base Price List', 'KES'),
+        ('RETAIL', 'Regular Sales Price', 'KES'),
+        ('WHOLESALE', 'Wholesale Price List', 'KES'),
+        ('PURCHASE', 'Regular Purchase Price', 'KES'),
+    ]
+    for pcode, pname, pcurr in default_plists:
+        if sqlite_mode:
+            c.execute("INSERT OR IGNORE INTO price_lists (code, name, currency, is_active, created_at) VALUES (?,?,?,1,datetime('now'))",
+                      (pcode, pname, pcurr))
+        else:
+            c.execute("INSERT INTO price_lists (code, name, currency, is_active, created_at) VALUES (%s,%s,%s,TRUE,now()) ON CONFLICT (code) DO NOTHING",
+                      (pcode, pname, pcurr))
+
+    # 6. Seed Num Series for SAP docs
+    sap_series = [
+        ('Purchases', 'Purchase Quotation', 'PQ'),
+        ('Sales', 'Down Payment Invoice', 'SDP'),
+        ('Purchases', 'Down Payment Invoice', 'PDP'),
+    ]
+    for module, doc_type, prefix in sap_series:
+        if sqlite_mode:
+            c.execute("INSERT OR IGNORE INTO num_series (module, doc_type, prefix, next_num) VALUES (?,?,?,1)",
+                      (module, doc_type, prefix))
+        else:
+            c.execute("INSERT INTO num_series (module, doc_type, prefix, next_num) VALUES (%s,%s,%s,1) ON CONFLICT DO NOTHING",
+                      (module, doc_type, prefix))
+
+    # 7. Seed COA accounts: 2120 (Customer Down Payments) and 1210 (Vendor Down Payments)
+    coa_rows = [
+        ('2120', 'Customer Down Payments', 'Liability', '2100'),
+        ('1210', 'Vendor Down Payments', 'Asset', '1100'),
+    ]
+    for code, name, acc_type, parent_code in coa_rows:
+        c.execute(f"SELECT id FROM coa WHERE code = {ph}", (code,))
+        if not c.fetchone():
+            c.execute(f"SELECT id FROM coa WHERE code = {ph}", (parent_code,))
+            p_row = c.fetchone()
+            pid = p_row['id'] if p_row and hasattr(p_row, '__getitem__') else None
+            if sqlite_mode:
+                c.execute("INSERT INTO coa (code, name, account_type, parent_id, is_posting, is_active, opening_balance) VALUES (?,?,?,?,1,1,0)",
+                          (code, name, acc_type, pid))
+            else:
+                c.execute("INSERT INTO coa (code, name, account_type, parent_id, is_posting, is_active, opening_balance) VALUES (%s,%s,%s,%s,TRUE,TRUE,0)",
+                          (code, name, acc_type, pid))
+
+    conn.commit()
 
 
 def _ensure_main_branch(c, conn, sqlite_mode=True):

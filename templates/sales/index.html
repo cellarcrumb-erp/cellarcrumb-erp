@@ -101,6 +101,23 @@
     </svg>
   </div>
 
+  <!-- DOWN PAYMENT INVOICES -->
+  <div class="module-card mc-purple" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='down_payments') }}'">
+    <a href="{{ url_for('sales.doc_new', doc_kind='down_payments') }}" class="mc-add" title="New Down Payment Invoice" onclick="event.stopPropagation()">+</a>
+    <h3>Down Payment Invoices</h3>
+    <p>Request advance customer deposits before fulfillment (SAP ODPI).</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(196,181,253,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      {{ counts.down_payments.count if counts.down_payments else 0 }} Down Payments
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="68" r="46" fill="rgba(139,92,246,0.12)"/>
+      <rect x="25" y="16" width="58" height="74" rx="7" fill="rgba(91,33,182,0.45)" stroke="rgba(167,139,250,0.55)" stroke-width="2"/>
+      <circle cx="54" cy="53" r="18" fill="rgba(109,40,217,0.7)" stroke="rgba(196,181,253,0.8)" stroke-width="2"/>
+      <text x="54" y="60" font-size="20" font-weight="900" text-anchor="middle" fill="rgba(196,181,253,0.95)">%</text>
+    </svg>
+  </div>
+
   <!-- SALES RETURNS -->
   <div class="module-card mc-red mc-full" onclick="window.location='{{ url_for('sales.doc_list', doc_kind='returns') }}'">
     <a href="{{ url_for('sales.doc_new', doc_kind='returns') }}" class="mc-add" title="New Sales Return" onclick="event.stopPropagation()">+</a>

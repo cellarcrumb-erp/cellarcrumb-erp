@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from functools import wraps
 from database import get_db, next_ref, update_stock, post_journal, log_audit
 from datetime import datetime, date
@@ -13,6 +13,7 @@ DOC_TYPES = {
     'orders': 'Sales Order',
     'deliveries': 'Delivery',
     'invoices': 'Invoice',
+    'down_payments': 'Down Payment Invoice',
     'returns': 'Sales Return'
 }
 
@@ -21,8 +22,9 @@ DOC_KIND_FROM_TYPE = {v: k for k, v in DOC_TYPES.items()}
 # Allowed forward transitions: Current Doc Type -> Valid Target Doc Types
 COPY_TO_MAP = {
     'Quotation': ['Sales Order'],
-    'Sales Order': ['Delivery', 'Invoice'],
+    'Sales Order': ['Delivery', 'Invoice', 'Down Payment Invoice'],
     'Delivery': ['Invoice'],
+    'Down Payment Invoice': ['Invoice'],
     'Invoice': ['Sales Return'],
     'Sales Return': []
 }
@@ -32,7 +34,8 @@ COPY_FROM_MAP = {
     'Quotation': [],
     'Sales Order': ['Quotation'],
     'Delivery': ['Sales Order'],
-    'Invoice': ['Delivery', 'Sales Order'],
+    'Down Payment Invoice': ['Sales Order'],
+    'Invoice': ['Delivery', 'Sales Order', 'Down Payment Invoice'],
     'Sales Return': ['Invoice']
 }
 
@@ -261,11 +264,13 @@ def doc_new(doc_kind):
         tax_total = 0.0
         grand_total = 0.0
         
+        contact_id = request.form.get('contact_id', type=int) or None
+        initial_status = 'Draft'
         cursor.execute("""
             INSERT INTO sales_docs 
-            (doc_ref, doc_type, doc_date, due_date, customer_id, warehouse_id, branch_id, status, subtotal, tax_total, total, balance_due, remarks, source_doc_id, source_doc_type, source_doc_ref, posted_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Draft', 0, 0, 0, 0, ?, ?, ?, ?, ?)
-        """, (doc_ref, doc_type, doc_date, due_date, customer_id, warehouse_id, branch_id, remarks, source_doc_id, source_doc_type, source_doc_ref, session.get('user_id')))
+            (doc_ref, doc_type, doc_date, due_date, customer_id, warehouse_id, branch_id, status, subtotal, tax_total, total, balance_due, remarks, source_doc_id, source_doc_type, source_doc_ref, posted_by, contact_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?, ?)
+        """, (doc_ref, doc_type, doc_date, due_date, customer_id, warehouse_id, branch_id, initial_status, remarks, source_doc_id, source_doc_type, source_doc_ref, session.get('user_id'), contact_id))
         doc_id = cursor.lastrowid
         
         for i in range(len(item_ids)):
@@ -506,6 +511,25 @@ def doc_post(doc_kind, id):
                     post_journal(conn, doc['doc_ref'] + '-COGS', doc['doc_date'], 'Sales', 'Invoice-COGS', id,
                                  f"COGS {doc['doc_ref']}", cogs_lines, session.get('user_id'), branch_id=doc['branch_id'])
         
+    elif doc_type == 'Down Payment Invoice':
+        # AR Down Payment: Debits Accounts Receivable (1200), Credits Customer Down Payments (2120)
+        ar_acc = conn.execute("SELECT id FROM coa WHERE code='1200'").fetchone()
+        dp_acc = conn.execute("SELECT id FROM coa WHERE code='2120'").fetchone()
+        tax_acc = conn.execute("SELECT id FROM coa WHERE code='2210'").fetchone()
+        
+        ar_id = ar_acc['id'] if ar_acc else 1
+        dp_id = dp_acc['id'] if dp_acc else 2
+        tax_id = tax_acc['id'] if tax_acc else 3
+        
+        j_lines = [
+            (ar_id, doc['customer_id'], doc['total'], 0, f"AR Down Payment {doc['doc_ref']}"),
+            (dp_id, doc['customer_id'], 0, doc['subtotal'], f"Customer Advance {doc['doc_ref']}")
+        ]
+        if doc['tax_total'] > 0:
+            j_lines.append((tax_id, None, 0, doc['tax_total'], f"Tax {doc['doc_ref']}"))
+        post_journal(conn, doc['doc_ref'], doc['doc_date'], 'Sales', doc_type, id, f"Down Payment {doc['doc_ref']}", j_lines, session.get('user_id'), branch_id=doc['branch_id'])
+        conn.execute("UPDATE partners SET balance = balance + ? WHERE id = ?", (doc['total'], doc['customer_id']))
+
     elif doc_type == 'Sales Return':
         # Re-stock items and credit AR
         for line in lines:
@@ -541,6 +565,8 @@ def doc_print(doc_kind, id):
         LEFT JOIN partners p ON d.customer_id = p.id
         WHERE d.id = ?
     """, (id,)).fetchone()
+    if not doc:
+        abort(404)
     
     lines = conn.execute("""
         SELECT l.*, i.name as item_name, i.code as item_code

@@ -18,57 +18,76 @@
     <form method="POST" action="{{ url_for('bp_master.archive_partner', id=partner.id) }}" style="display:inline;">
       <button class="btn btn-secondary btn-sm">{{ 'Activate' if partner.status == 'Archived' else 'Archive' }}</button>
     </form>
+    <a href="{{ url_for('bp_master.edit_partner', id=partner.id) }}" class="btn btn-secondary btn-sm">
+      <i data-feather="edit" style="width:14px;height:14px;"></i> Edit Partner
+    </a>
     <a href="{{ url_for('bp_master.partner_statement', id=partner.id) }}" class="btn btn-primary btn-sm">
       <i data-feather="file-text" style="width:14px;height:14px;"></i> View Statement
     </a>
   </div>
 </div>
 
-<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 24px;">
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px;">
   <div class="card p-4 m-0">
     <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Contact Information</h4>
     <div class="detail-grid" style="padding:0; background:transparent; border:none; margin:0;">
       <div><div class="detail-label">Phone</div><div class="detail-value">{{ partner.phone or 'None' }}</div></div>
       <div><div class="detail-label">Email</div><div class="detail-value">{{ partner.email or 'None' }}</div></div>
       <div><div class="detail-label">Address</div><div class="detail-value">{{ partner.address or 'None' }}</div></div>
-      <div><div class="detail-label">Tax ID</div><div class="detail-value">{{ partner.tax_id or 'None' }}</div></div>
+      <div><div class="detail-label">Tax ID / PIN</div><div class="detail-value">{{ partner.tax_id or 'None' }}</div></div>
     </div>
   </div>
 
   <div class="card p-4 m-0">
-    <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Financial Summary</h4>
+    <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Commercial Terms (SAP)</h4>
     <div class="detail-grid" style="padding:0; background:transparent; border:none; margin:0;">
-      <div><div class="detail-label">Outstanding Balance</div><div class="detail-value text-erp-gold font-bold">KES {{ "%.2f"|format(partner.balance or 0) }}</div></div>
+      <div><div class="detail-label">BP Group</div><div class="detail-value font-bold" style="color:var(--gold-dark);">{{ partner.group_name or 'Default' }}</div></div>
+      <div><div class="detail-label">Payment Terms</div><div class="detail-value">{{ partner.payment_term_name or (partner.payment_terms or 'Net 30 Days') }}</div></div>
+      <div><div class="detail-label">Price List</div><div class="detail-value">{{ partner.price_list_name or 'Base Price List' }}</div></div>
       <div><div class="detail-label">Credit Limit</div><div class="detail-value">KES {{ "%.2f"|format(partner.credit_limit or 0) }}</div></div>
-      <div><div class="detail-label">Payment Terms</div><div class="detail-value">{{ partner.payment_terms or 'None' }}</div></div>
+    </div>
+  </div>
+
+  <div class="card p-4 m-0">
+    <h4 style="margin:0 0 14px 0; font-size:14px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em;">Financial Balance</h4>
+    <div class="detail-grid" style="padding:0; background:transparent; border:none; margin:0;">
+      <div><div class="detail-label">Outstanding Balance</div><div class="detail-value text-erp-gold font-bold" style="font-size:18px;">KES {{ "%.2f"|format(partner.balance or 0) }}</div></div>
       <div><div class="detail-label">Currency</div><div class="detail-value">{{ partner.currency or 'KES' }}</div></div>
+      <div><div class="detail-label">Account Status</div><div class="detail-value"><span class="badge {% if partner.status=='Active' %}badge-posted{% else %}badge-cancelled{% endif %}">{{ partner.status }}</span></div></div>
+      <div><div class="detail-label">Statement</div><div class="detail-value"><a href="{{ url_for('bp_master.partner_statement', id=partner.id) }}" style="color:var(--gold);">Full Ledger →</a></div></div>
     </div>
   </div>
 </div>
 
 <div class="card table-card">
   <div style="padding: 16px 20px 0; border-bottom: 1px solid var(--border);">
-    <ul class="nav-tabs" style="margin:0; border:none;">
+    <ul class="nav-tabs" style="margin:0; border:none; display:flex; gap:12px;">
       <li class="nav-item">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sales" type="button">
-          <i data-feather="shopping-cart" style="width:15px;height:15px;"></i> Sales Transactions
+        <button class="nav-link tab-btn active" onclick="switchTab('sales', this)" type="button">
+          <i data-feather="shopping-cart" style="width:15px;height:15px;"></i> Sales ({{ sales|length }})
         </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#purchases" type="button">
-          <i data-feather="truck" style="width:15px;height:15px;"></i> Purchases
+        <button class="nav-link tab-btn" onclick="switchTab('purchases', this)" type="button">
+          <i data-feather="truck" style="width:15px;height:15px;"></i> Purchases ({{ purchases|length }})
         </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#payments" type="button">
-          <i data-feather="dollar-sign" style="width:15px;height:15px;"></i> Payments
+        <button class="nav-link tab-btn" onclick="switchTab('payments', this)" type="button">
+          <i data-feather="dollar-sign" style="width:15px;height:15px;"></i> Payments ({{ payments|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link tab-btn" onclick="switchTab('contacts', this)" type="button">
+          <i data-feather="users" style="width:15px;height:15px;"></i> Contact Persons ({{ contacts|length }})
         </button>
       </li>
     </ul>
   </div>
 
   <div class="tab-content" style="padding:0;">
-    <div class="tab-pane active show" id="sales" style="display:block;">
+    <div class="tab-pane" id="tab-sales" style="display:block;">
       <table class="table">
         <thead>
           <tr><th>Doc Ref</th><th>Date</th><th>Type</th><th>Total</th><th>Balance Due</th><th>Status</th></tr>
@@ -90,7 +109,7 @@
       </table>
     </div>
 
-    <div class="tab-pane" id="purchases" style="display:none;">
+    <div class="tab-pane" id="tab-purchases" style="display:none;">
       <table class="table">
         <thead>
           <tr><th>Doc Ref</th><th>Date</th><th>Type</th><th>Total</th><th>Status</th></tr>
@@ -111,7 +130,7 @@
       </table>
     </div>
 
-    <div class="tab-pane" id="payments" style="display:none;">
+    <div class="tab-pane" id="tab-payments" style="display:none;">
       <table class="table">
         <thead>
           <tr><th>Payment Ref</th><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr>
@@ -131,6 +150,104 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Contact Persons Tab (SAP OCPR) -->
+    <div class="tab-pane" id="tab-contacts" style="display:none;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h4 style="margin:0; font-size:14px; font-weight:700;">Contact Persons (SAP OCPR)</h4>
+          <span style="font-size:12px; color:var(--text-muted);">Authorized contacts, branch managers, or buyers for this partner.</span>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('newContactCard').style.display='block'">
+          <i data-feather="plus" style="width:14px;height:14px;"></i> Add Contact Person
+        </button>
+      </div>
+
+      <!-- Quick Add Contact Form (hidden by default) -->
+      <div id="newContactCard" style="display:none; padding:16px 20px; background:var(--bg); border-bottom:1px solid var(--border);">
+        <form method="POST" action="{{ url_for('bp_master.new_contact', id=partner.id) }}">
+          <h5 style="margin:0 0 12px 0; font-size:13px; font-weight:700; color:var(--gold);">New Contact Person Details</h5>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+            <div>
+              <label class="form-label" style="font-size:11px;">Full Name *</label>
+              <input type="text" name="name" class="form-control" placeholder="e.g. Alice Smith" required>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;">Position / Title</label>
+              <input type="text" name="position" class="form-control" placeholder="e.g. Procurement Mgr">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;">Email Address</label>
+              <input type="email" name="email" class="form-control" placeholder="e.g. alice@supplier.com">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;">Office Phone</label>
+              <input type="text" name="phone" class="form-control" placeholder="e.g. +254 20 1234567">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;">Mobile</label>
+              <input type="text" name="mobile" class="form-control" placeholder="e.g. +254 700 123456">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; margin-top:20px;">
+              <input type="checkbox" name="is_default" id="isDefaultContact">
+              <label for="isDefaultContact" class="form-label" style="margin:0; font-size:11px; cursor:pointer;">Default Contact</label>
+            </div>
+          </div>
+          <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('newContactCard').style.display='none'">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Contact</button>
+          </div>
+        </form>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Position</th>
+            <th>Email</th>
+            <th>Phone / Mobile</th>
+            <th>Primary</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contacts %}
+          <tr>
+            <td class="font-bold">{{ c.name }}</td>
+            <td>{{ c.position or '-' }}</td>
+            <td>{{ c.email or '-' }}</td>
+            <td>{{ c.phone or c.mobile or '-' }}</td>
+            <td>{% if c.is_default %}<span class="badge badge-posted">Default</span>{% else %}-{% endif %}</td>
+            <td>
+              <form method="POST" action="{{ url_for('bp_master.delete_contact', cid=c.id) }}" onsubmit="return confirm('Remove contact {{ c.name }}?');" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center" style="padding:24px; color:var(--text-muted);">
+              No contact persons on record. Click <strong>Add Contact Person</strong> above to add representatives.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
+
+<script>
+function switchTab(tabId, btn) {
+  ['sales', 'purchases', 'payments', 'contacts'].forEach(t => {
+    const pane = document.getElementById('tab-' + t);
+    if (pane) pane.style.display = (t === tabId) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (window.feather) feather.replace();
+}
+</script>
+
 {% endblock %}

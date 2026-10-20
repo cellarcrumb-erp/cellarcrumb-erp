@@ -77,6 +77,44 @@
         <label class="form-label">Physical / Postal Address</label>
         <textarea name="address" class="form-control" rows="3" placeholder="e.g. Industrial Area, Nairobi">{{ partner.address if partner else '' }}</textarea>
       </div>
+
+      <!-- SAP Business One Parameters -->
+      <div class="form-group">
+        <label class="form-label">BP Group (OCRG)</label>
+        <select name="group_id" class="form-control">
+          <option value="">-- No Group Assigned --</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}" {% if partner and partner.group_id == g.id %}selected{% endif %}>
+            {{ g.name }} ({{ g.group_type }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Payment Terms (OCTG)</label>
+        <select name="payment_term_id" class="form-control">
+          <option value="">-- Default (Net 30 Days) --</option>
+          {% for pt in payment_terms %}
+          <option value="{{ pt.id }}" {% if partner and partner.payment_term_id == pt.id %}selected{% endif %}>
+            {{ pt.name }} ({{ pt.due_days }}d{% if pt.discount_pct %}, {{ pt.discount_pct }}% disc{% endif %})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Default Price List (OPLN)</label>
+        <select name="price_list_id" class="form-control">
+          <option value="">-- Base Price List --</option>
+          {% for pl in price_lists %}
+          <option value="{{ pl.id }}" {% if partner and partner.price_list_id == pl.id %}selected{% endif %}>
+            {{ pl.name }} ({{ pl.currency or 'KES' }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
     </div>
 
     <div class="form-actions" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;">

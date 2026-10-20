@@ -1108,4 +1108,74 @@ def delete_backup(filename):
         flash('Backup file not found.', 'error')
     return redirect(url_for('settings.backups'))
 
+# ── Payment Terms (SAP OCTG) ─────────────────────────────────────────────────
+@settings_bp.route('/payment-terms')
+@login_required
+@require_permission('settings', 'read')
+def payment_terms():
+    conn = get_db()
+    terms = conn.execute("SELECT * FROM payment_terms ORDER BY due_days ASC").fetchall()
+    return render_template('settings/payment_terms.html', terms=terms)
+
+
+@settings_bp.route('/payment-terms/new', methods=['GET', 'POST'])
+@login_required
+@require_permission('settings', 'write')
+def new_payment_term():
+    conn = get_db()
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip().upper()
+        name = request.form.get('name', '').strip()
+        due_days = request.form.get('due_days', type=int) or 0
+        discount_days = request.form.get('discount_days', type=int) or 0
+        discount_pct = request.form.get('discount_pct', type=float) or 0.0
+        is_active = 1 if request.form.get('is_active') == 'on' else 0
+        if not code or not name:
+            flash('Code and Name are required.', 'error')
+            return redirect(request.url)
+        try:
+            conn.execute("""
+                INSERT INTO payment_terms (code, name, due_days, discount_days, discount_pct, is_active)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (code, name, due_days, discount_days, discount_pct, is_active))
+            conn.commit()
+            log_audit(conn, session['user_id'], 'Settings', 'Create', 'PaymentTerm', None, f"Created payment term {code}")
+            flash(f"Payment Term '{name}' created.", "success")
+            return redirect(url_for('settings.payment_terms'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error: {e}", 'error')
+    return render_template('settings/payment_term_form.html', term=None)
+
+
+@settings_bp.route('/payment-terms/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('settings', 'write')
+def edit_payment_term(id):
+    conn = get_db()
+    term = conn.execute("SELECT * FROM payment_terms WHERE id = ?", (id,)).fetchone()
+    if not term:
+        flash('Payment term not found.', 'error')
+        return redirect(url_for('settings.payment_terms'))
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        due_days = request.form.get('due_days', type=int) or 0
+        discount_days = request.form.get('discount_days', type=int) or 0
+        discount_pct = request.form.get('discount_pct', type=float) or 0.0
+        is_active = 1 if request.form.get('is_active') == 'on' else 0
+        try:
+            conn.execute("""
+                UPDATE payment_terms SET name=?, due_days=?, discount_days=?, discount_pct=?, is_active=?
+                WHERE id=?
+            """, (name, due_days, discount_days, discount_pct, is_active, id))
+            conn.commit()
+            log_audit(conn, session['user_id'], 'Settings', 'Edit', 'PaymentTerm', id, f"Updated payment term {term['code']}")
+            flash('Payment Term updated.', 'success')
+            return redirect(url_for('settings.payment_terms'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error: {e}", 'error')
+    return render_template('settings/payment_term_form.html', term=term)
+
+
 

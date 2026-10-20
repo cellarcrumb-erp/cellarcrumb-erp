@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}New Special Price (SAP SPP1){% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('inventory.index') }}">Inventory</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ url_for('inventory.special_prices') }}">Special Prices</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>New</span>
+</div>
+<div class="card form-card" style="max-width:650px;">
+  <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+    <h3 class="card-title">New Special Price for Business Partner</h3>
+  </div>
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Business Partner *</label>
+        <select name="partner_id" class="form-control" required>
+          <option value="">-- Select Partner --</option>
+          {% for p in partners %}
+          <option value="{{ p.id }}">{{ p.name }} ({{ p.code }}) - {{ p.partner_type }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label">Item *</label>
+        <select name="item_id" class="form-control" required id="itemSelect" onchange="updateBasePrice()">
+          <option value="">-- Select Item --</option>
+          {% for i in items %}
+          <option value="{{ i.id }}" data-price="{{ i.price }}" data-cost="{{ i.cost }}">{{ i.code }} - {{ i.name }} (Base: KES {{ "%.2f"|format(i.price or 0) }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Special Price *</label>
+        <input type="number" step="0.01" name="price" id="priceInput" class="form-control" placeholder="0.00" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Additional Discount (%)</label>
+        <input type="number" step="0.1" name="discount_pct" class="form-control" placeholder="0.0" value="0.0" min="0" max="100">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Valid From</label>
+        <input type="date" name="valid_from" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Valid To</label>
+        <input type="date" name="valid_to" class="form-control">
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:28px;">
+        <input type="checkbox" name="is_active" id="isActive" checked>
+        <label for="isActive" class="form-label" style="margin:0; cursor:pointer;">Active</label>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:8px;">
+      <a href="{{ url_for('inventory.special_prices') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Create Special Price</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateBasePrice() {
+  const sel = document.getElementById('itemSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const pInput = document.getElementById('priceInput');
+  if (opt && opt.getAttribute('data-price') && !pInput.value) {
+    pInput.value = parseFloat(opt.getAttribute('data-price')).toFixed(2);
+  }
+}
+</script>
+{% endblock %}

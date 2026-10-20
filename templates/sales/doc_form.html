@@ -32,7 +32,7 @@
         <span>Drawing from base document: <strong id="baseDocBannerRef">{{ doc.doc_ref if doc else '' }}</strong> (<span id="baseDocBannerType">{{ copy_from_type }}</span>)</span>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
             <select name="customer_id" id="customerSelect" required class="w-full border rounded p-2 text-sm" onchange="onCustomerChange()">
@@ -40,6 +40,12 @@
                 {% for c in customers %}
                 <option value="{{ c.id }}" {% if doc and doc.customer_id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>
                 {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person (OCPR)</label>
+            <select name="contact_id" id="contactSelect" class="w-full border rounded p-2 text-sm">
+                <option value="">-- Main Contact --</option>
             </select>
         </div>
         <div>
@@ -53,12 +59,12 @@
             </select>
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-            <input type="date" name="doc_date" required class="w-full border rounded p-2 text-sm" value="{{ doc.doc_date if doc else today }}">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Doc Date *</label>
+            <input type="date" name="doc_date" id="docDateInput" required class="w-full border rounded p-2 text-sm" value="{{ doc.doc_date if doc else today }}">
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-            <input type="date" name="due_date" class="w-full border rounded p-2 text-sm" value="{{ doc.due_date if doc else '' }}">
+            <input type="date" name="due_date" id="dueDateInput" class="w-full border rounded p-2 text-sm" value="{{ doc.due_date if doc else '' }}">
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
@@ -107,7 +113,8 @@
 
     <div class="flex justify-end gap-2">
         <a href="{{ url_for('sales.doc_list', doc_kind=doc_kind) }}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">Save {{ doc_type }}</button>
+        <button type="submit" name="is_draft" value="1" class="btn btn-secondary">Save as Draft (ODRF)</button>
+        <button type="submit" class="btn btn-primary">Save &amp; Confirm</button>
     </div>
 </form>
 
@@ -176,13 +183,33 @@
     const PREFILLED_LINES = {{ prefilled_lines | tojson | safe }};
     const CURRENT_DOC_TYPE = "{{ doc_type }}";
 
+    let currentPartnerPriceListId = null;
+
     function itemChanged(sel) {
         const row = sel.closest('tr');
         const id = sel.value;
-        if(id && ITEMS[id]) {
-            row.querySelector('.price-input').value = ITEMS[id].price.toFixed(2);
-            recalc(row.querySelector('.price-input'));
-        }
+        if(!id || !ITEMS[id]) return;
+
+        const customerId = document.getElementById('customerSelect').value;
+        // Call SAP Pricing engine
+        fetch(`/inventory/api/resolve-price?item_id=${id}${customerId ? '&partner_id=' + customerId : ''}${currentPartnerPriceListId ? '&price_list_id=' + currentPartnerPriceListId : ''}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.price !== undefined) {
+                    row.querySelector('.price-input').value = parseFloat(data.price).toFixed(2);
+                    if (data.discount_pct !== undefined && data.discount_pct > 0) {
+                        row.querySelector('.disc-input').value = parseFloat(data.discount_pct).toFixed(2);
+                    }
+                    recalc(row.querySelector('.price-input'));
+                } else {
+                    row.querySelector('.price-input').value = ITEMS[id].price.toFixed(2);
+                    recalc(row.querySelector('.price-input'));
+                }
+            })
+            .catch(() => {
+                row.querySelector('.price-input').value = ITEMS[id].price.toFixed(2);
+                recalc(row.querySelector('.price-input'));
+            });
     }
     
     function recalc(input) {
@@ -381,7 +408,43 @@
     }
 
     function onCustomerChange() {
-        // Can reload eligible sources if needed
+        const custId = document.getElementById('customerSelect').value;
+        const contactSel = document.getElementById('contactSelect');
+        const dueDateInput = document.getElementById('dueDateInput');
+        const docDateInput = document.getElementById('docDateInput');
+
+        if (!custId) {
+            currentPartnerPriceListId = null;
+            if (contactSel) contactSel.innerHTML = '<option value="">-- Main Contact --</option>';
+            return;
+        }
+
+        fetch(`/bp/api/partner-info/${custId}`)
+            .then(res => res.json())
+            .then(data => {
+                currentPartnerPriceListId = data.price_list_id;
+
+                // Auto-calculate Due Date based on SAP Payment Terms (OCTG)
+                if (data.due_days !== undefined && docDateInput && docDateInput.value) {
+                    const baseDate = new Date(docDateInput.value);
+                    baseDate.setDate(baseDate.getDate() + parseInt(data.due_days));
+                    if (dueDateInput) {
+                        dueDateInput.value = baseDate.toISOString().split('T')[0];
+                    }
+                }
+
+                // Populate Contact Persons (OCPR)
+                if (contactSel) {
+                    let opt = '<option value="">-- Main Contact --</option>';
+                    if (data.contacts && data.contacts.length > 0) {
+                        data.contacts.forEach(c => {
+                            opt += `<option value="${c.id}" ${c.is_default ? 'selected' : ''}>${c.name} ${c.position ? '(' + c.position + ')' : ''}</option>`;
+                        });
+                    }
+                    contactSel.innerHTML = opt;
+                }
+            })
+            .catch(err => console.error('Error fetching partner info:', err));
     }
 
     // Initialize lines

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_title %}Price Lists (SAP OPLN){% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('inventory.index') }}">Inventory</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Price Lists</span>
+</div>
+<div class="actions-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <div>
+    <h2 style="font-size:18px; font-weight:700; color:var(--text);">Price Lists (SAP OPLN)</h2>
+    <p style="font-size:12px; color:var(--text-muted); margin:0;">Define customer, wholesale, and supplier price lists for item master data.</p>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <a href="{{ url_for('inventory.special_prices') }}" class="btn btn-secondary">
+      <i data-feather="tag" style="width:14px;height:14px;"></i> Special Prices (SPP1)
+    </a>
+    <a href="{{ url_for('inventory.new_price_list') }}" class="btn btn-primary">
+      <i data-feather="plus" style="width:14px;height:14px;"></i> New Price List
+    </a>
+  </div>
+</div>
+<div class="card table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>List Code</th>
+        <th>Price List Name</th>
+        <th>Currency</th>
+        <th>Custom Items</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pl in price_lists %}
+      <tr>
+        <td class="font-bold" style="color:var(--gold-dark);">{{ pl.code }}</td>
+        <td>{{ pl.name }}</td>
+        <td><span class="badge badge-info">{{ pl.currency or 'KES' }}</span></td>
+        <td>{{ pl.item_count }} items priced</td>
+        <td><span class="badge {% if pl.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">{{ 'Active' if pl.is_active else 'Inactive' }}</span></td>
+        <td style="display:flex; gap:6px;">
+          <a href="{{ url_for('inventory.price_list_items', id=pl.id) }}" class="btn btn-sm btn-primary">
+            <i data-feather="list" style="width:12px;height:12px;"></i> Set Prices
+          </a>
+          <a href="{{ url_for('inventory.edit_price_list', id=pl.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

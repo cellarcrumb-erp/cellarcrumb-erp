@@ -28,7 +28,7 @@ def departments():
         FROM departments d 
         LEFT JOIN employees e ON d.id = e.department_id 
         LEFT JOIN employees m ON d.manager_id = m.id
-        GROUP BY d.id
+        GROUP BY d.id, m.full_name
     ''').fetchall()
     return render_template('hr/departments.html', departments=depts)
 
@@ -72,7 +72,7 @@ def job_titles():
         FROM job_titles j
         LEFT JOIN departments d ON j.department_id = d.id
         LEFT JOIN employees e ON j.id = e.job_title_id
-        GROUP BY j.id
+        GROUP BY j.id, d.name
     ''').fetchall()
     return render_template('hr/job_titles.html', job_titles=titles)
 
@@ -323,7 +323,7 @@ def report_headcount():
                SUM(CASE WHEN e.status='Inactive' THEN 1 ELSE 0 END) as inactive
         FROM departments d
         LEFT JOIN employees e ON d.id = e.department_id
-        GROUP BY d.id
+        GROUP BY d.id, d.name
     ''').fetchall()
     type_summary = conn.execute('''
         SELECT employment_type, COUNT(*) as count 
@@ -354,6 +354,6 @@ def report_leave():
         FROM employees e
         LEFT JOIN departments d ON e.department_id = d.id
         LEFT JOIN leave_records l ON e.id = l.employee_id AND l.start_date >= ? AND l.end_date <= ?
-        GROUP BY e.id
+        GROUP BY e.id, e.full_name, e.emp_no, d.name
     ''', (from_date, to_date)).fetchall()
     return render_template('hr/report_leave.html', leave_summary=leave_summary, from_date=from_date, to_date=to_date)

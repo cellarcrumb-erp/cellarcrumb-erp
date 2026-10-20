@@ -758,3 +758,260 @@ def report_stock_ledger():
     items = conn.execute("SELECT id, code, name FROM items WHERE is_stock_item=1").fetchall()
     whs = conn.execute("SELECT id, name FROM warehouses WHERE is_active=1").fetchall()
     return render_template('inventory/report_stock_ledger.html', entries=entries, items=items, warehouses=whs)
+
+# ── Price Lists & Special Prices (SAP OPLN, ITM1, SPP1) ──────────────────────
+@inventory_bp.route('/price-lists')
+@login_required
+@require_permission('inventory', 'read')
+def price_lists():
+    conn = get_db()
+    lists = conn.execute("""
+        SELECT pl.*, 
+               (SELECT COUNT(*) FROM item_prices ip WHERE ip.price_list_id = pl.id) as item_count
+        FROM price_lists pl
+        ORDER BY pl.id ASC
+    """).fetchall()
+    return render_template('inventory/price_lists.html', price_lists=lists)
+
+
+@inventory_bp.route('/price-lists/new', methods=['GET', 'POST'])
+@login_required
+@require_permission('inventory', 'write')
+def new_price_list():
+    conn = get_db()
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip().upper()
+        name = request.form.get('name', '').strip()
+        currency = request.form.get('currency', 'KES').strip()
+        is_active = 1 if request.form.get('is_active') == 'on' else 0
+        if not code or not name:
+            flash('Code and Name are required.', 'error')
+            return redirect(request.url)
+        try:
+            conn.execute("""
+                INSERT INTO price_lists (code, name, currency, is_active, created_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+            """, (code, name, currency, is_active))
+            conn.commit()
+            log_audit(conn, session.get('user_id'), 'Inventory', 'Create', 'PriceList', None, f"Created Price List {code}")
+            flash(f"Price List {name} created successfully.", "success")
+            return redirect(url_for('inventory.price_lists'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error creating price list: {e}", 'error')
+    currencies = conn.execute("SELECT code, name FROM currencies").fetchall()
+    return render_template('inventory/price_list_form.html', price_list=None, currencies=currencies)
+
+
+@inventory_bp.route('/price-lists/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('inventory', 'write')
+def edit_price_list(id):
+    conn = get_db()
+    pl = conn.execute("SELECT * FROM price_lists WHERE id = ?", (id,)).fetchone()
+    if not pl:
+        flash("Price List not found.", "error")
+        return redirect(url_for('inventory.price_lists'))
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        currency = request.form.get('currency', 'KES').strip()
+        is_active = 1 if request.form.get('is_active') == 'on' else 0
+        try:
+            conn.execute("UPDATE price_lists SET name = ?, currency = ?, is_active = ? WHERE id = ?",
+                         (name, currency, is_active, id))
+            conn.commit()
+            log_audit(conn, session.get('user_id'), 'Inventory', 'Edit', 'PriceList', id, f"Updated Price List {pl['code']}")
+            flash("Price List updated successfully.", "success")
+            return redirect(url_for('inventory.price_lists'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error updating price list: {e}", 'error')
+    currencies = conn.execute("SELECT code, name FROM currencies").fetchall()
+    return render_template('inventory/price_list_form.html', price_list=pl, currencies=currencies)
+
+
+@inventory_bp.route('/price-lists/<int:id>/items', methods=['GET', 'POST'])
+@login_required
+@require_permission('inventory', 'write')
+def price_list_items(id):
+    conn = get_db()
+    pl = conn.execute("SELECT * FROM price_lists WHERE id = ?", (id,)).fetchone()
+    if not pl:
+        flash("Price List not found.", "error")
+        return redirect(url_for('inventory.price_lists'))
+
+    if request.method == 'POST':
+        item_ids = request.form.getlist('item_id[]')
+        prices = request.form.getlist('price[]')
+        try:
+            for iid_str, p_str in zip(item_ids, prices):
+                if not iid_str: continue
+                iid = int(iid_str)
+                price_val = float(p_str) if p_str and p_str.strip() else None
+                if price_val is not None:
+                    existing = conn.execute("SELECT id FROM item_prices WHERE price_list_id = ? AND item_id = ?",
+                                            (id, iid)).fetchone()
+                    if existing:
+                        conn.execute("UPDATE item_prices SET price = ? WHERE id = ?", (price_val, existing['id']))
+                    else:
+                        conn.execute("INSERT INTO item_prices (price_list_id, item_id, price) VALUES (?, ?, ?)",
+                                     (id, iid, price_val))
+                else:
+                    conn.execute("DELETE FROM item_prices WHERE price_list_id = ? AND item_id = ?", (id, iid))
+            conn.commit()
+            log_audit(conn, session.get('user_id'), 'Inventory', 'UpdatePrices', 'PriceList', id, f"Updated prices for {pl['name']}")
+            flash(f"Prices for '{pl['name']}' saved successfully.", "success")
+            return redirect(url_for('inventory.price_lists'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error saving prices: {e}", 'error')
+
+    items = conn.execute("""
+        SELECT i.id, i.code, i.name, i.item_type, i.cost, i.price as base_price,
+               ip.price as list_price
+        FROM items i
+        LEFT JOIN item_prices ip ON ip.item_id = i.id AND ip.price_list_id = ?
+        WHERE i.is_active = 1
+        ORDER BY i.code ASC
+    """, (id,)).fetchall()
+    return render_template('inventory/price_list_items.html', price_list=pl, items=items)
+
+
+@inventory_bp.route('/special-prices')
+@login_required
+@require_permission('inventory', 'read')
+def special_prices():
+    conn = get_db()
+    partner_id = request.args.get('partner_id', type=int)
+    query = """
+        SELECT sp.*, p.name as partner_name, p.code as partner_code,
+               i.code as item_code, i.name as item_name, i.price as base_price
+        FROM special_prices sp
+        JOIN partners p ON sp.partner_id = p.id
+        JOIN items i ON sp.item_id = i.id
+        WHERE 1=1
+    """
+    params = []
+    if partner_id:
+        query += " AND sp.partner_id = ?"
+        params.append(partner_id)
+    query += " ORDER BY p.name ASC, i.code ASC"
+    rows = conn.execute(query, params).fetchall()
+    partners = conn.execute("SELECT id, code, name FROM partners ORDER BY name ASC").fetchall()
+    return render_template('inventory/special_prices.html', special_prices=rows, partners=partners, current_partner_id=partner_id)
+
+
+@inventory_bp.route('/special-prices/new', methods=['GET', 'POST'])
+@login_required
+@require_permission('inventory', 'write')
+def new_special_price():
+    conn = get_db()
+    if request.method == 'POST':
+        partner_id = request.form.get('partner_id', type=int)
+        item_id = request.form.get('item_id', type=int)
+        price = request.form.get('price', type=float) or 0.0
+        discount_pct = request.form.get('discount_pct', type=float) or 0.0
+        valid_from = request.form.get('valid_from') or None
+        valid_to = request.form.get('valid_to') or None
+        is_active = 1 if request.form.get('is_active') == 'on' else 0
+        if not partner_id or not item_id:
+            flash('Partner and Item are required.', 'error')
+            return redirect(request.url)
+        try:
+            conn.execute("""
+                INSERT INTO special_prices (partner_id, item_id, price, discount_pct, valid_from, valid_to, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (partner_id, item_id, price, discount_pct, valid_from, valid_to, is_active))
+            conn.commit()
+            log_audit(conn, session.get('user_id'), 'Inventory', 'Create', 'SpecialPrice', None, f"Created special price for partner {partner_id}")
+            flash('Special Price created successfully.', 'success')
+            return redirect(url_for('inventory.special_prices'))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error creating special price: {e}", 'error')
+
+    partners = conn.execute("SELECT id, code, name, partner_type FROM partners ORDER BY name ASC").fetchall()
+    items = conn.execute("SELECT id, code, name, price, cost FROM items WHERE is_active = 1 ORDER BY code ASC").fetchall()
+    return render_template('inventory/special_price_form.html', partners=partners, items=items)
+
+
+@inventory_bp.route('/special-prices/<int:id>/delete', methods=['POST'])
+@login_required
+@require_permission('inventory', 'write')
+def delete_special_price(id):
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM special_prices WHERE id = ?", (id,))
+        conn.commit()
+        log_audit(conn, session.get('user_id'), 'Inventory', 'Delete', 'SpecialPrice', id, f"Deleted special price {id}")
+        flash('Special Price deleted.', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error: {e}", 'error')
+    return redirect(url_for('inventory.special_prices'))
+
+
+@inventory_bp.route('/api/resolve-price')
+@login_required
+def resolve_price_api():
+    """Resolve price for item given customer/partner and/or price list according to SAP hierarchy:
+    1. Special Prices for Business Partner (SPP1)
+    2. Price List assigned to Business Partner (ITM1 / OPLN)
+    3. Item master base price / cost
+    """
+    item_id = request.args.get('item_id', type=int)
+    partner_id = request.args.get('partner_id', type=int)
+    price_list_id = request.args.get('price_list_id', type=int)
+    today_str = date.today().isoformat()
+
+    if not item_id:
+        return jsonify({'error': 'item_id required'}), 400
+
+    conn = get_db()
+    item = conn.execute("SELECT id, code, name, price, cost FROM items WHERE id = ?", (item_id,)).fetchone()
+    if not item:
+        return jsonify({'error': 'item not found'}), 404
+
+    base_price = float(item['price'] or 0.0)
+
+    # 1. Check partner special prices
+    if partner_id:
+        sp = conn.execute("""
+            SELECT price, discount_pct FROM special_prices
+            WHERE partner_id = ? AND item_id = ? AND is_active = 1
+              AND (valid_from IS NULL OR valid_from <= ?)
+              AND (valid_to IS NULL OR valid_to >= ?)
+            ORDER BY id DESC LIMIT 1
+        """, (partner_id, item_id, today_str, today_str)).fetchone()
+        if sp:
+            return jsonify({
+                'price': float(sp['price']),
+                'discount_pct': float(sp['discount_pct'] or 0.0),
+                'source': 'special_price'
+            })
+
+        # If price_list_id was not provided in params, check partner's default price list
+        if not price_list_id:
+            p_row = conn.execute("SELECT price_list_id FROM partners WHERE id = ?", (partner_id,)).fetchone()
+            if p_row and p_row['price_list_id']:
+                price_list_id = p_row['price_list_id']
+
+    # 2. Check price list
+    if price_list_id:
+        ip = conn.execute("""
+            SELECT price FROM item_prices WHERE price_list_id = ? AND item_id = ?
+        """, (price_list_id, item_id)).fetchone()
+        if ip and ip['price'] is not None:
+            return jsonify({
+                'price': float(ip['price']),
+                'discount_pct': 0.0,
+                'source': 'price_list'
+            })
+
+    # 3. Base price fallback
+    return jsonify({
+        'price': base_price,
+        'discount_pct': 0.0,
+        'source': 'base'
+    })
+

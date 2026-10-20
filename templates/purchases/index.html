@@ -33,6 +33,23 @@
     </svg>
   </div>
 
+  <!-- PURCHASE QUOTATIONS -->
+  <div class="module-card mc-blue" onclick="window.location='{{ url_for('purchases.doc_list', doc_kind='quotations') }}'">
+    <a href="{{ url_for('purchases.doc_new', doc_kind='quotations') }}" class="mc-add" title="New Purchase Quotation" onclick="event.stopPropagation()">+</a>
+    <h3>Purchase Quotations</h3>
+    <p>Vendor bids and supplier price quotes (SAP OPQT).</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      {{ counts.quotations.count if counts.quotations else 0 }} Quotations
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="68" r="46" fill="rgba(37,99,235,0.1)"/>
+      <rect x="22" y="18" width="60" height="76" rx="7" fill="rgba(30,64,175,0.45)" stroke="rgba(96,165,250,0.55)" stroke-width="2"/>
+      <line x1="34" y1="48" x2="70" y2="48" stroke="rgba(147,197,253,0.5)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="34" y1="60" x2="70" y2="60" stroke="rgba(147,197,253,0.5)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+
   <!-- PURCHASE ORDERS -->
   <div class="module-card mc-gold" onclick="window.location='{{ url_for('purchases.doc_list', doc_kind='orders') }}'">
     <a href="{{ url_for('purchases.doc_new', doc_kind='orders') }}" class="mc-add" title="New Purchase Order" onclick="event.stopPropagation()">+</a>
@@ -103,6 +120,23 @@
       <rect x="52" y="78" width="60" height="10" fill="rgba(91,33,182,0.8)"/>
       <rect x="60" y="92" width="22" height="6" rx="2" fill="rgba(196,181,253,0.4)"/>
       <rect x="88" y="92" width="16" height="6" rx="2" fill="rgba(196,181,253,0.25)"/>
+    </svg>
+  </div>
+
+  <!-- DOWN PAYMENT INVOICES -->
+  <div class="module-card mc-teal" onclick="window.location='{{ url_for('purchases.doc_list', doc_kind='down_payments') }}'">
+    <a href="{{ url_for('purchases.doc_new', doc_kind='down_payments') }}" class="mc-add" title="New Down Payment Invoice" onclick="event.stopPropagation()">+</a>
+    <h3>Down Payment Invoices</h3>
+    <p>Supplier prepayments and advance deposits (SAP ODPO).</p>
+    <span class="mc-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      {{ counts.down_payments.count if counts.down_payments else 0 }} Down Payments
+    </span>
+    <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="68" cy="68" r="46" fill="rgba(13,148,136,0.12)"/>
+      <rect x="25" y="16" width="58" height="74" rx="7" fill="rgba(6,78,59,0.5)" stroke="rgba(45,212,191,0.5)" stroke-width="2"/>
+      <circle cx="54" cy="53" r="18" fill="rgba(13,148,136,0.7)" stroke="rgba(94,234,212,0.8)" stroke-width="2"/>
+      <text x="54" y="60" font-size="20" font-weight="900" text-anchor="middle" fill="rgba(94,234,212,0.95)">%</text>
     </svg>
   </div>
 
