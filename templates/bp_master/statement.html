@@ -97,7 +97,7 @@
             <td style="color:var(--text-secondary);font-size:12.5px;">{{ row.date }}</td>
             <td class="font-bold" style="color:var(--gold-dark);">{{ row.ref }}</td>
             <td>
-              <span class="badge {% if row.type == 'Invoice' %}badge-pending{% elif row.type == 'Credit Note' %}badge-posted{% else %}badge-draft{% endif %}" style="font-size:11px;">
+              <span class="badge {% if 'Bill' in row.type or 'Invoice' in row.type %}badge-pending{% elif 'Note' in row.type or 'Return' in row.type %}badge-posted{% elif 'Payment' in row.type %}badge-paid{% else %}badge-draft{% endif %}" style="font-size:11px;">
                 {{ row.type }}
               </span>
             </td>

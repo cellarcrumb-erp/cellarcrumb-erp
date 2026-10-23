@@ -117,20 +117,26 @@ def new_partner():
 @login_required
 def partner_detail(id):
     conn = get_db()
-    partner = conn.execute("""
-        SELECT p.*, g.name as group_name, pt.name as payment_term_name, pt.due_days, pl.name as price_list_name
-        FROM partners p
-        LEFT JOIN bp_groups g ON p.group_id = g.id
-        LEFT JOIN payment_terms pt ON p.payment_term_id = pt.id
-        LEFT JOIN price_lists pl ON p.price_list_id = pl.id
-        WHERE p.id = ?
-    """, (id,)).fetchone()
-    sales = conn.execute("SELECT * FROM sales_docs WHERE customer_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
-    purchases = conn.execute("SELECT * FROM purchase_docs WHERE supplier_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
-    payments = conn.execute("SELECT * FROM payments WHERE partner_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
-    contacts = conn.execute("SELECT * FROM bp_contacts WHERE partner_id = ? ORDER BY is_default DESC, name ASC", (id,)).fetchall()
-    
-    return render_template('bp_master/partner_detail.html', partner=partner, sales=sales, purchases=purchases, payments=payments, contacts=contacts)
+    try:
+        partner = conn.execute("""
+            SELECT p.*, g.name as group_name, pt.name as payment_term_name, pt.due_days, pl.name as price_list_name
+            FROM partners p
+            LEFT JOIN bp_groups g ON p.group_id = g.id
+            LEFT JOIN payment_terms pt ON p.payment_term_id = pt.id
+            LEFT JOIN price_lists pl ON p.price_list_id = pl.id
+            WHERE p.id = ?
+        """, (id,)).fetchone()
+        sales = conn.execute("SELECT * FROM sales_docs WHERE customer_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
+        purchases = conn.execute("SELECT * FROM purchase_docs WHERE supplier_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
+        payments = conn.execute("SELECT * FROM payments WHERE partner_id = ? ORDER BY id DESC LIMIT 10", (id,)).fetchall()
+        contacts = conn.execute("SELECT * FROM bp_contacts WHERE partner_id = ? ORDER BY is_default DESC, name ASC", (id,)).fetchall()
+        
+        return render_template('bp_master/partner_detail.html', partner=partner, sales=sales, purchases=purchases, payments=payments, contacts=contacts)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @bp_master_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -189,76 +195,131 @@ def archive_partner(id):
 @login_required
 def partner_statement(id):
     conn = get_db()
-    partner = conn.execute("SELECT * FROM partners WHERE id = ?", (id,)).fetchone()
-    if not partner:
-        flash('Partner not found.', 'error')
-        return redirect(url_for('bp_master.index'))
+    try:
+        partner = conn.execute("SELECT * FROM partners WHERE id = ?", (id,)).fetchone()
+        if not partner:
+            flash('Partner not found.', 'error')
+            return redirect(url_for('bp_master.index'))
 
-    date_from = request.args.get('date_from', '')
-    date_to   = request.args.get('date_to', '')
+        date_from = request.args.get('date_from', '')
+        date_to   = request.args.get('date_to', '')
 
-    rows = []
+        rows = []
 
-    # ── Sales Invoices (debit = charge to customer) ────────────────────────
-    q = """
-        SELECT doc_date as txn_date, doc_ref, 'Invoice' as txn_type,
-               total as debit, 0.0 as credit, status
-        FROM sales_docs
-        WHERE customer_id = ? AND doc_type = 'Invoice' AND status != 'Cancelled'
-    """
-    params = [id]
-    if date_from: q += " AND doc_date >= ?"; params.append(date_from)
-    if date_to:   q += " AND doc_date <= ?"; params.append(date_to)
-    rows += conn.execute(q, params).fetchall()
+        # ── 1. Sales Invoices (Customer Charge: increases receivable) ─────────
+        q_sales = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 
+                   CASE WHEN doc_type='Down Payment Invoice' THEN 'Down Payment Invoice' ELSE 'Sales Invoice' END as txn_type,
+                   CAST(total AS REAL) as debit, 0.0 as credit, CAST(status AS TEXT) as status
+            FROM sales_docs
+            WHERE customer_id = ? AND doc_type IN ('Invoice', 'Down Payment Invoice')
+              AND status IN ('Posted', 'Paid', 'Partial')
+        """
+        params_s = [id]
+        if date_from: q_sales += " AND CAST(doc_date AS TEXT) >= ?"; params_s.append(date_from)
+        if date_to:   q_sales += " AND CAST(doc_date AS TEXT) <= ?"; params_s.append(date_to)
+        rows += conn.execute(q_sales, params_s).fetchall()
 
-    # ── Sales Returns (credit = reduce AR) ────────────────────────────────
-    q = """
-        SELECT doc_date as txn_date, doc_ref, 'Credit Note' as txn_type,
-               0.0 as debit, total as credit, status
-        FROM sales_docs
-        WHERE customer_id = ? AND doc_type = 'Sales Return' AND status != 'Cancelled'
-    """
-    params = [id]
-    if date_from: q += " AND doc_date >= ?"; params.append(date_from)
-    if date_to:   q += " AND doc_date <= ?"; params.append(date_to)
-    rows += conn.execute(q, params).fetchall()
+        # ── 2. Sales Returns (Customer Credit Note: reduces receivable) ────────
+        q_s_ret = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 'Credit Note' as txn_type,
+                   0.0 as debit, CAST(total AS REAL) as credit, CAST(status AS TEXT) as status
+            FROM sales_docs
+            WHERE customer_id = ? AND doc_type IN ('Sales Return', 'Return')
+              AND status IN ('Posted', 'Paid', 'Partial')
+        """
+        params_sr = [id]
+        if date_from: q_s_ret += " AND CAST(doc_date AS TEXT) >= ?"; params_sr.append(date_from)
+        if date_to:   q_s_ret += " AND CAST(doc_date AS TEXT) <= ?"; params_sr.append(date_to)
+        rows += conn.execute(q_s_ret, params_sr).fetchall()
 
-    # ── Payments received from customer (credit = reduce AR) ───────────────
-    q = """
-        SELECT doc_date as txn_date, doc_ref, 'Payment' as txn_type,
-               0.0 as debit, amount as credit, status
-        FROM payments
-        WHERE partner_id = ? AND payment_type = 'Incoming' AND status = 'Posted'
-    """
-    params = [id]
-    if date_from: q += " AND doc_date >= ?"; params.append(date_from)
-    if date_to:   q += " AND doc_date <= ?"; params.append(date_to)
-    rows += conn.execute(q, params).fetchall()
+        # ── 3. Customer Incoming Payments (reduces receivable) ────────────────
+        q_pay_in = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 'Customer Payment' as txn_type,
+                   0.0 as debit, CAST(amount AS REAL) as credit, CAST(status AS TEXT) as status
+            FROM payments
+            WHERE partner_id = ? AND payment_type = 'Incoming' AND status = 'Posted'
+        """
+        params_pi = [id]
+        if date_from: q_pay_in += " AND CAST(doc_date AS TEXT) >= ?"; params_pi.append(date_from)
+        if date_to:   q_pay_in += " AND CAST(doc_date AS TEXT) <= ?"; params_pi.append(date_to)
+        rows += conn.execute(q_pay_in, params_pi).fetchall()
 
-    # Sort by date, then by doc_ref
-    transactions = sorted(rows, key=lambda r: (r['txn_date'], r['doc_ref']))
+        # ── 4. Supplier Bills (Supplier Charge: increases payable) ────────────
+        q_purch = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 
+                   CASE WHEN doc_type='Down Payment Invoice' THEN 'Down Payment Invoice' ELSE 'Supplier Bill' END as txn_type,
+                   CAST(total AS REAL) as debit, 0.0 as credit, CAST(status AS TEXT) as status
+            FROM purchase_docs
+            WHERE supplier_id = ? AND doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice')
+              AND status IN ('Posted', 'Paid', 'Partial')
+        """
+        params_p = [id]
+        if date_from: q_purch += " AND CAST(doc_date AS TEXT) >= ?"; params_p.append(date_from)
+        if date_to:   q_purch += " AND CAST(doc_date AS TEXT) <= ?"; params_p.append(date_to)
+        rows += conn.execute(q_purch, params_p).fetchall()
 
-    # Compute running balance (opening = 0, positive = owed by customer)
-    balance = 0.0
-    ledger = []
-    for t in transactions:
-        balance += float(t['debit'] or 0) - float(t['credit'] or 0)
-        ledger.append({
-            'date':     t['txn_date'],
-            'ref':      t['doc_ref'],
-            'type':     t['txn_type'],
-            'debit':    float(t['debit'] or 0),
-            'credit':   float(t['credit'] or 0),
-            'balance':  balance,
-            'status':   t['status'],
-        })
+        # ── 5. Purchase Returns (Debit Note: reduces payable) ─────────────────
+        q_p_ret = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 'Debit Note' as txn_type,
+                   0.0 as debit, CAST(total AS REAL) as credit, CAST(status AS TEXT) as status
+            FROM purchase_docs
+            WHERE supplier_id = ? AND doc_type IN ('Purchase Return', 'Return')
+              AND status IN ('Posted', 'Paid', 'Partial')
+        """
+        params_pr = [id]
+        if date_from: q_p_ret += " AND CAST(doc_date AS TEXT) >= ?"; params_pr.append(date_from)
+        if date_to:   q_p_ret += " AND CAST(doc_date AS TEXT) <= ?"; params_pr.append(date_to)
+        rows += conn.execute(q_p_ret, params_pr).fetchall()
 
-    return render_template('bp_master/statement.html',
-                           partner=partner,
-                           ledger=ledger,
-                           closing_balance=balance,
-                           date_from=date_from,
-                           date_to=date_to)
+        # ── 6. Supplier Outgoing Payments (reduces payable) ───────────────────
+        q_pay_out = """
+            SELECT CAST(doc_date AS TEXT) as txn_date, CAST(doc_ref AS TEXT) as doc_ref, 'Supplier Payment' as txn_type,
+                   0.0 as debit, CAST(amount AS REAL) as credit, CAST(status AS TEXT) as status
+            FROM payments
+            WHERE partner_id = ? AND payment_type = 'Outgoing' AND status = 'Posted'
+        """
+        params_po = [id]
+        if date_from: q_pay_out += " AND CAST(doc_date AS TEXT) >= ?"; params_po.append(date_from)
+        if date_to:   q_pay_out += " AND CAST(doc_date AS TEXT) <= ?"; params_po.append(date_to)
+        rows += conn.execute(q_pay_out, params_po).fetchall()
+
+        # Sort by date, then by doc_ref
+        transactions = sorted(rows, key=lambda r: (str(r['txn_date']), str(r['doc_ref'])))
+
+        # Compute running balance (opening = 0)
+        balance = 0.0
+        ledger = []
+        for t in transactions:
+            balance += float(t['debit'] or 0) - float(t['credit'] or 0)
+            ledger.append({
+                'date':     t['txn_date'],
+                'ref':      t['doc_ref'],
+                'type':     t['txn_type'],
+                'debit':    float(t['debit'] or 0),
+                'credit':   float(t['credit'] or 0),
+                'balance':  round(balance, 2),
+                'status':   t['status'],
+            })
+
+        # Ensure partners.balance column stays in sync with actual posted ledger balance
+        try:
+            conn.execute("UPDATE partners SET balance = ? WHERE id = ?", (round(balance, 2), id))
+            conn.commit()
+        except Exception:
+            pass
+
+        return render_template('bp_master/statement.html',
+                               partner=partner,
+                               ledger=ledger,
+                               closing_balance=round(balance, 2),
+                               date_from=date_from,
+                               date_to=date_to)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @bp_master_bp.route('/export')
 @login_required
