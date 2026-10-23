@@ -151,12 +151,12 @@ def new_item():
 
         conn = get_db()
         try:
-            conn.execute("""
+            cur = conn.execute("""
                 INSERT INTO items (code, name, item_type, uom_id, cost, price, reorder_level, is_stock_item, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (code, name, item_type, uom_id, cost, price, reorder_level, is_stock_item, is_active))
             
-            new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            new_id = cur.lastrowid
             log_audit(conn, session['user_id'], 'Inventory', 'Create Item', 'Item', new_id, f"Created item {code}")
             conn.commit()
             flash('Item created successfully', 'success')
@@ -713,7 +713,7 @@ def report_stock_valuation():
         ORDER BY w.name, i.name
     """).fetchall()
     total_val = sum(b['value'] for b in balances)
-    return render_template('inventory/report_stock_valuation.html', balances=balances, total_value=total_val)
+    return render_template('inventory/report_stock_valuation.html', balances=balances, data=balances, total_value=total_val)
 
 @inventory_bp.route('/reports/low-stock')
 @login_required
@@ -727,7 +727,7 @@ def report_low_stock():
         GROUP BY i.id, i.code, i.name, i.reorder_level, i.cost
         HAVING COALESCE(SUM(sb.quantity), 0) <= i.reorder_level AND i.reorder_level > 0
     """).fetchall()
-    return render_template('inventory/report_low_stock.html', items=items)
+    return render_template('inventory/report_low_stock.html', items=items, data=items)
 
 @inventory_bp.route('/reports/stock-ledger')
 @login_required
@@ -757,7 +757,7 @@ def report_stock_ledger():
     
     items = conn.execute("SELECT id, code, name FROM items WHERE is_stock_item=1").fetchall()
     whs = conn.execute("SELECT id, name FROM warehouses WHERE is_active=1").fetchall()
-    return render_template('inventory/report_stock_ledger.html', entries=entries, items=items, warehouses=whs)
+    return render_template('inventory/report_stock_ledger.html', entries=entries, data=entries, items=items, warehouses=whs)
 
 # ── Price Lists & Special Prices (SAP OPLN, ITM1, SPP1) ──────────────────────
 @inventory_bp.route('/price-lists')

@@ -1,6 +1,47 @@
 {% extends 'base.html' %}
-{% block title %}Material Consumption{% endblock %}
+{% block title %}Material Consumption Report{% endblock %}
 {% block content %}
-<h2>Material Consumption</h2>
-<p>Report coming soon.</p>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <div>
+    <h1 class="page-title">Material Consumption Report</h1>
+    <p class="page-subtitle">Raw materials issued to production batches</p>
+  </div>
+  <div class="stat-card gold" style="padding:12px 20px;">
+    <span class="stat-label">Total Consumed Value</span>
+    <p class="stat-value">KES {{ "{:,.2f}".format(total_cost or 0) }}</p>
+  </div>
+</div>
+
+<div class="card" style="padding:20px;">
+  <table class="table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Issue Date</th>
+        <th>Order Ref</th>
+        <th>Batch No</th>
+        <th>Raw Material</th>
+        <th style="text-align:right;">Planned Qty</th>
+        <th style="text-align:right;">Issued Qty</th>
+        <th style="text-align:right;">Unit Cost (KES)</th>
+        <th style="text-align:right;">Total Cost (KES)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in issues %}
+      <tr>
+        <td>{{ r.issue_date }}</td>
+        <td style="font-family:monospace; color:var(--gold);">{{ r.order_ref or '-' }}</td>
+        <td>{{ r.batch_no or '-' }}</td>
+        <td style="font-weight:600;">{{ r.item_name }} ({{ r.item_code }})</td>
+        <td style="text-align:right;">{{ "{:,.2f}".format(r.planned_qty or 0) }}</td>
+        <td style="text-align:right; font-weight:700;">{{ "{:,.2f}".format(r.issued_qty or 0) }}</td>
+        <td style="text-align:right;">{{ "{:,.2f}".format(r.unit_cost or 0) }}</td>
+        <td style="text-align:right; font-weight:700;">{{ "{:,.2f}".format(r.total_cost or 0) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center; padding:24px;">No material issues recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

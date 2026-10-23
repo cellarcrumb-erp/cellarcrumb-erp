@@ -1,17 +1,43 @@
 {% extends 'base.html' %}
+{% block title %}Stock Valuation Report{% endblock %}
 {% block content %}
-<h2>Stock Valuation</h2>
-<table class="table">
-    <tr><th>Warehouse</th><th>Code</th><th>Item</th><th>Qty</th><th>Cost</th><th>Value</th></tr>
-    {% for r in data %}
-    <tr>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <div>
+    <h1 class="page-title">Stock Valuation Report</h1>
+    <p class="page-subtitle">Current inventory quantities and valuation across warehouses</p>
+  </div>
+  <div class="stat-card gold" style="padding:12px 20px; min-width:220px;">
+    <span class="stat-label">Total Stock Value</span>
+    <p class="stat-value">KES {{ "{:,.2f}".format(total_value or 0) }}</p>
+  </div>
+</div>
+
+<div class="card" style="padding:20px;">
+  <table class="table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Warehouse</th>
+        <th>Item Code</th>
+        <th>Item Name</th>
+        <th style="text-align:right;">Quantity</th>
+        <th style="text-align:right;">Unit Cost (KES)</th>
+        <th style="text-align:right;">Total Value (KES)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in (balances or data or []) %}
+      <tr>
         <td>{{ r.warehouse }}</td>
-        <td>{{ r.code }}</td>
-        <td>{{ r.item }}</td>
-        <td>{{ r.quantity }}</td>
-        <td>${{ r.cost }}</td>
-        <td>${{ r.value }}</td>
-    </tr>
-    {% endfor %}
-</table>
+        <td style="font-family:monospace; color:var(--gold);">{{ r.code }}</td>
+        <td style="font-weight:600;">{{ r.name if r.name is defined else r.item }}</td>
+        <td style="text-align:right;">{{ "{:,.2f}".format(r.quantity or 0) }}</td>
+        <td style="text-align:right;">{{ "{:,.2f}".format(r.cost or 0) }}</td>
+        <td style="text-align:right; font-weight:700;">{{ "{:,.2f}".format(r.value or 0) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-secondary);">No stock balance records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

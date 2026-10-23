@@ -16,6 +16,19 @@ import bcrypt
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
 
+@settings_bp.before_request
+def _enforce_settings_rbac():
+    if request.endpoint == 'settings.switch_branch':
+        return None
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    req_level = 'write' if request.method == 'POST' else 'read'
+    if not user_can('settings', req_level):
+        flash('Access Denied: You do not have permission to access Settings.', 'error')
+        return redirect(url_for('overview.dashboard'))
+
+
+
 @settings_bp.route('/')
 @login_required
 @require_permission('settings', 'read')

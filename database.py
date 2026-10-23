@@ -358,10 +358,48 @@ def _insert_returning(cursor, table, cols, vals):
 # Shared utility functions (unchanged API)
 # ─────────────────────────────────────────────────────────────────────────────
 def next_ref(module, doc_type, conn=None):
+    # Guard against callers passing (conn, module, doc_type)
+    if not isinstance(module, str) and hasattr(module, 'cursor'):
+        conn, module, doc_type = module, doc_type, conn
+
     close_at_end = False
     if conn is None:
         conn = get_db()
         close_at_end = True
+
+    DEFAULT_PREFIXES = {
+        ('Sales', 'Quotation'): 'SQ',
+        ('Sales', 'Sales Order'): 'SO',
+        ('Sales', 'Order'): 'SO',
+        ('Sales', 'Delivery'): 'DN',
+        ('Sales', 'Invoice'): 'SI',
+        ('Sales', 'Down Payment Invoice'): 'SDP',
+        ('Sales', 'Sales Return'): 'SCN',
+        ('Sales', 'Return'): 'SCN',
+        ('Purchases', 'Request'): 'PR',
+        ('Purchases', 'Purchase Quotation'): 'PQ',
+        ('Purchases', 'Purchase Order'): 'PO',
+        ('Purchases', 'Order'): 'PO',
+        ('Purchases', 'Receipt'): 'GR',
+        ('Purchases', 'Invoice'): 'PI',
+        ('Purchases', 'Down Payment Invoice'): 'PDP',
+        ('Purchases', 'Purchase Return'): 'PDN',
+        ('Purchases', 'Return'): 'PDN',
+        ('Inventory', 'GoodsReceipt'): 'IGR',
+        ('Inventory', 'GoodsIssue'): 'IGI',
+        ('Inventory', 'Transfer'): 'ITR',
+        ('Inventory', 'TransferRequest'): 'ITR',
+        ('Inventory', 'Count'): 'IC',
+        ('Production', 'Order'): 'WO',
+        ('Production', 'Wastage'): 'WST',
+        ('Finance', 'Journal'): 'JE',
+        ('Banking', 'Deposit'): 'DEP',
+        ('Banking', 'Withdrawal'): 'WDR',
+        ('Banking', 'Transfer'): 'BTR',
+        ('Payments', 'Incoming'): 'RCV',
+        ('Payments', 'Outgoing'): 'PMT',
+        ('Payments', 'Expense'): 'EXP',
+    }
 
     cursor = conn.cursor()
     cursor.execute(
@@ -370,29 +408,30 @@ def next_ref(module, doc_type, conn=None):
     )
     row = cursor.fetchone()
     if not row:
-        prefix = doc_type[:2].upper()
+        prefix = DEFAULT_PREFIXES.get((module, doc_type), doc_type[:3].upper())
+        next_num = 1
         if USE_POSTGRES:
             cursor.execute(
-                "INSERT INTO num_series (module, doc_type, prefix, next_num) VALUES (%s,%s,%s,2) ON CONFLICT DO NOTHING",
+                "INSERT INTO num_series (module, doc_type, prefix, next_num) VALUES (%s,%s,%s,1) ON CONFLICT DO NOTHING",
                 (module, doc_type, prefix)
             )
         else:
             cursor.execute(
-                "INSERT OR IGNORE INTO num_series (module, doc_type, prefix, next_num) VALUES (?,?,?,2)",
+                "INSERT OR IGNORE INTO num_series (module, doc_type, prefix, next_num) VALUES (?,?,?,1)",
                 (module, doc_type, prefix)
             )
-        if close_at_end:
-            conn.commit()
-            conn.close()
-        return f"{prefix}-000001"
-
-    prefix, next_num = row['prefix'], row['next_num']
+    else:
+        prefix, next_num = row['prefix'], row['next_num']
 
     while True:
         candidate_ref = f"{prefix}-{next_num:06d}"
         next_num += 1
         found = False
-        for table in ['sales_docs', 'purchase_docs', 'goods_receipts', 'goods_issues', 'stock_transfers', 'inventory_counts']:
+        for table in [
+            'sales_docs', 'purchase_docs', 'goods_receipts', 'goods_issues',
+            'stock_transfers', 'inventory_counts', 'production_orders',
+            'journal_entries', 'bank_transactions', 'payments'
+        ]:
             try:
                 exists = cursor.execute(
                     f"SELECT 1 FROM {table} WHERE doc_ref = {PH}", (candidate_ref,)
@@ -488,10 +527,17 @@ def update_stock(conn, item_id, warehouse_id, qty_in, qty_out, doc_type, doc_id,
 
 def log_audit(conn, user_id, module, action, doc_type, doc_id, description):
     try:
+        safe_doc_id = None
+        if isinstance(doc_id, int):
+            safe_doc_id = doc_id
+        elif isinstance(doc_id, str) and doc_id.isdigit():
+            safe_doc_id = int(doc_id)
+        elif doc_id is not None:
+            description = f"[{doc_id}] {description}"
         conn.execute(
             f"""INSERT INTO audit_log (ts, user_id, module, action, doc_type, doc_id, description)
                 VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH})""",
-            (datetime.now().isoformat(), user_id, module, action, doc_type, doc_id, description)
+            (datetime.now().isoformat(), user_id, module, action, doc_type, safe_doc_id, description)
         )
         conn.commit()
     except Exception:
@@ -1211,6 +1257,10 @@ def _ensure_sap_schema(c, conn, sqlite_mode=True):
     # 6. Seed Num Series for SAP docs
     sap_series = [
         ('Purchases', 'Purchase Quotation', 'PQ'),
+        ('Purchases', 'Purchase Order', 'PO'),
+        ('Purchases', 'Purchase Return', 'PDN'),
+        ('Sales', 'Sales Order', 'SO'),
+        ('Sales', 'Sales Return', 'SCN'),
         ('Sales', 'Down Payment Invoice', 'SDP'),
         ('Purchases', 'Down Payment Invoice', 'PDP'),
     ]

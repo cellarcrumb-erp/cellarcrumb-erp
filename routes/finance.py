@@ -183,7 +183,7 @@ def journal_new():
                     'debit': float(debits[i] or 0),
                     'credit': float(credits[i] or 0),
                     'partner_id': None,
-                    'description': line_descs[i] if line_descs[i] else description
+                    'description': line_descs[i] if i < len(line_descs) and line_descs[i] else description
                 })
                 
         active_branch = session.get('active_branch_id')
@@ -934,9 +934,35 @@ def tax_report():
                            branches=branches, selected_branch=branch_id, currency=currency)
 
 # --- 8. FINANCIAL PERIODS ---
-@finance_bp.route('/periods')
+@finance_bp.route('/periods', methods=['GET', 'POST'])
 @login_required
 def periods():
     db = get_db()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        start_date = request.form.get('start_date', '').strip()
+        end_date = request.form.get('end_date', '').strip()
+        if name and start_date and end_date:
+            try:
+                db.execute("INSERT INTO financial_periods (name, start_date, end_date, status) VALUES (?, ?, ?, 'Open')",
+                           (name, start_date, end_date))
+                db.commit()
+                flash(f'Financial period {name} created.', 'success')
+            except Exception as e:
+                db.rollback()
+                flash(f'Error creating period: {e}', 'error')
+        return redirect(url_for('finance.periods'))
     periods_list = db.execute("SELECT * FROM financial_periods ORDER BY start_date DESC").fetchall()
     return render_template('finance/periods.html', periods=periods_list)
+
+@finance_bp.route('/periods/<int:id>/toggle', methods=['POST'])
+@login_required
+def period_toggle(id):
+    db = get_db()
+    p = db.execute("SELECT * FROM financial_periods WHERE id = ?", (id,)).fetchone()
+    if p:
+        new_status = 'Closed' if p['status'] == 'Open' else 'Open'
+        db.execute("UPDATE financial_periods SET status = ? WHERE id = ?", (new_status, id))
+        db.commit()
+        flash(f"Period '{p['name']}' marked as {new_status}.", 'success')
+    return redirect(url_for('finance.periods'))

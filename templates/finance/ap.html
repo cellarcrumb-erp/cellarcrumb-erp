@@ -106,7 +106,7 @@
         {% for s in suppliers %}
         <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
           <td style="padding:12px;">
-            <a href="{{ url_for('bp_master.bp_detail', id=s.id) }}" style="color:var(--text-primary); text-decoration:none; font-weight:700;">
+            <a href="{{ url_for('bp_master.partner_detail', id=s.id) }}" style="color:var(--text-primary); text-decoration:none; font-weight:700;">
               {{ s.name }}
             </a>
             {% if s.phone %}<span style="font-size:11px; color:var(--text-secondary); display:block;">{{ s.phone }}</span>{% endif %}

@@ -1,6 +1,64 @@
 {% extends 'base.html' %}
 {% block title %}Financial Periods{% endblock %}
 {% block content %}
-<h2>Financial Periods</h2>
-<p>Periods management coming soon.</p>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <div>
+    <h1 class="page-title">Financial Periods</h1>
+    <p class="page-subtitle">Manage accounting periods (Open / Closed) for fiscal control</p>
+  </div>
+</div>
+
+<div class="card mb-6" style="padding:20px;">
+  <h3 style="font-size:14px; font-weight:700; text-transform:uppercase; margin-bottom:14px;">Create Financial Period</h3>
+  <form method="POST" action="{{ url_for('finance.periods') }}" style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Period Name</label>
+      <input type="text" name="name" placeholder="e.g. FY 2027" required class="form-control" style="width:200px;">
+    </div>
+    <div>
+      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Start Date</label>
+      <input type="date" name="start_date" required class="form-control" style="width:170px;">
+    </div>
+    <div>
+      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">End Date</label>
+      <input type="date" name="end_date" required class="form-control" style="width:170px;">
+    </div>
+    <button type="submit" class="btn btn-primary">Add Period</button>
+  </form>
+</div>
+
+<div class="card" style="padding:20px;">
+  <table class="table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Period Name</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Status</th>
+        <th style="text-align:right;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in periods %}
+      <tr>
+        <td style="font-weight:700;">{{ p.name }}</td>
+        <td>{{ p.start_date }}</td>
+        <td>{{ p.end_date }}</td>
+        <td>
+          <span class="badge {% if p.status == 'Open' %}badge-success{% else %}badge-secondary{% endif %}">{{ p.status }}</span>
+        </td>
+        <td style="text-align:right;">
+          <form method="POST" action="{{ url_for('finance.period_toggle', id=p.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm {% if p.status == 'Open' %}btn-secondary{% else %}btn-primary{% endif %}">
+              {% if p.status == 'Open' %}Close Period{% else %}Reopen Period{% endif %}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center; padding:24px;">No financial periods configured.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

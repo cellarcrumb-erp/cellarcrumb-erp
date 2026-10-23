@@ -1,18 +1,43 @@
 {% extends 'base.html' %}
+{% block title %}Stock Ledger Report{% endblock %}
 {% block content %}
-<h2>Stock Ledger (Recent 100)</h2>
-<table class="table table-sm">
-    <tr><th>Item</th><th>Warehouse</th><th>Doc Type</th><th>Doc Ref</th><th>In</th><th>Out</th><th>Bal</th></tr>
-    {% for r in data %}
-    <tr>
-        <td>{{ r.item_name }}</td>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <div>
+    <h1 class="page-title">Stock Movement Ledger</h1>
+    <p class="page-subtitle">Audit trail of inventory receipts, issues, transfers, and adjustments</p>
+  </div>
+</div>
+
+<div class="card" style="padding:20px;">
+  <table class="table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Item</th>
+        <th>Warehouse</th>
+        <th>Document Type</th>
+        <th>Doc Ref</th>
+        <th style="text-align:right;">Qty In</th>
+        <th style="text-align:right;">Qty Out</th>
+        <th style="text-align:right;">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in (entries or data or []) %}
+      <tr>
+        <td style="font-size:12px; color:var(--text-secondary);">{{ (r.ts or '')[:19] }}</td>
+        <td style="font-weight:600;">{{ r.item_name }} <span style="font-size:11px; color:var(--text-secondary);">({{ r.item_code }})</span></td>
         <td>{{ r.warehouse_name }}</td>
         <td>{{ r.doc_type }}</td>
-        <td>{{ r.doc_ref }}</td>
-        <td>{{ r.qty_in }}</td>
-        <td>{{ r.qty_out }}</td>
-        <td>{{ r.balance }}</td>
-    </tr>
-    {% endfor %}
-</table>
+        <td style="font-family:monospace; color:var(--gold);">{{ r.doc_ref }}</td>
+        <td style="text-align:right; color:#34d399;">{{ "{:,.2f}".format(r.qty_in or 0) }}</td>
+        <td style="text-align:right; color:#f87171;">{{ "{:,.2f}".format(r.qty_out or 0) }}</td>
+        <td style="text-align:right; font-weight:700;">{{ "{:,.2f}".format(r.balance or 0) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">No stock ledger movements recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
