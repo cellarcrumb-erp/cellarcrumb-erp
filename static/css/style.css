@@ -648,37 +648,120 @@ tbody td, td {
   color: #ffffff;
 }
 
-/* btn-secondary: consistent modern dark glass across cards, tables and canvas */
+/* Primary Action Buttons: Always bold, crisp dark text on vivid gold gradient */
+.btn-primary,
+button.btn-primary,
+a.btn-primary {
+  background: linear-gradient(135deg, #dfc26a 0%, #c9a84c 100%) !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  border-color: #c9a84c !important;
+  box-shadow: 0 2px 6px rgba(201, 168, 76, 0.25) !important;
+  text-decoration: none !important;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover,
+a.btn-primary:hover {
+  background: linear-gradient(135deg, #ecd37f 0%, #b8953d 100%) !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 12px rgba(201, 168, 76, 0.45) !important;
+}
+
+.btn-primary svg,
+.btn-primary i {
+  color: #0f172a !important;
+  stroke: #0f172a !important;
+}
+
+.btn-primary:hover svg,
+.btn-primary:hover i {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Secondary Action Buttons: Clear contrast on dark glass, crisp text */
 .btn-secondary,
 .card .btn-secondary,
-.bg-white .btn-secondary,
 .table-toolbar .btn-secondary,
 .actions-bar .btn-secondary {
   background: rgba(255, 255, 255, 0.08) !important;
-  color: #f1f5f9 !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  font-weight: 600 !important;
   box-shadow: none !important;
+  text-decoration: none !important;
 }
 
 .btn-secondary:hover,
 .card .btn-secondary:hover,
-.bg-white .btn-secondary:hover,
 .table-toolbar .btn-secondary:hover,
 .actions-bar .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.16) !important;
-  border-color: rgba(56, 189, 248, 0.35) !important;
+  border-color: rgba(201, 168, 76, 0.5) !important;
   color: #ffffff !important;
+}
+
+.bg-white .btn-secondary {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.bg-white .btn-secondary:hover {
+  background: #e2e8f0 !important;
+  color: #000000 !important;
 }
 
 .btn-secondary svg,
 .btn-secondary i {
-  color: #f1f5f9 !important;
-  stroke: #f1f5f9 !important;
+  color: #f8fafc !important;
+  stroke: #f8fafc !important;
 }
 .btn-secondary:hover svg,
 .btn-secondary:hover i {
   color: #ffffff !important;
   stroke: #ffffff !important;
+}
+
+/* Dropdown Menus (Copy To, Action Menus) */
+.dropdown-menu,
+#copyToMenu {
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75) !important;
+  padding: 6px 0 !important;
+  z-index: 1000 !important;
+}
+
+.dropdown-menu a,
+#copyToMenu a,
+.dropdown-menu button {
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.dropdown-menu a:hover,
+#copyToMenu a:hover,
+.dropdown-menu button:hover {
+  background: rgba(201, 168, 76, 0.18) !important;
+  color: #dfc26a !important;
+}
+
+.dropdown-menu a svg,
+.dropdown-menu a i,
+#copyToMenu a svg,
+#copyToMenu a i {
+  color: var(--gold) !important;
+  stroke: var(--gold) !important;
 }
 
 .btn-success {
@@ -1092,3 +1175,115 @@ h1.page-title,
   }
 }
 
+
+
+/* ==========================================================================
+   Marketing Documents Face Layout & Form Inputs Enhancement
+   ========================================================================== */
+.form-control,
+.filter-select,
+.search-input,
+form input[type="text"],
+form input[type="number"],
+form input[type="date"],
+form input[type="datetime-local"],
+form input[type="email"],
+form select,
+form textarea,
+.table input,
+.table select {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #f8fafc !important;
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-control:focus,
+.filter-select:focus,
+.search-input:focus,
+form input:focus,
+form select:focus,
+form textarea:focus,
+.table input:focus,
+.table select:focus {
+  outline: none;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.25) !important;
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+label,
+.form-label {
+  color: #cbd5e1 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Document Detail — Dark Surface Face Layout */
+.detail-grid {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 18px 20px !important;
+  margin-bottom: 22px !important;
+}
+
+.detail-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: #94a3b8 !important;
+  margin-bottom: 4px !important;
+}
+
+.detail-value {
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+}
+
+.detail-remarks {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 14px 18px !important;
+  margin-bottom: 20px !important;
+  color: #f8fafc !important;
+}
+
+.detail-remarks .detail-label {
+  margin-bottom: 4px !important;
+}
+
+.detail-remarks .detail-remarks-text {
+  font-size: 13.5px !important;
+  color: #f8fafc !important;
+  line-height: 1.5 !important;
+}
+
+.doc-chain-container {
+  background: rgba(15, 23, 42, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 18px !important;
+}
+
+.doc-chain-card {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 14px !important;
+  box-shadow: none !important;
+}

@@ -5,23 +5,23 @@
 {% block content %}
 <div class="flex justify-between items-center mb-6">
     <div>
-        <h2 class="text-2xl font-bold text-gray-800">New {{ doc_type }}</h2>
+        <h2 class="text-2xl font-bold" style="color:#f8fafc; margin:0;">New {{ doc_type }}</h2>
         {% if copy_from_type and doc %}
-        <p class="text-sm text-gray-500">
+        <p class="text-sm" style="color:#94a3b8; margin-top:4px;">
             Copied from {{ copy_from_type }} <span class="font-semibold text-erp-gold">{{ doc.doc_ref }}</span>
         </p>
         {% endif %}
     </div>
     <div class="flex gap-2">
         {% if valid_source_types %}
-        <button type="button" onclick="openCopyFromModal()" class="btn btn-secondary border border-erp-gold text-erp-gold hover:bg-yellow-50 flex items-center gap-1">
+        <button type="button" onclick="openCopyFromModal()" class="btn btn-secondary flex items-center gap-2" style="border-color:var(--gold); color:var(--gold);">
             <i data-feather="corner-down-left" style="width:14px;height:14px;"></i> Copy From ▾
         </button>
         {% endif %}
     </div>
 </div>
 
-<form method="POST" id="docForm" class="bg-white rounded-lg shadow p-6">
+<form method="POST" id="docForm" class="card p-6">
     <input type="hidden" name="source_doc_id" id="sourceDocId" value="{{ (doc.id if copy_from_type else '') if doc else '' }}">
     <input type="hidden" name="source_doc_type" id="sourceDocType" value="{{ copy_from_type if copy_from_type else '' }}">
     <input type="hidden" name="source_doc_ref" id="sourceDocRef" value="{{ (doc.doc_ref if copy_from_type else '') if doc else '' }}">
@@ -34,7 +34,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Customer *</label>
             <select name="customer_id" id="customerSelect" required class="w-full border rounded p-2 text-sm" onchange="onCustomerChange()">
                 <option value="">Select Customer</option>
                 {% for c in customers %}
@@ -43,13 +43,13 @@
             </select>
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person (OCPR)</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Contact Person (OCPR)</label>
             <select name="contact_id" id="contactSelect" class="w-full border rounded p-2 text-sm">
                 <option value="">-- Main Contact --</option>
             </select>
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Branch *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Branch *</label>
             <select name="branch_id" class="w-full border rounded p-2 text-sm" required>
                 {% for b in (branches or all_accessible_branches) %}
                 <option value="{{ b.id }}" {% if doc and doc.branch_id == b.id %}selected{% elif not doc and active_branch_id == b.id %}selected{% elif not doc and not active_branch_id and b.is_main %}selected{% endif %}>
@@ -59,15 +59,15 @@
             </select>
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Doc Date *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Doc Date *</label>
             <input type="date" name="doc_date" id="docDateInput" required class="w-full border rounded p-2 text-sm" value="{{ doc.doc_date if doc else today }}">
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Due Date</label>
             <input type="date" name="due_date" id="dueDateInput" class="w-full border rounded p-2 text-sm" value="{{ doc.due_date if doc else '' }}">
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Warehouse</label>
             <select name="warehouse_id" class="w-full border rounded p-2 text-sm">
                 <option value="">Select Warehouse</option>
                 {% for w in warehouses %}
@@ -77,16 +77,16 @@
         </div>
     </div>
 
-    <h3 class="text-lg font-bold text-gray-800 mb-2">Items</h3>
-    <div class="overflow-x-auto mb-4 border rounded">
+    <h3 class="text-lg font-bold mb-3" style="color:#f8fafc;">Line Items &amp; Pricing</h3>
+    <div class="overflow-x-auto mb-4 border rounded" style="border-color:rgba(255,255,255,0.12); border-radius:8px;">
         <table class="w-full text-left border-collapse" id="itemsTable">
             <thead>
-                <tr class="bg-gray-50 border-b">
-                    <th class="p-2 text-sm font-semibold text-gray-700">Item *</th>
-                    <th class="p-2 text-sm font-semibold text-gray-700 text-right">Qty *</th>
-                    <th class="p-2 text-sm font-semibold text-gray-700 text-right">Unit Price *</th>
-                    <th class="p-2 text-sm font-semibold text-gray-700 text-right">Disc %</th>
-                    <th class="p-2 text-sm font-semibold text-gray-700 text-right">Line Total</th>
+                <tr style="background:rgba(15,23,42,0.75); border-bottom:1px solid rgba(255,255,255,0.12);">
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Qty *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Unit Price *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Disc %</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Line Total</th>
                     <th class="p-2 text-sm font-semibold text-gray-700 text-center"></th>
                 </tr>
             </thead>
@@ -101,38 +101,44 @@
             + Add Row
         </button>
         <div class="text-right">
-            <p class="text-sm text-gray-600">Subtotal: <span id="subtotal" class="font-semibold">0.00</span></p>
-            <p class="text-xl font-bold text-gray-800">Total: <span id="grandTotal" class="text-erp-gold">0.00</span></p>
+            <p class="text-sm" style="color:#94a3b8; margin:0 0 4px 0;">Subtotal: <span id="subtotal" class="font-semibold" style="color:#f8fafc;">0.00</span></p>
+            <p class="text-xl font-bold" style="color:#f8fafc; margin:0;">Total: <span id="grandTotal" class="text-erp-gold" style="font-size:22px; font-weight:800; color:var(--gold);">0.00</span></p>
         </div>
     </div>
 
     <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Remarks / Document Notes</label>
+        <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Remarks / Document Notes</label>
         <textarea name="remarks" rows="2" class="w-full border rounded p-2 text-sm">{{ doc.remarks if doc else '' }}</textarea>
     </div>
 
-    <div class="flex justify-end gap-2">
-        <a href="{{ url_for('sales.doc_list', doc_kind=doc_kind) }}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" name="is_draft" value="1" class="btn btn-secondary">Save as Draft (ODRF)</button>
-        <button type="submit" class="btn btn-primary">Save &amp; Confirm</button>
+    <div class="flex justify-end gap-3 pt-4" style="border-top:1px solid rgba(255,255,255,0.1);">
+        <a href="{{ url_for('sales.doc_list', doc_kind=doc_kind) }}" class="btn btn-secondary">
+          Cancel
+        </a>
+        <button type="submit" name="is_draft" value="1" class="btn btn-secondary">
+          <i data-feather="file-text" style="width:14px;height:14px;"></i> Save as Draft (ODRF)
+        </button>
+        <button type="submit" class="btn btn-primary font-bold">
+          <i data-feather="check-circle" style="width:15px;height:15px;"></i> Save &amp; Post {{ doc_type }}
+        </button>
     </div>
 </form>
 
 <!-- Modal for Copy From Selection -->
-<div id="copyFromModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
-    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full p-6 mx-4 max-h-screen overflow-y-auto" style="background:#fff; border-radius:8px; width:90%; max-width:760px; padding:24px;">
-        <div class="flex justify-between items-center mb-4 border-b pb-2">
-            <h3 class="text-lg font-bold text-gray-800">Copy From Source Document</h3>
-            <button type="button" onclick="closeCopyFromModal()" class="text-gray-500 hover:text-gray-700 font-bold text-xl">&times;</button>
+<div id="copyFromModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center hidden" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center;">
+    <div class="card shadow-2xl max-w-3xl w-full p-6 mx-4 max-h-screen overflow-y-auto" style="background:#0f172a; border:1px solid rgba(255,255,255,0.18); border-radius:12px; width:90%; max-width:780px; padding:24px; color:#f8fafc;">
+        <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.12);">
+            <h3 class="text-lg font-bold" style="color:#f8fafc; margin:0;">Copy From Source Document</h3>
+            <button type="button" onclick="closeCopyFromModal()" style="background:none; border:none; color:#94a3b8; font-size:24px; cursor:pointer; line-height:1;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">&times;</button>
         </div>
 
         <!-- Step 1: Document Selection -->
         <div id="copyStep1">
-            <p class="text-sm text-gray-600 mb-3">Select an open source document to draw lines from:</p>
+            <p class="text-sm mb-3" style="color:#cbd5e1;">Select an open source document to draw lines from:</p>
             <div class="overflow-x-auto border rounded mb-4" style="max-height:260px; overflow-y:auto;">
                 <table class="w-full text-left border-collapse" id="sourceDocsTable">
                     <thead>
-                        <tr class="bg-gray-100 border-b text-xs text-gray-600 uppercase">
+                        <tr style="background:rgba(15,23,42,0.9); border-bottom:1px solid rgba(255,255,255,0.12); color:#cbd5e1;" class="text-xs uppercase font-bold">
                             <th class="p-2">Doc Ref</th>
                             <th class="p-2">Type</th>
                             <th class="p-2">Date</th>
@@ -152,13 +158,13 @@
         <!-- Step 2: Line Item Selection & Quantity Customization -->
         <div id="copyStep2" class="hidden" style="display:none;">
             <div class="flex justify-between items-center mb-2">
-                <p class="text-sm font-semibold text-gray-700">Select lines and quantities to draw from <span id="selectedSourceDocRef" class="text-erp-gold font-bold"></span>:</p>
+                <p class="text-sm font-semibold mb-2" style="color:#cbd5e1;">Select lines and quantities to draw from <span id="selectedSourceDocRef" class="text-erp-gold font-bold"></span>:</p>
                 <button type="button" onclick="backToStep1()" class="text-xs text-blue-600 hover:underline">← Choose different document</button>
             </div>
             <div class="overflow-x-auto border rounded mb-4" style="max-height:260px; overflow-y:auto;">
                 <table class="w-full text-left border-collapse" id="sourceLinesTable">
                     <thead>
-                        <tr class="bg-gray-100 border-b text-xs text-gray-600 uppercase">
+                        <tr style="background:rgba(15,23,42,0.9); border-bottom:1px solid rgba(255,255,255,0.12); color:#cbd5e1;" class="text-xs uppercase font-bold">
                             <th class="p-2 text-center"><input type="checkbox" id="selectAllLines" onchange="toggleSelectAllLines(this)" checked></th>
                             <th class="p-2">Item</th>
                             <th class="p-2 text-right">Available Open Qty</th>

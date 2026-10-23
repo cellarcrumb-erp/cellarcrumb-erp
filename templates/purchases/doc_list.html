@@ -10,7 +10,7 @@
 
 <div class="flex justify-between items-center mb-6">
   <div>
-    <h2 style="margin:0; font-size:22px; font-weight:700;">{{ doc_type }}s</h2>
+    <h2 style="margin:0; font-size:22px; font-weight:700; color:#f8fafc;">{{ doc_type }}s</h2>
     <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Manage and track all purchasing {{ doc_type|lower }} records</div>
   </div>
   <a href="{{ url_for('purchases.doc_new', doc_kind=doc_kind) }}" class="btn btn-primary btn-sm">
@@ -70,7 +70,7 @@
         {% for d in docs %}
         <tr>
           <td>
-            <a href="{{ url_for('purchases.doc_detail', doc_kind=doc_kind, id=d.id) }}" class="font-bold" style="color:var(--gold-dark); text-decoration:none; letter-spacing:0.03em;">
+            <a href="{{ url_for('purchases.doc_detail', doc_kind=doc_kind, id=d.id) }}" class="font-bold" style="color:var(--gold); text-decoration:none; letter-spacing:0.03em;">
               {{ d.doc_ref }}
             </a>
           </td>
