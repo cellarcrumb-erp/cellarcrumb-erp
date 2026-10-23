@@ -1091,46 +1091,74 @@ def _ensure_sap_schema(c, conn, sqlite_mode=True):
             item_id INTEGER REFERENCES items(id) ON DELETE CASCADE, price REAL,
             discount_pct REAL DEFAULT 0, valid_from TEXT, valid_to TEXT, is_active BOOLEAN DEFAULT TRUE)""")
 
-    # 2. Add columns to existing tables
+    # 2. Add columns to existing tables (Dual-mode schema migration)
+    alter_cols = [
+        ('partners', 'group_id', 'INTEGER'),
+        ('partners', 'payment_term_id', 'INTEGER'),
+        ('partners', 'price_list_id', 'INTEGER'),
+        ('sales_docs', 'contact_id', 'INTEGER'),
+        ('sales_docs', 'branch_id', 'INTEGER'),
+        ('sales_docs', 'source_doc_ref', 'TEXT'),
+        ('purchase_docs', 'contact_id', 'INTEGER'),
+        ('purchase_docs', 'branch_id', 'INTEGER'),
+        ('purchase_docs', 'source_doc_ref', 'TEXT'),
+        ('goods_receipts', 'branch_id', 'INTEGER'),
+        ('goods_receipts', 'source_doc_ref', 'TEXT'),
+        ('goods_issues', 'branch_id', 'INTEGER'),
+        ('goods_issues', 'source_doc_ref', 'TEXT'),
+        ('stock_transfers', 'from_branch_id', 'INTEGER'),
+        ('stock_transfers', 'to_branch_id', 'INTEGER'),
+        ('stock_transfers', 'source_doc_ref', 'TEXT'),
+        ('stock_transfers', 'source_doc_id', 'INTEGER'),
+        ('stock_transfers', 'source_doc_type', 'TEXT'),
+        ('inventory_counts', 'branch_id', 'INTEGER'),
+        ('production_orders', 'branch_id', 'INTEGER'),
+        ('journal_entries', 'branch_id', 'INTEGER'),
+        ('payments', 'branch_id', 'INTEGER'),
+        ('warehouses', 'branch_id', 'INTEGER'),
+        ('branches', 'default_warehouse_id', 'INTEGER'),
+        ('sales_lines', 'copied_qty', 'REAL DEFAULT 0'),
+        ('sales_lines', 'source_doc_type', 'TEXT'),
+        ('sales_lines', 'source_doc_id', 'INTEGER'),
+        ('sales_lines', 'source_line_id', 'INTEGER'),
+        ('purchase_lines', 'copied_qty', 'REAL DEFAULT 0'),
+        ('purchase_lines', 'source_doc_type', 'TEXT'),
+        ('purchase_lines', 'source_doc_id', 'INTEGER'),
+        ('purchase_lines', 'source_line_id', 'INTEGER'),
+        ('goods_receipt_lines', 'copied_qty', 'REAL DEFAULT 0'),
+        ('goods_receipt_lines', 'source_doc_type', 'TEXT'),
+        ('goods_receipt_lines', 'source_doc_id', 'INTEGER'),
+        ('goods_receipt_lines', 'source_line_id', 'INTEGER'),
+        ('goods_issue_lines', 'copied_qty', 'REAL DEFAULT 0'),
+        ('goods_issue_lines', 'source_doc_type', 'TEXT'),
+        ('goods_issue_lines', 'source_doc_id', 'INTEGER'),
+        ('goods_issue_lines', 'source_line_id', 'INTEGER'),
+        ('stock_transfer_lines', 'copied_qty', 'REAL DEFAULT 0'),
+        ('stock_transfer_lines', 'source_doc_type', 'TEXT'),
+        ('stock_transfer_lines', 'source_doc_id', 'INTEGER'),
+        ('stock_transfer_lines', 'source_line_id', 'INTEGER'),
+    ]
+
     if sqlite_mode:
-        c.execute("PRAGMA table_info(partners)")
-        existing_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
-        for col, col_def in [('group_id', 'INTEGER'), ('payment_term_id', 'INTEGER'), ('price_list_id', 'INTEGER')]:
-            if col not in existing_cols:
-                try:
-                    c.execute(f"ALTER TABLE partners ADD COLUMN {col} {col_def}")
-                except Exception:
-                    pass
-
-        c.execute("PRAGMA table_info(sales_docs)")
-        s_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
-        if 'contact_id' not in s_cols:
+        for tbl, col, col_def in alter_cols:
             try:
-                c.execute("ALTER TABLE sales_docs ADD COLUMN contact_id INTEGER")
-            except Exception:
-                pass
-
-        c.execute("PRAGMA table_info(purchase_docs)")
-        p_cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
-        if 'contact_id' not in p_cols:
-            try:
-                c.execute("ALTER TABLE purchase_docs ADD COLUMN contact_id INTEGER")
+                c.execute(f"PRAGMA table_info({tbl})")
+                cols = {row[1] if isinstance(row, (tuple, list)) else row['name'] for row in c.fetchall()}
+                if col not in cols:
+                    c.execute(f"ALTER TABLE {tbl} ADD COLUMN {col} {col_def}")
             except Exception:
                 pass
     else:
-        for col in ['group_id', 'payment_term_id', 'price_list_id']:
+        for tbl, col, col_def in alter_cols:
             try:
-                c.execute(f"ALTER TABLE partners ADD COLUMN IF NOT EXISTS {col} INTEGER")
+                c.execute(f"SAVEPOINT sp_col_{tbl}_{col}")
+                c.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {col_def}")
+                c.execute(f"RELEASE SAVEPOINT sp_col_{tbl}_{col}")
             except Exception:
-                pass
-        try:
-            c.execute("ALTER TABLE sales_docs ADD COLUMN IF NOT EXISTS contact_id INTEGER")
-        except Exception:
-            pass
-        try:
-            c.execute("ALTER TABLE purchase_docs ADD COLUMN IF NOT EXISTS contact_id INTEGER")
-        except Exception:
-            pass
+                try:
+                    c.execute(f"ROLLBACK TO SAVEPOINT sp_col_{tbl}_{col}")
+                except Exception:
+                    pass
 
     # 3. Seed Payment terms
     default_terms = [
@@ -1233,7 +1261,7 @@ def _ensure_main_branch(c, conn, sqlite_mode=True):
                       ('HQ', 'Main Bakery & HQ', 'Nairobi, Kenya', '+254 700 000 000',
                        'info@cellarncrumb.co.ke', 'P051234567A'))
 
-    c.execute("SELECT id FROM branches WHERE is_main = true")
+    c.execute("SELECT id FROM branches WHERE is_main = 1")
     main_b = c.fetchone()
     if not main_b:
         c.execute("SELECT id FROM branches LIMIT 1")
@@ -1246,16 +1274,33 @@ def _ensure_main_branch(c, conn, sqlite_mode=True):
             ('purchase_docs', 'branch_id'), ('goods_receipts', 'branch_id'),
             ('goods_issues', 'branch_id'), ('payments', 'branch_id'),
             ('journal_entries', 'branch_id'), ('production_orders', 'branch_id'),
+            ('inventory_counts', 'branch_id'),
         ]:
             try:
+                if not sqlite_mode:
+                    c.execute(f"SAVEPOINT sp_upd_{table}_{col}")
                 c.execute(f"UPDATE {table} SET {col} = {ph} WHERE {col} IS NULL", (hq_id,))
+                if not sqlite_mode:
+                    c.execute(f"RELEASE SAVEPOINT sp_upd_{table}_{col}")
             except Exception:
-                pass
+                if not sqlite_mode:
+                    try:
+                        c.execute(f"ROLLBACK TO SAVEPOINT sp_upd_{table}_{col}")
+                    except Exception:
+                        pass
         for col in ['from_branch_id', 'to_branch_id']:
             try:
+                if not sqlite_mode:
+                    c.execute(f"SAVEPOINT sp_upd_st_{col}")
                 c.execute(f"UPDATE stock_transfers SET {col} = {ph} WHERE {col} IS NULL", (hq_id,))
+                if not sqlite_mode:
+                    c.execute(f"RELEASE SAVEPOINT sp_upd_st_{col}")
             except Exception:
-                pass
+                if not sqlite_mode:
+                    try:
+                        c.execute(f"ROLLBACK TO SAVEPOINT sp_upd_st_{col}")
+                    except Exception:
+                        pass
 
         # Ensure users are in branch
         c.execute("SELECT id FROM users")
