@@ -107,12 +107,42 @@ def dashboard():
         LIMIT 6
     """).fetchall()
 
-    # Chart data (Monthly sales vs purchases)
+    # Chart data (Monthly sales vs purchases — current year)
+    import datetime as _dt
+    cur_year = _dt.date.today().year
     chart_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    chart_sales = [0] * 12
-    chart_purchases = [0] * 12
-    chart_sales[7] = round(total_sales, 2)  # Current month August
-    chart_purchases[7] = round(total_purchases, 2)
+    chart_sales = [0.0] * 12
+    chart_purchases = [0.0] * 12
+
+    try:
+        sales_rows = conn.execute(f"""
+            SELECT doc_date, total
+            FROM sales_docs
+            WHERE doc_type='Invoice' AND status IN ('Posted','Paid','Partial')
+              AND doc_date >= ? AND doc_date <= ? {branch_sales_clause}
+        """, [f"{cur_year}-01-01", f"{cur_year}-12-31"] + b_params).fetchall()
+        for r in sales_rows:
+            d = r['doc_date']
+            m = (d.month - 1) if hasattr(d, 'month') else (int(str(d).split('-')[1]) - 1)
+            if 0 <= m < 12:
+                chart_sales[m] = round(chart_sales[m] + float(r['total'] or 0), 2)
+    except Exception:
+        pass
+
+    try:
+        purch_rows = conn.execute(f"""
+            SELECT doc_date, total
+            FROM purchase_docs
+            WHERE doc_type IN ('Invoice','Bill') AND status IN ('Posted','Paid','Partial')
+              AND doc_date >= ? AND doc_date <= ? {branch_purch_clause}
+        """, [f"{cur_year}-01-01", f"{cur_year}-12-31"] + b_params).fetchall()
+        for r in purch_rows:
+            d = r['doc_date']
+            m = (d.month - 1) if hasattr(d, 'month') else (int(str(d).split('-')[1]) - 1)
+            if 0 <= m < 12:
+                chart_purchases[m] = round(chart_purchases[m] + float(r['total'] or 0), 2)
+    except Exception:
+        pass
 
     return render_template('overview/dashboard.html',
                            total_sales=total_sales,

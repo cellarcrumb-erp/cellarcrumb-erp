@@ -163,6 +163,8 @@ class _PgWrapper:
         # SQLite IFNULL(a, b) -> COALESCE(a, b)
         s = re.sub(r'\bIFNULL\(', 'COALESCE(', s, flags=re.IGNORECASE)
         # SQLite strftime('%Y-%m', col) -> SUBSTR(col::text, 1, 7)
+        s = re.sub(r"strftime\('%Y',\s*([^)]+)\)", r"EXTRACT(YEAR FROM \1::date)::text", s, flags=re.IGNORECASE)
+        s = re.sub(r"strftime\('%m',\s*([^)]+)\)", r"EXTRACT(MONTH FROM \1::date)::text", s, flags=re.IGNORECASE)
         s = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"SUBSTR(\1::text, 1, 7)", s, flags=re.IGNORECASE)
         # INSERT OR IGNORE INTO -> INSERT INTO ... ON CONFLICT DO NOTHING
         if re.search(r'\bINSERT\s+OR\s+IGNORE\s+INTO\b', s, flags=re.IGNORECASE):
