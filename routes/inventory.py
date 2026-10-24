@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response, jsonify
-from database import get_db, next_ref, update_stock, post_journal, log_audit
+from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit
 from auth import login_required, require_permission
 from datetime import datetime, date
 
@@ -129,16 +129,18 @@ def api_source_lines():
 @inventory_bp.route('/items')
 @login_required
 def items():
-    search = request.args.get('search', '')
+    search = request.args.get('search', '').strip()
     conn = get_db()
-    query = """
+    where_sql, params = smart_search_sql(search, ['i.name', 'i.code', 'i.item_type', 'u.code', 'u.name'])
+    query = f"""
         SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name,
                (SELECT SUM(quantity) FROM stock_balances WHERE item_id = i.id) as total_stock
         FROM items i
         LEFT JOIN uom u ON i.uom_id = u.id
-        WHERE i.name LIKE ? OR i.code LIKE ?
+        WHERE {where_sql}
+        ORDER BY i.code ASC
     """
-    items = conn.execute(query, (f"%{search}%", f"%{search}%")).fetchall()
+    items = conn.execute(query, params).fetchall()
     return render_template('inventory/items_list.html', items=items, search=search)
 
 @inventory_bp.route('/items/new', methods=['GET', 'POST'])

@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from functools import wraps
-from database import get_db, next_ref, update_stock, post_journal, log_audit
+from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit
 from datetime import datetime, date
 
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
@@ -179,6 +179,7 @@ def doc_list(doc_kind):
     doc_type = DOC_TYPES[doc_kind]
     
     conn = get_db()
+    search = request.args.get('search', '').strip()
     status = request.args.get('status', '')
     customer_id = request.args.get('customer_id', '')
     branch_id_param = request.args.get('branch_id', type=int)
@@ -206,6 +207,10 @@ def doc_list(doc_kind):
     if effective_branch_id:
         query += " AND d.branch_id = ?"
         params.append(effective_branch_id)
+    if search:
+        s_where, s_params = smart_search_sql(search, ['d.doc_ref', 'p.name', 'p.code', 'd.remarks', 'd.status', 'd.doc_date'])
+        query += f" AND {s_where}"
+        params.extend(s_params)
         
     query += " ORDER BY d.doc_date DESC, d.id DESC"
     docs = conn.execute(query, params).fetchall()
@@ -213,7 +218,7 @@ def doc_list(doc_kind):
     branches = conn.execute("SELECT id, code, name FROM branches WHERE is_active=1 ORDER BY is_main DESC, name ASC").fetchall()
     
     return render_template('sales/doc_list.html', docs=docs, doc_kind=doc_kind, doc_type=doc_type,
-                           customers=customers, branches=branches, current_branch_id=effective_branch_id)
+                           customers=customers, branches=branches, current_branch_id=effective_branch_id, search=search)
 
 @sales_bp.route('/<doc_kind>/new', methods=['GET', 'POST'])
 @login_required

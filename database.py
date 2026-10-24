@@ -179,6 +179,8 @@ class _PgWrapper:
         s = re.sub(r'\b(is_\w+)\s*!=\s*0\b', r'\1 != FALSE', s, flags=re.IGNORECASE)
         s = re.sub(r'\b(is_\w+)\s*<>\s*1\b', r'\1 <> TRUE', s, flags=re.IGNORECASE)
         s = re.sub(r'\b(is_\w+)\s*<>\s*0\b', r'\1 <> FALSE', s, flags=re.IGNORECASE)
+        # Case-insensitive LIKE on PostgreSQL
+        s = re.sub(r'\bLIKE\b', 'ILIKE', s, flags=re.IGNORECASE)
         return s
 
     def execute(self, sql, params=()):
@@ -549,6 +551,29 @@ def get_account_id(conn, code):
     cursor.execute(f"SELECT id FROM coa WHERE code = {PH}", (code,))
     row = cursor.fetchone()
     return row['id'] if row else None
+
+
+def smart_search_sql(search_str, columns):
+    """Build a multi-word, case-insensitive, singular/plural-tolerant SQL WHERE clause.
+    Example: search_str='Event Co', columns=['name', 'code', 'phone']
+    Matches 'Events Co' because each word token ('Event', 'Co') is matched independently.
+    """
+    tokens = [t.strip() for t in (search_str or '').strip().split() if t.strip()]
+    if not tokens:
+        return "1=1", []
+    word_clauses = []
+    params = []
+    for tok in tokens:
+        stems = [tok]
+        if len(tok) >= 4 and tok.lower().endswith('s'):
+            stems.append(tok[:-1])
+        col_ors = []
+        for col in columns:
+            for st in stems:
+                col_ors.append(f"LOWER(COALESCE(CAST({col} AS TEXT), '')) LIKE LOWER({PH})")
+                params.append(f"%{st}%")
+        word_clauses.append("(" + " OR ".join(col_ors) + ")")
+    return "(" + " AND ".join(word_clauses) + ")", params
 
 DEFAULT_PRINT_SETTINGS = {
     'layout_style': 'corporate',

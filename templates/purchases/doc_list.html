@@ -21,6 +21,7 @@
 <div class="card table-card">
   <div class="table-toolbar">
     <form method="GET" class="flex gap-3 items-center flex-wrap" style="width:100%;">
+      <input type="text" name="search" placeholder="Search by Doc Ref, supplier, remarks..." value="{{ search or request.args.get('search', '') }}" class="search-input" style="flex:1; min-width:210px;">
       <select name="supplier_id" class="filter-select" style="min-width:200px;">
         <option value="">All Suppliers</option>
         {% for s in suppliers %}
@@ -47,7 +48,7 @@
         <i data-feather="filter" style="width:14px;height:14px;"></i> Filter
       </button>
 
-      {% if request.args.get('supplier_id') or request.args.get('branch_id') or request.args.get('status') %}
+      {% if request.args.get('search') or request.args.get('supplier_id') or request.args.get('branch_id') or request.args.get('status') %}
       <a href="{{ url_for('purchases.doc_list', doc_kind=doc_kind) }}" class="btn btn-secondary btn-sm">Clear</a>
       {% endif %}
     </form>

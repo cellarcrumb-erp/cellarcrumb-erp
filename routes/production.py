@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from functools import wraps
-from database import get_db, next_ref, update_stock, post_journal, log_audit
+from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit
 from datetime import date
 
 production_bp = Blueprint('production', __name__, url_prefix='/production')
@@ -40,14 +40,15 @@ def index():
 @require_permission('production', 'read')
 def bom_list():
     db = get_db()
-    search = request.args.get('search', '')
-    query = '''
+    search = request.args.get('search', '').strip()
+    where_sql, params = smart_search_sql(search, ['b.name', 'i.name', 'i.code'])
+    query = f'''
         SELECT b.*, i.name as finished_item_name
         FROM bom b
         JOIN items i ON b.finished_item_id = i.id
-        WHERE b.name LIKE ? OR i.name LIKE ?
+        WHERE {where_sql}
     '''
-    boms = db.execute(query, ('%'+search+'%', '%'+search+'%')).fetchall()
+    boms = db.execute(query, params).fetchall()
     return render_template('production/bom_list.html', boms=boms, search=search)
 
 @production_bp.route('/bom/new', methods=['GET', 'POST'])

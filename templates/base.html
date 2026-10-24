@@ -1,16 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{{ ui_theme or 'midnight' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Overview{% endblock %} — Cellar & Crumb ERP</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('cc_erp_theme');
+        if (savedTheme && ['midnight', 'slate', 'light'].indexOf(savedTheme) !== -1) {
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+      } catch (e) {}
+    })();
+  </script>
   <!-- Feather Icons -->
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* SAP Business One Golden Link Arrow */
+    /* SAP Business One Golden Link Arrow (Theme-adaptive) */
     .sap-arrow {
       display: inline-flex;
       align-items: center;
@@ -18,9 +28,9 @@
       width: 19px;
       height: 19px;
       border-radius: 4px;
-      background: rgba(245, 158, 11, 0.18);
-      border: 1px solid rgba(245, 158, 11, 0.55);
-      color: #fbbf24 !important;
+      background: var(--gold-light);
+      border: 1px solid var(--gold);
+      color: var(--gold) !important;
       font-size: 11px;
       font-weight: 800;
       text-decoration: none !important;
@@ -32,19 +42,20 @@
       flex-shrink: 0;
     }
     .sap-arrow:hover {
-      background: #f59e0b;
+      background: var(--gold);
       color: #0f172a !important;
       transform: translateX(1px);
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+      box-shadow: 0 0 8px var(--gold-light);
     }
 
     /* ======================================================================
-       SAP Business One Top Menu Bar, Icon Toolbar & Collapsible Module Tree
+       Unified System Top Menu Bar, Icon Toolbar & Collapsible Module Tree
+       Matches active system theme (Midnight Gold, Nordic Slate, Daylight Ivory)
        ====================================================================== */
     .sap-menubar {
       height: 30px;
-      background: linear-gradient(180deg, #1d3a5c 0%, #162d49 100%);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      background: var(--menubar-bg);
+      border-bottom: 1px solid var(--topbar-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -54,6 +65,7 @@
       z-index: 95;
       user-select: none;
       font-size: 12.5px;
+      color: var(--text-primary);
     }
     .sap-menubar-left {
       display: flex;
@@ -66,9 +78,10 @@
     .sap-menu-btn {
       background: transparent;
       border: none;
-      color: #e2e8f0;
+      color: var(--text-secondary);
       padding: 4px 10px;
       font-size: 12.5px;
+      font-weight: 500;
       font-family: inherit;
       cursor: pointer;
       border-radius: 4px;
@@ -79,41 +92,42 @@
       text-underline-offset: 2px;
     }
     .sap-menu-btn:hover, .sap-menu-btn.active {
-      background: rgba(255, 255, 255, 0.14);
-      color: #ffffff;
+      background: var(--gold-light);
+      color: var(--text-primary);
     }
     .sap-menu-dropdown {
       display: none;
       position: absolute;
       top: calc(100% + 2px);
       left: 0;
-      min-width: 235px;
-      background: #0f1c2e;
-      border: 1px solid rgba(56, 189, 248, 0.28);
-      border-radius: 6px;
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.72);
-      padding: 5px 0;
-      z-index: 9999;
+      min-width: 245px;
+      background: var(--dropdown-bg) !important;
+      border: 1px solid var(--card-border) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45) !important;
+      padding: 5px 0 !important;
+      z-index: 9999 !important;
     }
     .sap-menu-dropdown a, .sap-menu-dropdown button {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
       width: 100%;
-      padding: 6px 14px;
+      padding: 7px 14px !important;
       background: transparent;
       border: none;
-      color: #e2e8f0;
-      font-size: 12.5px;
+      color: var(--text-primary) !important;
+      font-size: 12.5px !important;
+      font-weight: 500 !important;
       font-family: inherit;
-      text-decoration: none;
+      text-decoration: none !important;
       text-align: left;
       cursor: pointer;
       transition: background 0.12s;
     }
     .sap-menu-dropdown a:hover, .sap-menu-dropdown button:hover {
-      background: rgba(245, 158, 11, 0.2);
-      color: #fbbf24;
+      background: var(--gold-light) !important;
+      color: var(--gold) !important;
     }
     .sap-menu-dropdown .sap-menu-lbl {
       display: flex;
@@ -123,34 +137,36 @@
     .sap-menu-dropdown .sap-menu-lbl svg {
       width: 13px;
       height: 13px;
-      color: #fbbf24;
+      color: var(--gold);
     }
     .sap-menu-shortcut {
       font-size: 10.5px;
-      color: #94a3b8;
+      color: var(--text-muted);
       font-family: monospace;
       margin-left: 14px;
     }
     .sap-menu-sep {
       height: 1px;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--border);
       margin: 4px 0;
     }
     .sap-company-banner {
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #ffffff;
-      text-decoration: underline;
-      text-underline-offset: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
       letter-spacing: 0.02em;
       cursor: pointer;
+      transition: color 0.12s;
+    }
+    .sap-company-banner:hover {
+      color: var(--gold);
     }
 
-    /* SAP Icon Toolbar Strip (with gold bottom border like SAP B1) */
+    /* Unified Icon Toolbar Strip (matches system theme) */
     .sap-iconbar {
-      height: 38px;
-      background: linear-gradient(180deg, #274b73 0%, #1e3b5c 100%);
-      border-bottom: 2.5px solid #f59e0b;
+      height: 36px;
+      background: var(--iconbar-bg);
+      border-bottom: 1px solid var(--topbar-border);
       display: flex;
       align-items: center;
       padding: 0 14px;
@@ -159,21 +175,20 @@
       top: 30px;
       z-index: 90;
       overflow-x: auto;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
     }
     .sap-tool-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 27px;
+      height: 26px;
       min-width: 28px;
       padding: 0 6px;
-      border-radius: 4px;
+      border-radius: 5px;
       border: 1px solid transparent;
       background: transparent;
-      color: #e2e8f0;
+      color: var(--text-secondary);
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       transition: all 0.12s ease;
@@ -181,43 +196,49 @@
       gap: 4px;
     }
     .sap-tool-btn svg {
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       stroke-width: 2;
     }
     .sap-tool-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(245, 158, 11, 0.55);
-      color: #fbbf24;
+      background: var(--gold-light);
+      border-color: var(--gold);
+      color: var(--gold);
     }
     .sap-tool-btn:active {
       transform: translateY(1px);
     }
     .sap-tool-sep {
       width: 1px;
-      height: 20px;
-      background: rgba(255, 255, 255, 0.18);
+      height: 18px;
+      background: var(--border);
       margin: 0 5px;
       flex-shrink: 0;
     }
     .sap-badge-icon {
       font-size: 9.5px;
-      font-weight: 800;
-      padding: 1px 4px;
-      border: 1.2px solid currentColor;
-      border-radius: 3px;
-      line-height: 1.1;
-      letter-spacing: 0.02em;
+      font-weight: 700;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      background: var(--btn-sec-bg);
+      color: var(--text-primary);
+      border-radius: 4px;
+      line-height: 1.2;
+      letter-spacing: 0.03em;
+    }
+    .sap-tool-btn:hover .sap-badge-icon {
+      border-color: var(--gold);
+      color: var(--gold);
     }
 
-    /* Topbar adjustments when SAP bars are active */
+    /* Topbar adjustments when unified menu bars are active */
     .topbar {
-      top: 68px !important;
+      top: 66px !important;
       height: 50px !important;
       padding: 0 24px !important;
     }
 
-    /* Collapsible SAP Module Tree in Sidebar */
+    /* Collapsible Module Tree in Sidebar */
     .sap-tree-group {
       margin-bottom: 3px;
     }
@@ -240,11 +261,11 @@
     }
     .sap-tree-header:hover {
       background-color: var(--sidebar-hover);
-      color: #f9fafb;
+      color: var(--text-primary);
     }
     .sap-tree-header.active-mod {
-      background: linear-gradient(90deg, rgba(201, 168, 76, 0.22) 0%, rgba(201, 168, 76, 0.08) 100%);
-      color: #fbbf24;
+      background: var(--gold-light);
+      color: var(--gold);
       border-left: 3px solid var(--gold);
     }
     .sap-tree-header-left {
@@ -255,7 +276,7 @@
     .sap-tree-header-left svg {
       width: 16px;
       height: 16px;
-      color: #fbbf24;
+      color: var(--gold);
       flex-shrink: 0;
     }
     .sap-tree-chevron {
@@ -271,7 +292,7 @@
       display: none;
       padding: 2px 0 4px 20px;
       margin-left: 16px;
-      border-left: 1px dashed rgba(201, 168, 76, 0.3);
+      border-left: 1px dashed var(--border);
     }
     .sap-tree-group.open .sap-tree-children {
       display: block;
@@ -282,7 +303,7 @@
       gap: 7px;
       padding: 5px 10px;
       border-radius: 5px;
-      color: #94a3b8;
+      color: var(--sidebar-text);
       text-decoration: none;
       font-size: 12px;
       font-weight: 500;
@@ -291,16 +312,17 @@
     .sap-tree-link::before {
       content: "▸";
       font-size: 10px;
-      color: rgba(251, 191, 36, 0.65);
+      color: var(--gold);
+      opacity: 0.75;
     }
     .sap-tree-link:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      background: var(--sidebar-hover);
     }
     .sap-tree-link.active-leaf {
-      color: #fbbf24;
+      color: var(--gold);
       font-weight: 700;
-      background: rgba(245, 158, 11, 0.14);
+      background: var(--gold-light);
     }
     body.sidebar-collapsed .sidebar {
       transform: translateX(-100%);
@@ -311,6 +333,106 @@
     }
     body.sidebar-collapsed .tech-canvas-bg {
       left: 0 !important;
+    }
+
+    /* Quick Find / Universal Search Modal */
+    .sap-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 75px;
+    }
+    .sap-modal-backdrop.open {
+      display: flex;
+    }
+    .sap-find-modal {
+      width: 100%;
+      max-width: 660px;
+      background: var(--dropdown-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      overflow: hidden;
+      color: var(--text-primary);
+    }
+    .sap-find-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--menubar-bg);
+    }
+    .sap-find-input {
+      flex: 1;
+      background: var(--input-bg) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--input-border) !important;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+    }
+    .sap-find-input:focus {
+      border-color: var(--gold) !important;
+    }
+    .sap-find-results {
+      max-height: 380px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .sap-find-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background 0.12s;
+    }
+    .sap-find-item:hover {
+      background: var(--gold-light);
+    }
+    .sap-find-code {
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--gold);
+      font-size: 12.5px;
+      margin-right: 8px;
+    }
+    .sap-find-cat {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    /* Floating Feedback Toast */
+    #sapToast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--dropdown-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--gold);
+      border-left: 4px solid var(--gold);
+      padding: 11px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      z-index: 10005;
+      display: none;
+      align-items: center;
+      gap: 8px;
     }
   </style>
   {% block extra_head %}{% endblock %}
@@ -640,6 +762,16 @@
           <a href="{{ url_for('overview.dashboard') }}">
             <span class="sap-menu-lbl"><i data-feather="grid"></i> Executive Cockpit</span>
           </a>
+          <div class="sap-menu-sep"></div>
+          <button type="button" onclick="setErpTheme('midnight')">
+            <span class="sap-menu-lbl"><i data-feather="moon"></i> Theme: Midnight Gold (Dark)</span>
+          </button>
+          <button type="button" onclick="setErpTheme('slate')">
+            <span class="sap-menu-lbl"><i data-feather="layers"></i> Theme: Nordic Slate (Soft)</span>
+          </button>
+          <button type="button" onclick="setErpTheme('light')">
+            <span class="sap-menu-lbl"><i data-feather="sun"></i> Theme: Daylight Ivory (Light)</span>
+          </button>
           {% if user_can('finance', 'read') %}
           <a href="{{ url_for('finance.journal_list') }}">
             <span class="sap-menu-lbl"><i data-feather="book-open"></i> Journal Entry Preview</span>
@@ -799,13 +931,13 @@
       <i data-feather="printer"></i>
     </button>
     <button type="button" class="sap-tool-btn" onclick="sapAction('print_pos')" title="POS Thermal Receipt Print (80mm / 58mm)">
-      <span class="sap-badge-icon" style="color:#fbbf24; border-color:#fbbf24;">POS</span>
+      <span class="sap-badge-icon">POS</span>
     </button>
     <button type="button" class="sap-tool-btn" onclick="sapAction('export_csv')" title="Export Table to Excel / CSV">
-      <span class="sap-badge-icon" style="color:#34d399; border-color:#34d399;">XLS</span>
+      <span class="sap-badge-icon">XLS</span>
     </button>
     <button type="button" class="sap-tool-btn" onclick="sapAction('print_a4')" title="Export / Save as PDF">
-      <span class="sap-badge-icon" style="color:#f87171; border-color:#f87171;">PDF</span>
+      <span class="sap-badge-icon">PDF</span>
     </button>
 
     <div class="sap-tool-sep"></div>
@@ -837,7 +969,7 @@
     <div class="sap-tool-sep"></div>
 
     <!-- Filter / Refresh / Base & Target Docs -->
-    <button type="button" class="sap-tool-btn" onclick="sapAction('find')" title="Filter Table">
+    <button type="button" class="sap-tool-btn" onclick="sapAction('filter')" title="Apply / Focus Table Filter">
       <i data-feather="filter"></i>
     </button>
     <button type="button" class="sap-tool-btn" onclick="window.location.reload()" title="Refresh Record (F5)">
@@ -896,6 +1028,39 @@
     <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
     <div class="topbar-actions">
       {% block topbar_actions %}{% endblock %}
+
+      <!-- Quick Search Button in Topbar -->
+      <button type="button" onclick="openSapQuickFind()" class="btn btn-secondary btn-sm" style="display:flex; align-items:center; gap:7px; padding:6px 12px; border-radius:20px; font-size:12.5px;" title="Quick Search Any Record (Ctrl+F)">
+        <i data-feather="search" style="width:13px;height:13px; color:var(--gold);"></i>
+        <span>Quick Search</span>
+      </button>
+
+      <!-- 3-Theme Selector Dropdown -->
+      <div style="position:relative; display:inline-block;">
+        <button type="button" onclick="toggleDropdown('themeSwitcherMenu', event)" class="btn btn-secondary btn-sm"
+                style="display:flex; align-items:center; gap:7px; padding:6px 13px; border-radius:20px; font-size:12.5px; cursor:pointer;" title="Switch Display Theme">
+          <i data-feather="sun" style="width:13px;height:13px; color:var(--gold);"></i>
+          <span id="activeThemeLabel">Theme</span>
+          <i data-feather="chevron-down" style="width:12px;height:12px;"></i>
+        </button>
+        <div id="themeSwitcherMenu" class="dropdown-menu" style="display:none; position:absolute; right:0; top:calc(100% + 8px); min-width:230px; z-index:9999;">
+          <div style="padding:7px 16px; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); border-bottom:1px solid var(--border);">
+            Select Display Theme
+          </div>
+          <button type="button" onclick="setErpTheme('midnight')" style="width:100%; border:none; background:transparent; cursor:pointer; text-align:left;">
+            <i data-feather="moon" style="width:14px;height:14px;"></i>
+            <span style="flex:1;">Midnight Gold <small style="color:var(--text-muted); display:block; font-size:10.5px;">Deep Navy &amp; Warm Gold</small></span>
+          </button>
+          <button type="button" onclick="setErpTheme('slate')" style="width:100%; border:none; background:transparent; cursor:pointer; text-align:left;">
+            <i data-feather="layers" style="width:14px;height:14px;"></i>
+            <span style="flex:1;">Nordic Slate <small style="color:var(--text-muted); display:block; font-size:10.5px;">Soft Eye-Comfort Slate</small></span>
+          </button>
+          <button type="button" onclick="setErpTheme('light')" style="width:100%; border:none; background:transparent; cursor:pointer; text-align:left;">
+            <i data-feather="sun" style="width:14px;height:14px;"></i>
+            <span style="flex:1;">Daylight Ivory <small style="color:var(--text-muted); display:block; font-size:10.5px;">High-Contrast Light Mode</small></span>
+          </button>
+        </div>
+      </div>
 
       <!-- SAP Multiple Branches Switcher -->
       {% if session.get('user_id') and all_accessible_branches %}
@@ -1100,6 +1265,143 @@
     });
   };
 
+  // Toast notification helper
+  window.showSapToast = function(msg) {
+    var t = document.getElementById('sapToast');
+    var txt = document.getElementById('sapToastText');
+    if (!t || !txt) return;
+    txt.textContent = msg;
+    t.style.display = 'flex';
+    clearTimeout(window._sapToastTimer);
+    window._sapToastTimer = setTimeout(function() {
+      t.style.display = 'none';
+    }, 3200);
+  };
+
+  // Theme Manager (Midnight Gold, Nordic Slate, Daylight Ivory)
+  var THEME_NAMES = {
+    'midnight': 'Midnight Gold',
+    'slate': 'Nordic Slate',
+    'light': 'Daylight Ivory'
+  };
+  window.updateThemeLabel = function(theme) {
+    var lbl = document.getElementById('activeThemeLabel');
+    if (lbl) lbl.textContent = THEME_NAMES[theme] || 'Theme';
+  };
+  window.setErpTheme = function(theme) {
+    if (!THEME_NAMES[theme]) theme = 'midnight';
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('cc_erp_theme', theme); } catch (e) {}
+    window.updateThemeLabel(theme);
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+    fetch('/api/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: theme })
+    }).catch(function() {});
+    window.showSapToast('Display theme set to ' + THEME_NAMES[theme]);
+  };
+  window.updateThemeLabel(document.documentElement.getAttribute('data-theme') || 'midnight');
+
+  // Universal Quick Find Modal
+  window.openSapQuickFind = function(initialQuery) {
+    var modal = document.getElementById('sapQuickFindModal');
+    var inp = document.getElementById('sapQuickFindInput');
+    if (!modal || !inp) return;
+    modal.classList.add('open');
+    var pageSearch = document.querySelector('input[name="search"]');
+    if (typeof initialQuery === 'string' && initialQuery) {
+      inp.value = initialQuery;
+    } else if (pageSearch && pageSearch.value.trim()) {
+      inp.value = pageSearch.value.trim();
+    }
+    setTimeout(function() {
+      inp.focus();
+      inp.select();
+      window.runSapQuickSearch(inp.value);
+    }, 30);
+  };
+
+  window.closeSapQuickFind = function() {
+    var modal = document.getElementById('sapQuickFindModal');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window.applyPageSearchFromModal = function() {
+    var inp = document.getElementById('sapQuickFindInput');
+    var q = inp ? inp.value.trim() : '';
+    var pageSearch = document.querySelector('input[name="search"]');
+    if (pageSearch && pageSearch.form) {
+      pageSearch.value = q;
+      pageSearch.form.submit();
+      return;
+    }
+    var bp = {{ (request.blueprint or '')|tojson }};
+    var path = window.location.pathname;
+    fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=last')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.find_url) {
+          window.location.href = data.find_url + (q ? ('?search=' + encodeURIComponent(q)) : '');
+        }
+      });
+  };
+
+  window.runSapQuickSearch = function(q) {
+    var box = document.getElementById('sapQuickFindResults');
+    if (!box) return;
+    var bp = {{ (request.blueprint or '')|tojson }};
+    fetch('/api/sap-search?q=' + encodeURIComponent(q || '') + '&bp=' + encodeURIComponent(bp))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var items = (data && data.results) || [];
+        if (!items.length) {
+          box.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No matching records found for "<strong>' + (q || '') + '</strong>".</div>';
+          return;
+        }
+        box.innerHTML = items.map(function(item) {
+          return '<a href="' + item.url + '" class="sap-find-item">' +
+            '<div>' +
+              '<div class="sap-find-cat">' + item.category + '</div>' +
+              '<div style="font-size:13.5px; font-weight:600; margin-top:2px;">' +
+                '<span class="sap-find-code">' + item.code + '</span>' +
+                '<span>' + item.title + '</span>' +
+              '</div>' +
+              '<div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">' + (item.subtitle || '') + '</div>' +
+            '</div>' +
+            '<div style="font-size:12px; font-weight:700; color:var(--gold); text-align:right;">' + (item.badge || '') + ' ➜</div>' +
+          '</a>';
+        }).join('');
+      })
+      .catch(function() {
+        box.innerHTML = '<div style="padding:18px; text-align:center; color:var(--text-muted);">Unable to load search results.</div>';
+      });
+  };
+
+  // Live instant client-side table filtering on any page with input[name="search"]
+  document.addEventListener('DOMContentLoaded', function() {
+    var searchInp = document.querySelector('.table-toolbar input[name="search"], input.search-input');
+    if (searchInp) {
+      searchInp.addEventListener('input', function() {
+        var raw = searchInp.value.trim().toLowerCase();
+        var tokens = raw ? raw.split(/\s+/).map(function(t) {
+          return t.length >= 4 && t.endsWith('s') ? [t, t.slice(0, -1)] : [t];
+        }) : [];
+        var table = document.querySelector('.table tbody, table tbody');
+        if (!table) return;
+        var rows = Array.from(table.querySelectorAll('tr'));
+        rows.forEach(function(row) {
+          if (row.querySelector('td[colspan]')) return;
+          var txt = (row.innerText || '').toLowerCase();
+          var matched = tokens.every(function(stems) {
+            return stems.some(function(st) { return txt.indexOf(st) !== -1; });
+          });
+          row.style.display = matched ? '' : 'none';
+        });
+      });
+    }
+  });
+
   // SAP Data Record Navigation (First |<, Prev <-, Next ->, Last >|)
   window.sapNavRecord = function(dir) {
     var bp = {{ (request.blueprint or '')|tojson }};
@@ -1107,9 +1409,16 @@
     fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=' + encodeURIComponent(dir))
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data && data.url) {
-          window.location.href = data.url;
+        if (!data || !data.url) {
+          window.showSapToast('No records available to navigate.');
+          return;
         }
+        if (data.same_record && window.location.pathname === data.url) {
+          var dirLabel = dir === 'first' ? 'first' : dir === 'last' ? 'last' : dir === 'prev' ? 'first' : 'last';
+          window.showSapToast('Already viewing the ' + dirLabel + ' record.');
+          return;
+        }
+        window.location.href = data.url;
       })
       .catch(function(err) { console.error('SAP Nav error:', err); });
   };
@@ -1136,16 +1445,16 @@
           var sep = printLink2.href.indexOf('?') === -1 ? '?' : '&';
           window.open(printLink2.href + sep + 'format=pos', '_blank');
         } else {
-          window.print();
+          window.showSapToast('Open a Sales, Purchase, or Payment document to print a POS thermal receipt.');
         }
       }
     } else if (act === 'export_csv') {
       var table = document.querySelector('table');
       if (!table) {
-        alert('No data table on the current screen to export.');
+        window.showSapToast('No data table on the current screen to export.');
         return;
       }
-      var rows = Array.from(table.querySelectorAll('tr'));
+      var rows = Array.from(table.querySelectorAll('tr')).filter(function(r) { return r.style.display !== 'none'; });
       var csv = rows.map(function(row) {
         var cells = Array.from(row.querySelectorAll('th, td'));
         return cells.map(function(c) {
@@ -1162,21 +1471,38 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.showSapToast('Exported table to CSV.');
     } else if (act === 'find') {
-      var searchInput = document.querySelector('input[name="search"], input[type="search"], input[placeholder*="Search"]');
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
+      var searchInput = document.querySelector('input[name="search"], input[type="search"]');
+      var urlParams = new URLSearchParams(window.location.search);
+      var currentUrlSearch = (urlParams.get('search') || '').trim();
+      if (searchInput && searchInput.form && searchInput.value.trim() && searchInput.value.trim() !== currentUrlSearch) {
+        searchInput.form.submit();
         return;
       }
-      fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=last')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data && data.find_url) window.location.href = data.find_url;
-        });
+      window.openSapQuickFind(searchInput ? searchInput.value.trim() : '');
+    } else if (act === 'filter') {
+      var filterForm = document.querySelector('.table-toolbar form, form[method="GET"], form[method="get"]');
+      if (filterForm) {
+        var sInp = filterForm.querySelector('input[name="search"]');
+        var urlParams2 = new URLSearchParams(window.location.search);
+        if (sInp && sInp.value.trim() !== (urlParams2.get('search') || '').trim()) {
+          filterForm.submit();
+          return;
+        }
+        if (sInp) {
+          sInp.focus();
+          sInp.select();
+          window.showSapToast('Type in the search box and press Enter or Filter.');
+          return;
+        }
+        filterForm.submit();
+        return;
+      }
+      window.openSapQuickFind('');
     } else if (act === 'new') {
-      var newBtn = document.querySelector('a[href*="/new"]');
-      if (newBtn && !newBtn.closest('.sap-menu-dropdown') && !newBtn.closest('.sap-tree-children')) {
+      var newBtn = document.querySelector('.content a[href*="/new"]');
+      if (newBtn) {
         window.location.href = newBtn.href;
         return;
       }
@@ -1191,18 +1517,26 @@
       } else {
         var addLineBtn = document.getElementById('addLineBtn');
         if (addLineBtn) addLineBtn.click();
+        else window.showSapToast('Open a document form to add line items.');
       }
     } else if (act === 'del_row') {
       var delBtns = document.querySelectorAll('.remove-line, .remove-btn');
       if (delBtns.length > 1) {
         delBtns[delBtns.length - 1].click();
+      } else {
+        window.showSapToast('No removable line items on this screen.');
       }
     }
   };
 
-  // Keyboard shortcuts (Ctrl+F Find, Ctrl+N New, F2 Toggle Sidebar)
+  // Keyboard shortcuts (Ctrl+F Quick Find, F2 Toggle Sidebar, Escape Close Modal, Alt+Arrows Record Nav)
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'F2') {
+    if (e.key === 'Escape') {
+      window.closeSapQuickFind();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      window.openSapQuickFind();
+    } else if (e.key === 'F2') {
       e.preventDefault();
       document.body.classList.toggle('sidebar-collapsed');
     } else if (e.altKey && e.key === 'ArrowLeft') {
@@ -1214,6 +1548,30 @@
     }
   });
 </script>
+
+<!-- Universal Quick Find / Search Modal -->
+<div id="sapQuickFindModal" class="sap-modal-backdrop" onclick="if(event.target===this) closeSapQuickFind()">
+  <div class="sap-find-modal">
+    <div class="sap-find-header">
+      <i data-feather="search" style="width:18px;height:18px; color:var(--gold);"></i>
+      <input type="text" id="sapQuickFindInput" class="sap-find-input"
+             placeholder="Search Business Partners (e.g. Event Co), Items, Sales/Purchase Docs, Accounts..."
+             oninput="runSapQuickSearch(this.value)"
+             onkeydown="if(event.key==='Enter'){ event.preventDefault(); var first=document.querySelector('#sapQuickFindResults a.sap-find-item'); if(first) window.location.href=first.href; else applyPageSearchFromModal(); }">
+      <button type="button" class="btn btn-primary btn-sm" onclick="applyPageSearchFromModal()" title="Filter Current Table">
+        Filter Table
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeSapQuickFind()">✕</button>
+    </div>
+    <div id="sapQuickFindResults" class="sap-find-results"></div>
+  </div>
+</div>
+
+<!-- Floating Feedback Toast -->
+<div id="sapToast">
+  <i data-feather="info" style="width:15px;height:15px; color:var(--gold);"></i>
+  <span id="sapToastText"></span>
+</div>
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>

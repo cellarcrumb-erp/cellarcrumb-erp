@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response, jsonify
-from database import get_db, next_ref, log_audit
+from database import get_db, next_ref, log_audit, smart_search_sql
 from auth import login_required, require_permission
 
 bp_master_bp = Blueprint('bp_master', __name__, url_prefix='/bp')
@@ -10,17 +10,18 @@ bp_master_bp = Blueprint('bp_master', __name__, url_prefix='/bp')
 @login_required
 @require_permission('bp_master', 'read')
 def index():
-    search = request.args.get('search', '')
-    p_type = request.args.get('type', '')
+    search = request.args.get('search', '').strip()
+    p_type = request.args.get('type', '').strip()
     conn = get_db()
     
-    query = "SELECT * FROM partners WHERE (name LIKE ? OR code LIKE ? OR phone LIKE ?)"
-    params = [f"%{search}%", f"%{search}%", f"%{search}%"]
+    where_sql, params = smart_search_sql(search, ['name', 'code', 'phone', 'email', 'partner_type', 'address'])
+    query = f"SELECT * FROM partners WHERE {where_sql}"
     
     if p_type:
         query += " AND partner_type = ?"
         params.append(p_type)
         
+    query += " ORDER BY id ASC"
     partners = conn.execute(query, params).fetchall()
     return render_template('bp_master/index.html', partners=partners, search=search, type=p_type)
 

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from functools import wraps
-from database import get_db, next_ref, log_audit
+from database import get_db, smart_search_sql, next_ref, log_audit
 from datetime import datetime, date
 
 hr_bp = Blueprint('hr', __name__, url_prefix='/hr')
@@ -123,9 +123,9 @@ def employees():
     '''
     params = []
     if search:
-        query += ' AND (e.full_name LIKE ? OR e.emp_no LIKE ? OR e.email LIKE ?)'
-        p = f'%{search}%'
-        params.extend([p, p, p])
+        s_where, s_params = smart_search_sql(search, ['e.full_name', 'e.emp_no', 'e.email', 'e.phone', 'd.name', 'j.name'])
+        query += f' AND {s_where}'
+        params.extend(s_params)
     if dept_id:
         query += ' AND e.department_id = ?'
         params.append(dept_id)
