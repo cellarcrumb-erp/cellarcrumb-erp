@@ -10,11 +10,12 @@
 {% endif %}
 
 <table class="table">
-    <tr><th>Code</th><th>Item</th><th>Qty</th></tr>
+    <tr><th>Code</th><th>Item</th><th>UOM</th><th>Qty</th></tr>
     {% for l in lines %}
     <tr>
         <td>{{ l.item_code }}</td>
         <td>{{ l.item_name }}</td>
+        <td>{{ l.uom_name or 'PCS' }}</td>
         <td>{{ l.quantity }}</td>
     </tr>
     {% endfor %}

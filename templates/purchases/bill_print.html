@@ -131,6 +131,9 @@
                         <th class="p-2.5 font-bold">Item Code</th>
                         {% endif %}
                         <th class="p-2.5 font-bold">Item / Description</th>
+                        {% if cfg.get('show_uom', True) %}
+                        <th class="p-2.5 font-bold text-center">UOM</th>
+                        {% endif %}
                         <th class="p-2.5 font-bold text-right">Qty</th>
                         <th class="p-2.5 font-bold text-right">Unit Cost ({{ curr }})</th>
                         {% if cfg.get('show_discount', True) %}
@@ -156,6 +159,9 @@
                             <div class="text-slate-500 text-[11px]">{{ l.description }}</div>
                             {% endif %}
                         </td>
+                        {% if cfg.get('show_uom', True) %}
+                        <td class="p-2.5 text-center font-semibold text-slate-600">{{ l.uom_name or 'PCS' }}</td>
+                        {% endif %}
                         <td class="p-2.5 text-right font-medium">{{ "{:,.2f}".format(l.quantity or 0) }}</td>
                         <td class="p-2.5 text-right">{{ "{:,.2f}".format(ucost) }}</td>
                         {% if cfg.get('show_discount', True) %}

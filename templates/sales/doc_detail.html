@@ -180,6 +180,7 @@
       <thead>
         <tr>
           <th>Item</th>
+          <th class="text-center">UOM</th>
           <th class="text-right">Ordered Qty</th>
           <th class="text-right">Drawn / Copied</th>
           <th class="text-right">Open Qty</th>
@@ -194,6 +195,9 @@
             <div class="font-bold">{{ l.item_name }}</div>
             <div style="font-size:11.5px; color:var(--text-secondary);">{{ l.item_code }}</div>
           </td>
+          <td class="text-center">
+            <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1; font-size:11px; padding:2px 8px;">{{ l.uom_name or 'PCS' }}</span>
+          </td>
           <td class="text-right font-semibold">{{ "%.2f"|format(l.quantity) }}</td>
           <td class="text-right" style="color:var(--text-secondary);">{{ "%.2f"|format(l.copied_qty or 0) }}</td>
           <td class="text-right font-bold" style="color:{% if l.open_qty > 0 %}#10b981{% else %}#64748b{% endif %};">
@@ -206,7 +210,7 @@
       </tbody>
       <tfoot>
         <tr style="background:rgba(15, 23, 42, 0.6); font-weight:700; border-top:1px solid rgba(255, 255, 255, 0.12);">
-          <td colspan="5" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
+          <td colspan="6" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
           <td class="text-right text-erp-gold font-bold" style="font-size:16px; padding:14px 18px; color:var(--gold);">KES {{ "%.2f"|format(doc.total) }}</td>
         </tr>
       </tfoot>

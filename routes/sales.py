@@ -124,9 +124,11 @@ def api_source_lines():
         
     lines = conn.execute('''
         SELECT l.*, i.name as item_name, i.code as item_code,
+               COALESCE(u.code, u.name, 'PCS') as uom_name,
                (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
         FROM sales_lines l
         LEFT JOIN items i ON l.item_id = i.id
+        LEFT JOIN uom u ON i.uom_id = u.id
         WHERE l.doc_id = ?
         ORDER BY l.id
     ''', (doc_id,)).fetchall()
@@ -139,6 +141,7 @@ def api_source_lines():
             'item_id': l['item_id'],
             'item_code': l['item_code'] or '',
             'item_name': l['item_name'] or '',
+            'uom_name': l['uom_name'] or 'PCS',
             'description': l['description'] or '',
             'quantity': float(l['quantity'] or 0),
             'copied_qty': float(l['copied_qty'] or 0),
@@ -311,7 +314,12 @@ def doc_new(doc_kind):
         
     customers = conn.execute("SELECT id, code, name FROM partners WHERE partner_type IN ('Customer', 'Customer & Supplier') ORDER BY name").fetchall()
     warehouses = conn.execute("SELECT id, name FROM warehouses WHERE is_active=1").fetchall()
-    items = conn.execute("SELECT id, code, name, price, cost FROM items WHERE is_active=1").fetchall()
+    items = conn.execute("""
+        SELECT i.id, i.code, i.name, i.price, i.cost, COALESCE(u.code, u.name, 'PCS') as uom_name
+        FROM items i
+        LEFT JOIN uom u ON i.uom_id = u.id
+        WHERE i.is_active=1
+    """).fetchall()
     items_json = {row['id']: dict(row) for row in items}
     
     # Check pre-population from Copy To query params
@@ -326,9 +334,11 @@ def doc_new(doc_kind):
             prefilled_doc = dict(src)
             src_lines = conn.execute('''
                 SELECT l.*, i.name as item_name, i.code as item_code,
+                       COALESCE(u.code, u.name, 'PCS') as uom_name,
                        (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
                 FROM sales_lines l
                 LEFT JOIN items i ON l.item_id = i.id
+                LEFT JOIN uom u ON i.uom_id = u.id
                 WHERE l.doc_id = ? AND (l.quantity - COALESCE(l.copied_qty, 0)) > 0
             ''', (copy_from_id,)).fetchall()
             prefilled_lines = [dict(sl) for sl in src_lines]
@@ -373,9 +383,11 @@ def doc_detail(doc_kind, id):
         
     lines = conn.execute("""
         SELECT l.*, i.name as item_name, i.code as item_code,
+               COALESCE(u.code, u.name, 'PCS') as uom_name,
                (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
         FROM sales_lines l
         LEFT JOIN items i ON l.item_id = i.id
+        LEFT JOIN uom u ON i.uom_id = u.id
         WHERE l.doc_id = ?
     """, (id,)).fetchall()
     
@@ -574,9 +586,11 @@ def doc_print(doc_kind, id):
         abort(404)
     
     lines = conn.execute("""
-        SELECT l.*, i.name as item_name, i.code as item_code
+        SELECT l.*, i.name as item_name, i.code as item_code,
+               COALESCE(u.code, u.name, 'PCS') as uom_name
         FROM sales_lines l
         LEFT JOIN items i ON l.item_id = i.id
+        LEFT JOIN uom u ON i.uom_id = u.id
         WHERE l.doc_id = ?
     """, (id,)).fetchall()
     

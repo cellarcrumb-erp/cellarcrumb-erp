@@ -83,6 +83,7 @@
             <thead>
                 <tr style="background:rgba(15,23,42,0.75); border-bottom:1px solid rgba(255,255,255,0.12);">
                     <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1;">UOM</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Qty *</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Unit Cost *</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Disc %</th>
@@ -194,7 +195,12 @@
     function itemChanged(sel) {
         const row = sel.closest('tr');
         const id = sel.value;
-        if(!id || !ITEMS[id]) return;
+        const uomCell = row.querySelector('.uom-cell');
+        if(!id || !ITEMS[id]) {
+            if (uomCell) uomCell.innerText = '-';
+            return;
+        }
+        if (uomCell) uomCell.innerText = ITEMS[id].uom_name || 'PCS';
 
         const supplierId = document.getElementById('supplierSelect').value;
         fetch(`/inventory/api/resolve-price?item_id=${id}${supplierId ? '&partner_id=' + supplierId : ''}${currentSupplierPriceListId ? '&price_list_id=' + currentSupplierPriceListId : ''}`)
@@ -283,6 +289,7 @@
         for(let id in ITEMS) {
             options += `<option value="${id}" ${id == item_id ? 'selected' : ''}>${ITEMS[id].code} - ${ITEMS[id].name}</option>`;
         }
+        const uomText = (item_id && ITEMS[item_id]) ? (ITEMS[item_id].uom_name || 'PCS') : '-';
         
         tr.innerHTML = `
             <td class="p-2">
@@ -291,6 +298,7 @@
                     ${options}
                 </select>
             </td>
+            <td class="p-2 text-center text-xs font-bold uom-cell" style="color:#94a3b8;">${uomText}</td>
             <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-24 border rounded p-1 text-sm text-right qty-input" value="${qty}" oninput="recalc(this)"></td>
             <td class="p-2"><input type="number" step="0.01" name="unit_cost[]" required class="w-28 border rounded p-1 text-sm text-right cost-input" value="${parseFloat(cost).toFixed(2)}" oninput="recalc(this)"></td>
             <td class="p-2"><input type="number" step="0.01" name="discount_pct[]" class="w-20 border rounded p-1 text-sm text-right disc-input" value="${parseFloat(disc).toFixed(2)}" oninput="recalc(this)"></td>

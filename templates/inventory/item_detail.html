@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>{{ item.name }} ({{ item.code }})</h2>
-<p>Type: {{ item.item_type }} | Cost: ${{ item.cost }} | Price: ${{ item.price }}</p>
+<p>Type: {{ item.item_type }} | UOM: <strong>{{ item.uom_name or 'PCS' }}</strong> | Cost: ${{ item.cost }} | Price: ${{ item.price }}</p>
 <hr>
 <h4>Stock Balances</h4>
 <table class="table">

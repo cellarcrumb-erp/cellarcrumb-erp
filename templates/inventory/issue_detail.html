@@ -46,6 +46,7 @@
             <thead>
                 <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
                     <th class="p-3">Item</th>
+                    <th class="p-3 text-center">UOM</th>
                     <th class="p-3 text-right">Issued Quantity</th>
                     <th class="p-3 text-right">Unit Cost</th>
                     <th class="p-3 text-right">Total</th>
@@ -58,6 +59,7 @@
                         <div class="font-semibold text-gray-800">{{ l.item_name }}</div>
                         <div class="text-xs text-gray-500">{{ l.item_code }}</div>
                     </td>
+                    <td class="p-3 text-center font-semibold text-gray-600">{{ l.uom_name or 'PCS' }}</td>
                     <td class="p-3 text-right font-medium">{{ "%.2f"|format(l.quantity) }}</td>
                     <td class="p-3 text-right">${{ "%.2f"|format(l.unit_cost) }}</td>
                     <td class="p-3 text-right font-semibold">${{ "%.2f"|format(l.total) }}</td>

@@ -13,6 +13,7 @@
 <table class="table">
     <tr>
         <th>Item</th>
+        <th>UOM</th>
         <th>System Qty</th>
         <th>Counted Qty</th>
         <th>Variance</th>
@@ -20,6 +21,7 @@
     {% for l in lines %}
     <tr>
         <td>{{ l.item_name }} ({{ l.item_code }})</td>
+        <td>{{ l.uom_name or 'PCS' }}</td>
         <td>{{ l.system_qty }}</td>
         <td>
             {% if count.status == 'Draft' %}

@@ -560,6 +560,7 @@ DEFAULT_PRINT_SETTINGS = {
     'show_tax_id': True,
     'show_branch_info': True,
     'show_item_code': True,
+    'show_uom': True,
     'show_description': True,
     'show_discount': True,
     'show_tax_column': True,

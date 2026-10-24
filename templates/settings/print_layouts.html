@@ -127,6 +127,9 @@
           <input type="checkbox" id="colCodeChk" name="show_item_code" {% if cfg.show_item_code %}checked{% endif %} onchange="updatePreview()"> Show Item Code Column
         </label>
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="colUomChk" name="show_uom" {% if cfg.get('show_uom', True) %}checked{% endif %} onchange="updatePreview()"> Show UOM (Unit of Measure)
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
           <input type="checkbox" id="colDescChk" name="show_description" {% if cfg.show_description %}checked{% endif %} onchange="updatePreview()"> Show Line Description / Notes
         </label>
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
@@ -306,6 +309,7 @@
           <tr id="pvTableHead" style="background:{{ cfg.accent_color }}; color:#ffffff;">
             <th class="pv-col-code" style="padding:7px 8px; text-align:left;">Code</th>
             <th style="padding:7px 8px; text-align:left;">Item / Description</th>
+            <th class="pv-col-uom" style="padding:7px 8px; text-align:center;">UOM</th>
             <th style="padding:7px 8px; text-align:right;">Qty</th>
             <th style="padding:7px 8px; text-align:right;">Unit Price</th>
             <th class="pv-col-disc" style="padding:7px 8px; text-align:right;">Disc %</th>
@@ -320,6 +324,7 @@
               <div style="font-weight:700;">Vanilla Cake</div>
               <div class="pv-col-desc" style="font-size:10px; color:#64748b;">Freshly baked 2kg celebratory cake</div>
             </td>
+            <td class="pv-col-uom" style="padding:7px 8px; text-align:center; font-weight:600; color:#475569;">PCS</td>
             <td style="padding:7px 8px; text-align:right;">10.00</td>
             <td style="padding:7px 8px; text-align:right;">950.00</td>
             <td class="pv-col-disc" style="padding:7px 8px; text-align:right;">0.0%</td>
@@ -332,6 +337,7 @@
               <div style="font-weight:700;">Cabernet 750ml</div>
               <div class="pv-col-desc" style="font-size:10px; color:#64748b;">Cellar reserve red wine</div>
             </td>
+            <td class="pv-col-uom" style="padding:7px 8px; text-align:center; font-weight:600; color:#475569;">BTL</td>
             <td style="padding:7px 8px; text-align:right;">6.00</td>
             <td style="padding:7px 8px; text-align:right;">1,250.00</td>
             <td class="pv-col-disc" style="padding:7px 8px; text-align:right;">5.0%</td>
@@ -458,6 +464,9 @@ function updatePreview() {
   // Columns
   var showCode = document.getElementById('colCodeChk').checked;
   document.querySelectorAll('.pv-col-code').forEach(function(el) { el.style.display = showCode ? '' : 'none'; });
+
+  var showUom = document.getElementById('colUomChk') ? document.getElementById('colUomChk').checked : true;
+  document.querySelectorAll('.pv-col-uom').forEach(function(el) { el.style.display = showUom ? '' : 'none'; });
 
   var showDesc = document.getElementById('colDescChk').checked;
   document.querySelectorAll('.pv-col-desc').forEach(function(el) { el.style.display = showDesc ? 'block' : 'none'; });

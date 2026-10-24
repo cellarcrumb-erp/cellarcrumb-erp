@@ -18,6 +18,7 @@
             <th>Code</th>
             <th>Name</th>
             <th>Type</th>
+            <th>UOM</th>
             <th>Cost</th>
             <th>Price</th>
             <th>Stock</th>
@@ -30,6 +31,7 @@
             <td>{{ item.code }}</td>
             <td>{{ item.name }}</td>
             <td>{{ item.item_type }}</td>
+            <td>{{ item.uom_name or 'PCS' }}</td>
             <td>{{ item.cost }}</td>
             <td>{{ item.price }}</td>
             <td>{{ item.total_stock or 0 }}</td>

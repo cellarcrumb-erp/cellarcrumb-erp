@@ -97,8 +97,8 @@ def api_source_lines():
         if doc:
             header = dict(doc)
             lines = conn.execute("""
-                SELECT l.*, i.name as item_name, i.code as item_code, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
-                FROM purchase_lines l JOIN items i ON l.item_id = i.id WHERE l.doc_id = ?
+                SELECT l.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
+                FROM purchase_lines l JOIN items i ON l.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE l.doc_id = ?
             """, (doc_id,)).fetchall()
             lines_data = [dict(l) for l in lines]
             
@@ -107,8 +107,8 @@ def api_source_lines():
         if doc:
             header = dict(doc)
             lines = conn.execute("""
-                SELECT l.*, i.name as item_name, i.code as item_code, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
-                FROM sales_lines l JOIN items i ON l.item_id = i.id WHERE l.doc_id = ?
+                SELECT l.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
+                FROM sales_lines l JOIN items i ON l.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE l.doc_id = ?
             """, (doc_id,)).fetchall()
             lines_data = [dict(l) for l in lines]
             
@@ -117,8 +117,8 @@ def api_source_lines():
         if doc:
             header = dict(doc)
             lines = conn.execute("""
-                SELECT l.*, i.name as item_name, i.code as item_code, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
-                FROM stock_transfer_lines l JOIN items i ON l.item_id = i.id WHERE l.transfer_id = ?
+                SELECT l.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name, (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
+                FROM stock_transfer_lines l JOIN items i ON l.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE l.transfer_id = ?
             """, (doc_id,)).fetchall()
             lines_data = [dict(l) for l in lines]
             
@@ -131,13 +131,20 @@ def api_source_lines():
 def items():
     search = request.args.get('search', '')
     conn = get_db()
-    query = "SELECT i.*, (SELECT SUM(quantity) FROM stock_balances WHERE item_id = i.id) as total_stock FROM items i WHERE i.name LIKE ? OR i.code LIKE ?"
+    query = """
+        SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name,
+               (SELECT SUM(quantity) FROM stock_balances WHERE item_id = i.id) as total_stock
+        FROM items i
+        LEFT JOIN uom u ON i.uom_id = u.id
+        WHERE i.name LIKE ? OR i.code LIKE ?
+    """
     items = conn.execute(query, (f"%{search}%", f"%{search}%")).fetchall()
     return render_template('inventory/items_list.html', items=items, search=search)
 
 @inventory_bp.route('/items/new', methods=['GET', 'POST'])
 @login_required
 def new_item():
+    conn = get_db()
     if request.method == 'POST':
         code = request.form.get('code')
         name = request.form.get('name')
@@ -149,7 +156,6 @@ def new_item():
         is_stock_item = 1 if request.form.get('is_stock_item') else 0
         is_active = 1 if request.form.get('is_active') else 0
 
-        conn = get_db()
         try:
             cur = conn.execute("""
                 INSERT INTO items (code, name, item_type, uom_id, cost, price, reorder_level, is_stock_item, is_active)
@@ -165,13 +171,19 @@ def new_item():
             conn.rollback()
             flash(f"Error: {str(e)}", 'danger')
             
-    return render_template('inventory/item_form.html', item=None)
+    uoms = conn.execute("SELECT * FROM uom ORDER BY code").fetchall()
+    return render_template('inventory/item_form.html', item=None, uoms=uoms)
 
 @inventory_bp.route('/items/<int:id>')
 @login_required
 def item_detail(id):
     conn = get_db()
-    item = conn.execute("SELECT * FROM items WHERE id = ?", (id,)).fetchone()
+    item = conn.execute("""
+        SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name
+        FROM items i
+        LEFT JOIN uom u ON i.uom_id = u.id
+        WHERE i.id = ?
+    """, (id,)).fetchone()
     balances = conn.execute("SELECT w.name, sb.quantity FROM stock_balances sb JOIN warehouses w ON sb.warehouse_id = w.id WHERE sb.item_id = ?", (id,)).fetchall()
     ledger = conn.execute("SELECT * FROM stock_ledger WHERE item_id = ? ORDER BY id DESC LIMIT 20", (id,)).fetchall()
     return render_template('inventory/item_detail.html', item=item, balances=balances, ledger=ledger)
@@ -185,6 +197,7 @@ def edit_item(id):
     if request.method == 'POST':
         name = request.form.get('name')
         item_type = request.form.get('item_type')
+        uom_id = request.form.get('uom_id') or None
         cost = float(request.form.get('cost') or 0)
         price = float(request.form.get('price') or 0)
         reorder_level = float(request.form.get('reorder_level') or 0)
@@ -193,9 +206,9 @@ def edit_item(id):
 
         try:
             conn.execute("""
-                UPDATE items SET name=?, item_type=?, cost=?, price=?, reorder_level=?, is_stock_item=?, is_active=?
+                UPDATE items SET name=?, item_type=?, uom_id=?, cost=?, price=?, reorder_level=?, is_stock_item=?, is_active=?
                 WHERE id=?
-            """, (name, item_type, cost, price, reorder_level, is_stock_item, is_active, id))
+            """, (name, item_type, uom_id, cost, price, reorder_level, is_stock_item, is_active, id))
             log_audit(conn, session['user_id'], 'Inventory', 'Edit Item', 'Item', id, f"Updated item {item['code']}")
             conn.commit()
             flash('Item updated successfully', 'success')
@@ -204,7 +217,8 @@ def edit_item(id):
             conn.rollback()
             flash(f"Error: {str(e)}", 'danger')
 
-    return render_template('inventory/item_form.html', item=item)
+    uoms = conn.execute("SELECT * FROM uom ORDER BY code").fetchall()
+    return render_template('inventory/item_form.html', item=item, uoms=uoms)
 
 @inventory_bp.route('/warehouses')
 @login_required
@@ -263,9 +277,10 @@ def edit_warehouse(id):
 @login_required
 def stock_balances():
     conn = get_db()
-    balances = conn.execute("""SELECT i.code, i.name, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
+    balances = conn.execute("""SELECT i.code, i.name, COALESCE(u.code, u.name, 'PCS') as uom_name, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
                              FROM stock_balances sb 
                              JOIN items i ON sb.item_id = i.id 
+                             LEFT JOIN uom u ON i.uom_id = u.id
                              JOIN warehouses w ON sb.warehouse_id = w.id""").fetchall()
     return render_template('inventory/stock_balances.html', balances=balances)
 
@@ -334,7 +349,7 @@ def new_receipt():
             flash(f'Error: {e}', 'danger')
             
     whs = conn.execute("SELECT * FROM warehouses WHERE is_active=1").fetchall()
-    items = conn.execute("SELECT * FROM items WHERE is_stock_item=1 AND is_active=1").fetchall()
+    items = conn.execute("SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name FROM items i LEFT JOIN uom u ON i.uom_id = u.id WHERE i.is_stock_item=1 AND i.is_active=1").fetchall()
     return render_template('inventory/receipt_form.html', warehouses=whs, items=items)
 
 @inventory_bp.route('/receipts/<int:id>')
@@ -351,7 +366,7 @@ def receipt_detail(id):
         flash('Receipt not found.', 'warning')
         return redirect(url_for('inventory.receipts'))
         
-    lines = conn.execute("SELECT gl.*, i.name as item_name, i.code as item_code FROM goods_receipt_lines gl JOIN items i ON gl.item_id = i.id WHERE gl.receipt_id = ?", (id,)).fetchall()
+    lines = conn.execute("SELECT gl.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name FROM goods_receipt_lines gl JOIN items i ON gl.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE gl.receipt_id = ?", (id,)).fetchall()
     
     base_doc = None
     if rec['source_doc_id'] and rec['source_doc_type']:
@@ -450,7 +465,7 @@ def new_issue():
             flash(f'Error: {e}', 'danger')
             
     whs = conn.execute("SELECT * FROM warehouses WHERE is_active=1").fetchall()
-    items = conn.execute("SELECT * FROM items WHERE is_stock_item=1 AND is_active=1").fetchall()
+    items = conn.execute("SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name FROM items i LEFT JOIN uom u ON i.uom_id = u.id WHERE i.is_stock_item=1 AND i.is_active=1").fetchall()
     return render_template('inventory/issue_form.html', warehouses=whs, items=items)
 
 @inventory_bp.route('/issues/<int:id>')
@@ -467,7 +482,7 @@ def issue_detail(id):
         flash('Issue not found.', 'warning')
         return redirect(url_for('inventory.issues'))
         
-    lines = conn.execute("SELECT gl.*, i.name as item_name, i.code as item_code FROM goods_issue_lines gl JOIN items i ON gl.item_id = i.id WHERE gl.issue_id = ?", (id,)).fetchall()
+    lines = conn.execute("SELECT gl.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name FROM goods_issue_lines gl JOIN items i ON gl.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE gl.issue_id = ?", (id,)).fetchall()
     
     base_doc = None
     if iss['source_doc_id'] and iss['source_doc_type']:
@@ -564,7 +579,7 @@ def new_transfer():
             flash(f'Error: {e}', 'danger')
             
     whs = conn.execute("SELECT * FROM warehouses WHERE is_active=1").fetchall()
-    items = conn.execute("SELECT * FROM items WHERE is_stock_item=1 AND is_active=1").fetchall()
+    items = conn.execute("SELECT i.*, COALESCE(u.code, u.name, 'PCS') as uom_name FROM items i LEFT JOIN uom u ON i.uom_id = u.id WHERE i.is_stock_item=1 AND i.is_active=1").fetchall()
     return render_template('inventory/transfer_form.html', warehouses=whs, items=items)
 
 @inventory_bp.route('/transfers/<int:id>')
@@ -575,7 +590,7 @@ def transfer_detail(id):
     if not trans:
         flash('Transfer not found.', 'warning')
         return redirect(url_for('inventory.transfers'))
-    lines = conn.execute("SELECT tl.*, i.name as item_name, i.code as item_code FROM stock_transfer_lines tl JOIN items i ON tl.item_id = i.id WHERE tl.transfer_id = ?", (id,)).fetchall()
+    lines = conn.execute("SELECT tl.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name FROM stock_transfer_lines tl JOIN items i ON tl.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE tl.transfer_id = ?", (id,)).fetchall()
     return render_template('inventory/transfer_detail.html', transfer=trans, lines=lines)
 
 @inventory_bp.route('/transfers/<int:id>/post', methods=['POST'])
@@ -669,7 +684,7 @@ def count_detail(id):
             flash(f'Error: {e}', 'danger')
             
     count = conn.execute("SELECT c.*, w.name as wh_name FROM inventory_counts c JOIN warehouses w ON c.warehouse_id = w.id WHERE c.id = ?", (id,)).fetchone()
-    lines = conn.execute("SELECT cl.*, i.name as item_name, i.code as item_code FROM inventory_count_lines cl JOIN items i ON cl.item_id = i.id WHERE cl.count_id = ?", (id,)).fetchall()
+    lines = conn.execute("SELECT cl.*, i.name as item_name, i.code as item_code, COALESCE(u.code, u.name, 'PCS') as uom_name FROM inventory_count_lines cl JOIN items i ON cl.item_id = i.id LEFT JOIN uom u ON i.uom_id = u.id WHERE cl.count_id = ?", (id,)).fetchall()
     return render_template('inventory/count_detail.html', count=count, lines=lines)
 
 @inventory_bp.route('/counts/<int:id>/post', methods=['POST'])
@@ -706,9 +721,10 @@ def post_count(id):
 def report_stock_valuation():
     conn = get_db()
     balances = conn.execute("""
-        SELECT i.code, i.name, i.item_type, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
+        SELECT i.code, i.name, i.item_type, COALESCE(u.code, u.name, 'PCS') as uom_name, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
         FROM stock_balances sb 
         JOIN items i ON sb.item_id = i.id 
+        LEFT JOIN uom u ON i.uom_id = u.id
         JOIN warehouses w ON sb.warehouse_id = w.id
         ORDER BY w.name, i.name
     """).fetchall()
@@ -720,11 +736,12 @@ def report_stock_valuation():
 def report_low_stock():
     conn = get_db()
     items = conn.execute("""
-        SELECT i.code, i.name, i.reorder_level, COALESCE(SUM(sb.quantity), 0) as current_stock, i.cost
+        SELECT i.code, i.name, COALESCE(u.code, u.name, 'PCS') as uom_name, i.reorder_level, COALESCE(SUM(sb.quantity), 0) as current_stock, i.cost
         FROM items i
+        LEFT JOIN uom u ON i.uom_id = u.id
         LEFT JOIN stock_balances sb ON i.id = sb.item_id
         WHERE i.is_stock_item = TRUE
-        GROUP BY i.id, i.code, i.name, i.reorder_level, i.cost
+        GROUP BY i.id, i.code, i.name, u.code, u.name, i.reorder_level, i.cost
         HAVING COALESCE(SUM(sb.quantity), 0) <= i.reorder_level AND i.reorder_level > 0
     """).fetchall()
     return render_template('inventory/report_low_stock.html', items=items, data=items)
@@ -737,9 +754,10 @@ def report_stock_ledger():
     wh_id = request.args.get('warehouse_id', type=int)
     
     query = """
-        SELECT sl.*, i.name as item_name, i.code as item_code, w.name as warehouse_name, u.username
+        SELECT sl.*, i.name as item_name, i.code as item_code, COALESCE(um.code, um.name, 'PCS') as uom_name, w.name as warehouse_name, u.username
         FROM stock_ledger sl
         JOIN items i ON sl.item_id = i.id
+        LEFT JOIN uom um ON i.uom_id = um.id
         JOIN warehouses w ON sl.warehouse_id = w.id
         LEFT JOIN users u ON sl.posted_by = u.id
         WHERE 1=1

@@ -1215,7 +1215,7 @@ def print_layouts():
 
         bool_fields = [
             'show_logo', 'show_tax_id', 'show_branch_info',
-            'show_item_code', 'show_description', 'show_discount',
+            'show_item_code', 'show_uom', 'show_description', 'show_discount',
             'show_tax_column', 'show_amount_paid', 'show_signatures',
             'show_stamp_box', 'show_watermark'
         ]

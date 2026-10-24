@@ -45,6 +45,7 @@
             <thead>
                 <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
                     <th class="p-2">Item *</th>
+                    <th class="p-2 text-center">UOM</th>
                     <th class="p-2 text-right">Quantity *</th>
                     <th class="p-2 text-right">Unit Cost *</th>
                     <th class="p-2 text-center"></th>
@@ -57,10 +58,11 @@
                         <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select" onchange="itemSelected(this)">
                             <option value="">Select Item</option>
                             {% for i in items %}
-                            <option value="{{ i.id }}" data-cost="{{ i.cost }}">{{ i.code }} - {{ i.name }}</option>
+                            <option value="{{ i.id }}" data-cost="{{ i.cost }}" data-uom="{{ i.uom_name or 'PCS' }}">{{ i.code }} - {{ i.name }}</option>
                             {% endfor %}
                         </select>
                     </td>
+                    <td class="p-2 text-center text-xs font-bold text-gray-500 uom-cell">-</td>
                     <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-24 border rounded p-1 text-sm text-right qty-input" value="1"></td>
                     <td class="p-2"><input type="number" step="0.01" name="unit_cost[]" required class="w-28 border rounded p-1 text-sm text-right cost-input" value="0.00"></td>
                     <td class="p-2 text-center">
@@ -105,12 +107,20 @@
 <script>
 function itemSelected(sel) {
     const cost = sel.selectedOptions[0]?.getAttribute('data-cost') || 0;
-    sel.closest('tr').querySelector('.cost-input').value = parseFloat(cost).toFixed(2);
+    const uom = sel.selectedOptions[0]?.getAttribute('data-uom') || '-';
+    const row = sel.closest('tr');
+    row.querySelector('.cost-input').value = parseFloat(cost).toFixed(2);
+    const uomCell = row.querySelector('.uom-cell');
+    if (uomCell) uomCell.innerText = uom;
 }
-function addRow(itemId='', qty=1, cost=0, sLineId='') {
+function addRow(itemId='', qty=1, cost=0, sLineId='', uom='') {
     const tbody = document.querySelector('#linesTable tbody');
     const tr = document.querySelector('.line-row').cloneNode(true);
-    tr.querySelector('.item-select').value = itemId;
+    const sel = tr.querySelector('.item-select');
+    sel.value = itemId;
+    const resolvedUom = uom || sel.selectedOptions[0]?.getAttribute('data-uom') || '-';
+    const uomCell = tr.querySelector('.uom-cell');
+    if (uomCell) uomCell.innerText = resolvedUom;
     tr.querySelector('.qty-input').value = qty;
     tr.querySelector('.cost-input').value = parseFloat(cost).toFixed(2);
     tr.querySelector('input[name="source_line_id[]"]').value = sLineId;

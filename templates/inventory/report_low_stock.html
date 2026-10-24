@@ -14,6 +14,7 @@
       <tr>
         <th>Code</th>
         <th>Item Name</th>
+        <th style="text-align:center;">UOM</th>
         <th style="text-align:right;">Current Stock</th>
         <th style="text-align:right;">Reorder Level</th>
         <th style="text-align:right;">Unit Cost (KES)</th>
@@ -24,12 +25,13 @@
       <tr>
         <td style="font-family:monospace; color:var(--gold);">{{ r.code }}</td>
         <td style="font-weight:600;">{{ r.name }}</td>
+        <td style="text-align:center;"><span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1; font-size:11px;">{{ r.uom_name or 'PCS' }}</span></td>
         <td style="text-align:right; color:#f87171; font-weight:700;">{{ "{:,.2f}".format(r.current_stock if r.current_stock is defined else (r.total_stock or 0)) }}</td>
         <td style="text-align:right;">{{ "{:,.2f}".format(r.reorder_level or 0) }}</td>
         <td style="text-align:right;">{{ "{:,.2f}".format(r.cost or 0) }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-secondary);">All items are above their reorder levels.</td></tr>
+      <tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-secondary);">All items are above their reorder levels.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -20,6 +20,16 @@
         </select>
     </div>
     <div class="mb-3">
+        <label>Unit of Measure (UOM)</label>
+        <select name="uom_id" class="form-control">
+            {% for u in (uoms or []) %}
+            <option value="{{ u.id }}" {% if item and item.uom_id == u.id %}selected{% endif %}>{{ u.code }} — {{ u.name }}</option>
+            {% else %}
+            <option value="1">PCS — Pieces</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
         <label>Cost</label>
         <input type="number" step="0.01" name="cost" class="form-control" value="{{ item.cost if item else 0 }}">
     </div>
