@@ -37,96 +37,497 @@
       transform: translateX(1px);
       box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
     }
+
+    /* ======================================================================
+       SAP Business One Top Menu Bar, Icon Toolbar & Collapsible Module Tree
+       ====================================================================== */
+    .sap-menubar {
+      height: 30px;
+      background: linear-gradient(180deg, #1d3a5c 0%, #162d49 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 95;
+      user-select: none;
+      font-size: 12.5px;
+    }
+    .sap-menubar-left {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .sap-menu-item {
+      position: relative;
+    }
+    .sap-menu-btn {
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      padding: 4px 10px;
+      font-size: 12.5px;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.12s, color 0.12s;
+    }
+    .sap-menu-btn u {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .sap-menu-btn:hover, .sap-menu-btn.active {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+    .sap-menu-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0;
+      min-width: 235px;
+      background: #0f1c2e;
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 6px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.72);
+      padding: 5px 0;
+      z-index: 9999;
+    }
+    .sap-menu-dropdown a, .sap-menu-dropdown button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 6px 14px;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      font-size: 12.5px;
+      font-family: inherit;
+      text-decoration: none;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .sap-menu-dropdown a:hover, .sap-menu-dropdown button:hover {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+    .sap-menu-dropdown .sap-menu-lbl {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sap-menu-dropdown .sap-menu-lbl svg {
+      width: 13px;
+      height: 13px;
+      color: #fbbf24;
+    }
+    .sap-menu-shortcut {
+      font-size: 10.5px;
+      color: #94a3b8;
+      font-family: monospace;
+      margin-left: 14px;
+    }
+    .sap-menu-sep {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 4px 0;
+    }
+    .sap-company-banner {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #ffffff;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+    }
+
+    /* SAP Icon Toolbar Strip (with gold bottom border like SAP B1) */
+    .sap-iconbar {
+      height: 38px;
+      background: linear-gradient(180deg, #274b73 0%, #1e3b5c 100%);
+      border-bottom: 2.5px solid #f59e0b;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 3px;
+      position: sticky;
+      top: 30px;
+      z-index: 90;
+      overflow-x: auto;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    }
+    .sap-tool-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 27px;
+      min-width: 28px;
+      padding: 0 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.12s ease;
+      flex-shrink: 0;
+      gap: 4px;
+    }
+    .sap-tool-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 2;
+    }
+    .sap-tool-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(245, 158, 11, 0.55);
+      color: #fbbf24;
+    }
+    .sap-tool-btn:active {
+      transform: translateY(1px);
+    }
+    .sap-tool-sep {
+      width: 1px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.18);
+      margin: 0 5px;
+      flex-shrink: 0;
+    }
+    .sap-badge-icon {
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border: 1.2px solid currentColor;
+      border-radius: 3px;
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+    }
+
+    /* Topbar adjustments when SAP bars are active */
+    .topbar {
+      top: 68px !important;
+      height: 50px !important;
+      padding: 0 24px !important;
+    }
+
+    /* Collapsible SAP Module Tree in Sidebar */
+    .sap-tree-group {
+      margin-bottom: 3px;
+    }
+    .sap-tree-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--sidebar-text);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.14s ease;
+    }
+    .sap-tree-header:hover {
+      background-color: var(--sidebar-hover);
+      color: #f9fafb;
+    }
+    .sap-tree-header.active-mod {
+      background: linear-gradient(90deg, rgba(201, 168, 76, 0.22) 0%, rgba(201, 168, 76, 0.08) 100%);
+      color: #fbbf24;
+      border-left: 3px solid var(--gold);
+    }
+    .sap-tree-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sap-tree-header-left svg {
+      width: 16px;
+      height: 16px;
+      color: #fbbf24;
+      flex-shrink: 0;
+    }
+    .sap-tree-chevron {
+      width: 14px !important;
+      height: 14px !important;
+      transition: transform 0.18s ease;
+      opacity: 0.7;
+    }
+    .sap-tree-group.open .sap-tree-chevron {
+      transform: rotate(90deg);
+    }
+    .sap-tree-children {
+      display: none;
+      padding: 2px 0 4px 20px;
+      margin-left: 16px;
+      border-left: 1px dashed rgba(201, 168, 76, 0.3);
+    }
+    .sap-tree-group.open .sap-tree-children {
+      display: block;
+    }
+    .sap-tree-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.12s;
+    }
+    .sap-tree-link::before {
+      content: "▸";
+      font-size: 10px;
+      color: rgba(251, 191, 36, 0.65);
+    }
+    .sap-tree-link:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .sap-tree-link.active-leaf {
+      color: #fbbf24;
+      font-weight: 700;
+      background: rgba(245, 158, 11, 0.14);
+    }
+    body.sidebar-collapsed .sidebar {
+      transform: translateX(-100%);
+    }
+    body.sidebar-collapsed .main-wrapper {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+    body.sidebar-collapsed .tech-canvas-bg {
+      left: 0 !important;
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-<!-- Sidebar -->
+<!-- Sidebar (SAP Business One Main Menu Tree) -->
 <aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-logo">C&C</div>
-    <div>
-      <div class="sidebar-title">Cellar & Crumb</div>
-      <div class="sidebar-subtitle">Operations ERP</div>
+  <div class="sidebar-header" style="justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="sidebar-logo">C&amp;C</div>
+      <div>
+        <div class="sidebar-title">Cellar &amp; Crumb</div>
+        <div class="sidebar-subtitle">SAP-Style Main Menu</div>
+      </div>
     </div>
+    <button type="button" onclick="toggleAllSapTree()" title="Expand / Collapse All Modules" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; border-radius:6px; padding:4px 6px; cursor:pointer; font-size:10px;">
+      <i data-feather="chevrons-down" style="width:13px;height:13px;"></i>
+    </button>
   </div>
   
   <nav class="sidebar-nav">
     {% if user_can('overview', 'read') %}
-    <a href="{{ url_for('overview.dashboard') }}" class="sidebar-item {% if request.blueprint == 'overview' %}active{% endif %}">
-      <i data-feather="grid"></i> Overview
+    <a href="{{ url_for('overview.dashboard') }}" class="sidebar-item {% if request.blueprint == 'overview' %}active{% endif %}" style="margin-bottom:6px;">
+      <i data-feather="grid"></i> Cockpit / Overview
     </a>
     {% endif %}
-    
-    {% if user_can('inventory', 'read') or user_can('bp_master', 'read') or user_can('sales', 'read') or user_can('purchases', 'read') or user_can('production', 'read') %}
-    <div class="sidebar-section">Operations</div>
-    
-    {% if user_can('inventory', 'read') %}
-    <a href="{{ url_for('inventory.index') }}" class="sidebar-item {% if request.blueprint == 'inventory' %}active{% endif %}">
-      <i data-feather="package"></i> Inventory / Stock
-    </a>
-    {% endif %}
-    
-    {% if user_can('bp_master', 'read') %}
-    <a href="{{ url_for('bp_master.index') }}" class="sidebar-item {% if request.blueprint == 'bp_master' %}active{% endif %}">
-      <i data-feather="users"></i> BP Master
-    </a>
-    {% endif %}
-    
-    {% if user_can('sales', 'read') %}
-    <a href="{{ url_for('sales.index') }}" class="sidebar-item {% if request.blueprint == 'sales' %}active{% endif %}">
-      <i data-feather="shopping-cart"></i> Sales
-    </a>
-    {% endif %}
-    
-    {% if user_can('purchases', 'read') %}
-    <a href="{{ url_for('purchases.index') }}" class="sidebar-item {% if request.blueprint == 'purchases' %}active{% endif %}">
-      <i data-feather="truck"></i> Purchases
-    </a>
-    {% endif %}
-    
-    {% if user_can('production', 'read') %}
-    <a href="{{ url_for('production.index') }}" class="sidebar-item {% if request.blueprint == 'production' %}active{% endif %}">
-      <i data-feather="cpu"></i> Production
-    </a>
-    {% endif %}
-    {% endif %}
-    
-    {% if user_can('finance', 'read') or user_can('hr', 'read') or user_can('banking', 'read') or user_can('payments', 'read') %}
-    <div class="sidebar-section">Finance & HR</div>
-    
-    {% if user_can('finance', 'read') %}
-    <a href="{{ url_for('finance.index') }}" class="sidebar-item {% if request.blueprint == 'finance' %}active{% endif %}">
-      <i data-feather="bar-chart-2"></i> Finance
-    </a>
-    {% endif %}
-    
-    {% if user_can('hr', 'read') %}
-    <a href="{{ url_for('hr.index') }}" class="sidebar-item {% if request.blueprint == 'hr' %}active{% endif %}">
-      <i data-feather="user-check"></i> Human Resources
-    </a>
-    {% endif %}
-    
-    {% if user_can('banking', 'read') %}
-    <a href="{{ url_for('banking.index') }}" class="sidebar-item {% if request.blueprint == 'banking' %}active{% endif %}">
-      <i data-feather="credit-card"></i> Banking
-    </a>
-    {% endif %}
-    
-    {% if user_can('payments', 'read') %}
-    <a href="{{ url_for('payments.index') }}" class="sidebar-item {% if request.blueprint == 'payments' %}active{% endif %}">
-      <i data-feather="dollar-sign"></i> Payments
-    </a>
-    {% endif %}
-    {% endif %}
-    
+
+    <div class="sidebar-section" style="padding-top:6px;">Modules</div>
+
+    <!-- 1. Administration / Settings -->
     {% if user_can('settings', 'read') %}
-    <div class="sidebar-section">Admin</div>
-    
-    <a href="{{ url_for('settings.index') }}" class="sidebar-item {% if request.blueprint == 'settings' %}active{% endif %}">
-      <i data-feather="settings"></i> Settings
-    </a>
+    <div class="sap-tree-group {% if request.blueprint == 'settings' %}open{% endif %}" data-tree="settings">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'settings' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="sliders"></i> Administration</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('settings.index') }}" class="sap-tree-link {% if request.path == '/settings/' %}active-leaf{% endif %}">System Initialization</a>
+        <a href="{{ url_for('settings.company') }}" class="sap-tree-link {% if '/settings/company' in request.path %}active-leaf{% endif %}">Company Details</a>
+        <a href="{{ url_for('settings.branches') }}" class="sap-tree-link {% if '/settings/branches' in request.path %}active-leaf{% endif %}">Branches (BPL)</a>
+        <a href="{{ url_for('settings.users') }}" class="sap-tree-link {% if '/settings/users' in request.path %}active-leaf{% endif %}">Users</a>
+        <a href="{{ url_for('settings.authorizations') }}" class="sap-tree-link {% if '/settings/authorizations' in request.path %}active-leaf{% endif %}">General Authorizations</a>
+        <a href="{{ url_for('settings.num_series') }}" class="sap-tree-link {% if '/settings/num-series' in request.path %}active-leaf{% endif %}">Document Numbering</a>
+        <a href="{{ url_for('settings.taxes') }}" class="sap-tree-link {% if '/settings/taxes' in request.path %}active-leaf{% endif %}">Tax Groups (VAT)</a>
+        <a href="{{ url_for('settings.payment_terms') }}" class="sap-tree-link {% if '/settings/payment-terms' in request.path %}active-leaf{% endif %}">Payment Terms</a>
+        <a href="{{ url_for('settings.currencies') }}" class="sap-tree-link {% if '/settings/currencies' in request.path %}active-leaf{% endif %}">Currencies</a>
+        {% if session.get('role') == 'Admin' %}
+        <a href="{{ url_for('settings.print_layouts') }}" class="sap-tree-link {% if '/settings/print-layouts' in request.path %}active-leaf{% endif %}">Print Layouts &amp; POS</a>
+        {% endif %}
+        <a href="{{ url_for('settings.data_import') }}" class="sap-tree-link {% if '/settings/import' in request.path %}active-leaf{% endif %}">Data Import (DTW)</a>
+        <a href="{{ url_for('settings.backups') }}" class="sap-tree-link {% if '/settings/backup' in request.path %}active-leaf{% endif %}">Backup &amp; Restore</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 2. Financials -->
+    {% if user_can('finance', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'finance' %}open{% endif %}" data-tree="finance">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'finance' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="bar-chart-2"></i> Financials</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('finance.index') }}" class="sap-tree-link {% if request.path == '/finance/' %}active-leaf{% endif %}">Financials Overview</a>
+        <a href="{{ url_for('finance.coa_list') }}" class="sap-tree-link {% if '/finance/coa' in request.path %}active-leaf{% endif %}">Chart of Accounts</a>
+        <a href="{{ url_for('finance.journal_new') }}" class="sap-tree-link {% if '/finance/journals/new' in request.path %}active-leaf{% endif %}">Journal Entry (New)</a>
+        <a href="{{ url_for('finance.journal_list') }}" class="sap-tree-link {% if request.path == '/finance/journals' %}active-leaf{% endif %}">Journal Vouchers / List</a>
+        <a href="{{ url_for('finance.periods') }}" class="sap-tree-link {% if '/finance/periods' in request.path %}active-leaf{% endif %}">Posting Periods</a>
+        <a href="{{ url_for('finance.gl_list') }}" class="sap-tree-link {% if '/finance/gl' in request.path %}active-leaf{% endif %}">General Ledger</a>
+        <a href="{{ url_for('finance.trial_balance') }}" class="sap-tree-link {% if '/finance/trial-balance' in request.path %}active-leaf{% endif %}">Trial Balance</a>
+        <a href="{{ url_for('finance.balance_sheet') }}" class="sap-tree-link {% if '/finance/balance-sheet' in request.path %}active-leaf{% endif %}">Balance Sheet</a>
+        <a href="{{ url_for('finance.profit_loss') }}" class="sap-tree-link {% if '/finance/profit-loss' in request.path %}active-leaf{% endif %}">Profit and Loss</a>
+        <a href="{{ url_for('finance.ar_list') }}" class="sap-tree-link {% if '/finance/ar' in request.path %}active-leaf{% endif %}">Customer Receivable Aging</a>
+        <a href="{{ url_for('finance.ap_list') }}" class="sap-tree-link {% if '/finance/ap' in request.path %}active-leaf{% endif %}">Vendor Liabilities Aging</a>
+        <a href="{{ url_for('finance.tax_report') }}" class="sap-tree-link {% if '/finance/tax-report' in request.path %}active-leaf{% endif %}">Tax Report</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Sales - A/R -->
+    {% if user_can('sales', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'sales' %}open{% endif %}" data-tree="sales">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'sales' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="shopping-cart"></i> Sales - A/R</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('sales.index') }}" class="sap-tree-link {% if request.path == '/sales/' %}active-leaf{% endif %}">Sales Cockpit</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='quotations') }}" class="sap-tree-link {% if '/sales/quotations' in request.path %}active-leaf{% endif %}">Sales Quotation</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='orders') }}" class="sap-tree-link {% if '/sales/orders' in request.path %}active-leaf{% endif %}">Sales Order</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='deliveries') }}" class="sap-tree-link {% if '/sales/deliveries' in request.path %}active-leaf{% endif %}">Delivery</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='down_payments') }}" class="sap-tree-link {% if '/sales/down_payments' in request.path %}active-leaf{% endif %}">A/R Down Payment Invoice</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='invoices') }}" class="sap-tree-link {% if '/sales/invoices' in request.path %}active-leaf{% endif %}">A/R Invoice</a>
+        <a href="{{ url_for('sales.doc_list', doc_kind='returns') }}" class="sap-tree-link {% if '/sales/returns' in request.path %}active-leaf{% endif %}">A/R Credit Memo / Return</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Purchasing - A/P -->
+    {% if user_can('purchases', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'purchases' %}open{% endif %}" data-tree="purchases">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'purchases' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="truck"></i> Purchasing - A/P</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('purchases.index') }}" class="sap-tree-link {% if request.path == '/purchases/' %}active-leaf{% endif %}">Purchasing Cockpit</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='requests') }}" class="sap-tree-link {% if '/purchases/requests' in request.path %}active-leaf{% endif %}">Purchase Request</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='quotations') }}" class="sap-tree-link {% if '/purchases/quotations' in request.path %}active-leaf{% endif %}">Purchase Quotation</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='orders') }}" class="sap-tree-link {% if '/purchases/orders' in request.path %}active-leaf{% endif %}">Purchase Order</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='receipts') }}" class="sap-tree-link {% if '/purchases/receipts' in request.path %}active-leaf{% endif %}">Goods Receipt PO</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='down_payments') }}" class="sap-tree-link {% if '/purchases/down_payments' in request.path %}active-leaf{% endif %}">A/P Down Payment Invoice</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='bills') }}" class="sap-tree-link {% if '/purchases/bills' in request.path %}active-leaf{% endif %}">A/P Invoice (Supplier Bill)</a>
+        <a href="{{ url_for('purchases.doc_list', doc_kind='returns') }}" class="sap-tree-link {% if '/purchases/returns' in request.path %}active-leaf{% endif %}">Goods Return / Debit Memo</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. Business Partners -->
+    {% if user_can('bp_master', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'bp_master' %}open{% endif %}" data-tree="bp_master">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'bp_master' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="users"></i> Business Partners</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('bp_master.index') }}" class="sap-tree-link {% if request.path == '/bp/' and not request.args.get('type') %}active-leaf{% endif %}">BP Master Data</a>
+        <a href="{{ url_for('bp_master.new_partner') }}" class="sap-tree-link {% if '/bp/new' in request.path %}active-leaf{% endif %}">Add Business Partner</a>
+        <a href="{{ url_for('bp_master.index', type='Customer') }}" class="sap-tree-link {% if request.args.get('type') == 'Customer' %}active-leaf{% endif %}">Customers List</a>
+        <a href="{{ url_for('bp_master.index', type='Supplier') }}" class="sap-tree-link {% if request.args.get('type') == 'Supplier' %}active-leaf{% endif %}">Suppliers / Vendors List</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 6. Banking & Payments -->
+    {% if user_can('banking', 'read') or user_can('payments', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint in ['banking', 'payments'] %}open{% endif %}" data-tree="banking">
+      <button type="button" class="sap-tree-header {% if request.blueprint in ['banking', 'payments'] %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="credit-card"></i> Banking &amp; Payments</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        {% if user_can('payments', 'read') %}
+        <a href="{{ url_for('payments.incoming') }}" class="sap-tree-link {% if '/payments/incoming' in request.path %}active-leaf{% endif %}">Incoming Payments</a>
+        <a href="{{ url_for('payments.outgoing') }}" class="sap-tree-link {% if '/payments/outgoing' in request.path %}active-leaf{% endif %}">Outgoing Payments</a>
+        <a href="{{ url_for('payments.expenses') }}" class="sap-tree-link {% if '/payments/expenses' in request.path %}active-leaf{% endif %}">Expense Payments</a>
+        {% endif %}
+        {% if user_can('banking', 'read') %}
+        <a href="{{ url_for('banking.deposits') }}" class="sap-tree-link {% if '/banking/deposits' in request.path %}active-leaf{% endif %}">Deposits</a>
+        <a href="{{ url_for('banking.withdrawals') }}" class="sap-tree-link {% if '/banking/withdrawals' in request.path %}active-leaf{% endif %}">Withdrawals</a>
+        <a href="{{ url_for('banking.transfers') }}" class="sap-tree-link {% if '/banking/transfers' in request.path %}active-leaf{% endif %}">Account Transfers</a>
+        <a href="{{ url_for('banking.accounts') }}" class="sap-tree-link {% if '/banking/accounts' in request.path %}active-leaf{% endif %}">Bank Accounts</a>
+        <a href="{{ url_for('banking.reconciliation') }}" class="sap-tree-link {% if '/banking/reconciliation' in request.path %}active-leaf{% endif %}">Bank Reconciliation</a>
+        <a href="{{ url_for('banking.cashbook') }}" class="sap-tree-link {% if '/banking/cashbook' in request.path %}active-leaf{% endif %}">Cash Book</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 7. Inventory -->
+    {% if user_can('inventory', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'inventory' %}open{% endif %}" data-tree="inventory">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'inventory' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="package"></i> Inventory</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('inventory.index') }}" class="sap-tree-link {% if request.path == '/inventory/' %}active-leaf{% endif %}">Inventory Overview</a>
+        <a href="{{ url_for('inventory.items') }}" class="sap-tree-link {% if '/inventory/items' in request.path %}active-leaf{% endif %}">Item Master Data</a>
+        <a href="{{ url_for('inventory.warehouses') }}" class="sap-tree-link {% if '/inventory/warehouses' in request.path %}active-leaf{% endif %}">Warehouses</a>
+        <a href="{{ url_for('inventory.price_lists') }}" class="sap-tree-link {% if '/inventory/price-lists' in request.path %}active-leaf{% endif %}">Price Lists</a>
+        <a href="{{ url_for('inventory.special_prices') }}" class="sap-tree-link {% if '/inventory/special-prices' in request.path %}active-leaf{% endif %}">Special Prices for BPs</a>
+        <a href="{{ url_for('inventory.receipts') }}" class="sap-tree-link {% if '/inventory/receipts' in request.path %}active-leaf{% endif %}">Goods Receipt</a>
+        <a href="{{ url_for('inventory.issues') }}" class="sap-tree-link {% if '/inventory/issues' in request.path %}active-leaf{% endif %}">Goods Issue</a>
+        <a href="{{ url_for('inventory.transfers') }}" class="sap-tree-link {% if '/inventory/transfers' in request.path %}active-leaf{% endif %}">Inventory Transfer</a>
+        <a href="{{ url_for('inventory.counts') }}" class="sap-tree-link {% if '/inventory/counts' in request.path %}active-leaf{% endif %}">Inventory Counting</a>
+        <a href="{{ url_for('inventory.stock_balances') }}" class="sap-tree-link {% if '/inventory/stock' in request.path %}active-leaf{% endif %}">Inventory in Warehouse</a>
+        <a href="{{ url_for('inventory.report_stock_ledger') }}" class="sap-tree-link {% if '/inventory/reports/stock-ledger' in request.path %}active-leaf{% endif %}">Inventory Audit / Ledger</a>
+        <a href="{{ url_for('inventory.report_stock_valuation') }}" class="sap-tree-link {% if '/inventory/reports/stock-valuation' in request.path %}active-leaf{% endif %}">Inventory Valuation</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 8. Production -->
+    {% if user_can('production', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'production' %}open{% endif %}" data-tree="production">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'production' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="cpu"></i> Production</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('production.index') }}" class="sap-tree-link {% if request.path == '/production/' %}active-leaf{% endif %}">Production Overview</a>
+        <a href="{{ url_for('production.bom_list') }}" class="sap-tree-link {% if '/production/bom' in request.path %}active-leaf{% endif %}">Bill of Materials</a>
+        <a href="{{ url_for('production.order_list') }}" class="sap-tree-link {% if '/production/orders' in request.path %}active-leaf{% endif %}">Production Order</a>
+        <a href="{{ url_for('production.wastage_list') }}" class="sap-tree-link {% if '/production/wastage' in request.path %}active-leaf{% endif %}">Production Wastage</a>
+        <a href="{{ url_for('production.report_production_summary') }}" class="sap-tree-link {% if '/production/reports' in request.path %}active-leaf{% endif %}">Production Reports</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 9. Human Resources -->
+    {% if user_can('hr', 'read') %}
+    <div class="sap-tree-group {% if request.blueprint == 'hr' %}open{% endif %}" data-tree="hr">
+      <button type="button" class="sap-tree-header {% if request.blueprint == 'hr' %}active-mod{% endif %}" onclick="toggleSapTree(this)">
+        <span class="sap-tree-header-left"><i data-feather="user-check"></i> Human Resources</span>
+        <i data-feather="chevron-right" class="sap-tree-chevron"></i>
+      </button>
+      <div class="sap-tree-children">
+        <a href="{{ url_for('hr.index') }}" class="sap-tree-link {% if request.path == '/hr/' %}active-leaf{% endif %}">HR Overview</a>
+        <a href="{{ url_for('hr.employees') }}" class="sap-tree-link {% if '/hr/employees' in request.path %}active-leaf{% endif %}">Employee Master Data</a>
+        <a href="{{ url_for('hr.departments') }}" class="sap-tree-link {% if '/hr/departments' in request.path %}active-leaf{% endif %}">Departments</a>
+        <a href="{{ url_for('hr.job_titles') }}" class="sap-tree-link {% if '/hr/job-titles' in request.path %}active-leaf{% endif %}">Job Titles</a>
+        <a href="{{ url_for('hr.leaves') }}" class="sap-tree-link {% if '/hr/leaves' in request.path %}active-leaf{% endif %}">Leave Management</a>
+        <a href="{{ url_for('hr.report_headcount') }}" class="sap-tree-link {% if '/hr/reports' in request.path %}active-leaf{% endif %}">HR Reports</a>
+      </div>
+    </div>
     {% endif %}
   </nav>
   
@@ -170,6 +571,326 @@
       <path d="M135 65 L135 105 L100 125 L100 85 Z" stroke="rgba(56, 189, 248, 0.14)" stroke-width="1"/>
     </svg>
   </div>
+  <!-- ==================================================================== -->
+  <!-- SAP Business One Top Menu Bar (File, Edit, View, Data, Go To, etc.)  -->
+  <!-- ==================================================================== -->
+  <div class="sap-menubar">
+    <div class="sap-menubar-left">
+      <!-- File Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuFile', event)"><u>F</u>ile</button>
+        <div id="sapMenuFile" class="sap-menu-dropdown dropdown-menu">
+          <button type="button" onclick="sapAction('new')">
+            <span class="sap-menu-lbl"><i data-feather="file-plus"></i> New Document / Record</span>
+            <span class="sap-menu-shortcut">Ctrl+N</span>
+          </button>
+          <button type="button" onclick="sapAction('print_a4')">
+            <span class="sap-menu-lbl"><i data-feather="printer"></i> Print Preview / Print (A4)</span>
+            <span class="sap-menu-shortcut">Ctrl+P</span>
+          </button>
+          <button type="button" onclick="sapAction('print_pos')">
+            <span class="sap-menu-lbl"><i data-feather="file-text"></i> Thermal POS Receipt Print</span>
+            <span class="sap-menu-shortcut">Alt+P</span>
+          </button>
+          <div class="sap-menu-sep"></div>
+          <button type="button" onclick="sapAction('export_csv')">
+            <span class="sap-menu-lbl"><i data-feather="download"></i> Export Table to Excel (CSV)</span>
+            <span class="sap-menu-shortcut">Ctrl+E</span>
+          </button>
+          <div class="sap-menu-sep"></div>
+          <a href="{{ url_for('auth.logout') }}">
+            <span class="sap-menu-lbl"><i data-feather="log-out"></i> Exit / Log Out</span>
+            <span class="sap-menu-shortcut">Ctrl+Q</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Edit Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuEdit', event)"><u>E</u>dit</button>
+        <div id="sapMenuEdit" class="sap-menu-dropdown dropdown-menu">
+          <button type="button" onclick="sapAction('find')">
+            <span class="sap-menu-lbl"><i data-feather="search"></i> Find / Filter Mode</span>
+            <span class="sap-menu-shortcut">Ctrl+F</span>
+          </button>
+          <button type="button" onclick="sapAction('add_row')">
+            <span class="sap-menu-lbl"><i data-feather="plus-circle"></i> Add Document Line</span>
+            <span class="sap-menu-shortcut">Ctrl+I</span>
+          </button>
+          <button type="button" onclick="sapAction('del_row')">
+            <span class="sap-menu-lbl"><i data-feather="minus-circle"></i> Delete Last Line</span>
+            <span class="sap-menu-shortcut">Ctrl+D</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- View Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuView', event)"><u>V</u>iew</button>
+        <div id="sapMenuView" class="sap-menu-dropdown dropdown-menu">
+          <button type="button" onclick="document.body.classList.toggle('sidebar-collapsed')">
+            <span class="sap-menu-lbl"><i data-feather="sidebar"></i> Toggle Modules Sidebar</span>
+            <span class="sap-menu-shortcut">F2</span>
+          </button>
+          <button type="button" onclick="window.location.reload()">
+            <span class="sap-menu-lbl"><i data-feather="refresh-cw"></i> Refresh Current Screen</span>
+            <span class="sap-menu-shortcut">F5</span>
+          </button>
+          <div class="sap-menu-sep"></div>
+          <a href="{{ url_for('overview.dashboard') }}">
+            <span class="sap-menu-lbl"><i data-feather="grid"></i> Executive Cockpit</span>
+          </a>
+          {% if user_can('finance', 'read') %}
+          <a href="{{ url_for('finance.journal_list') }}">
+            <span class="sap-menu-lbl"><i data-feather="book-open"></i> Journal Entry Preview</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Data Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuData', event)"><u>D</u>ata</button>
+        <div id="sapMenuData" class="sap-menu-dropdown dropdown-menu">
+          <button type="button" onclick="sapNavRecord('first')">
+            <span class="sap-menu-lbl"><i data-feather="skip-back"></i> First Data Record</span>
+            <span class="sap-menu-shortcut">Alt+Home</span>
+          </button>
+          <button type="button" onclick="sapNavRecord('prev')">
+            <span class="sap-menu-lbl"><i data-feather="arrow-left"></i> Previous Record</span>
+            <span class="sap-menu-shortcut">Alt+Left</span>
+          </button>
+          <button type="button" onclick="sapNavRecord('next')">
+            <span class="sap-menu-lbl"><i data-feather="arrow-right"></i> Next Record</span>
+            <span class="sap-menu-shortcut">Alt+Right</span>
+          </button>
+          <button type="button" onclick="sapNavRecord('last')">
+            <span class="sap-menu-lbl"><i data-feather="skip-forward"></i> Last Data Record</span>
+            <span class="sap-menu-shortcut">Alt+End</span>
+          </button>
+          <div class="sap-menu-sep"></div>
+          <button type="button" onclick="sapAction('new')">
+            <span class="sap-menu-lbl"><i data-feather="file-plus"></i> Add New Record</span>
+            <span class="sap-menu-shortcut">Ctrl+A</span>
+          </button>
+          <button type="button" onclick="sapAction('find')">
+            <span class="sap-menu-lbl"><i data-feather="search"></i> Find Record</span>
+            <span class="sap-menu-shortcut">Ctrl+F</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Go To Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuGoto', event)"><u>G</u>o To</button>
+        <div id="sapMenuGoto" class="sap-menu-dropdown dropdown-menu">
+          {% if user_can('sales', 'read') %}
+          <a href="{{ url_for('sales.doc_new', doc_kind='orders') }}"><span class="sap-menu-lbl"><i data-feather="shopping-cart"></i> New Sales Order</span></a>
+          <a href="{{ url_for('sales.doc_new', doc_kind='invoices') }}"><span class="sap-menu-lbl"><i data-feather="file-text"></i> New A/R Invoice</span></a>
+          {% endif %}
+          {% if user_can('purchases', 'read') %}
+          <a href="{{ url_for('purchases.doc_new', doc_kind='orders') }}"><span class="sap-menu-lbl"><i data-feather="truck"></i> New Purchase Order</span></a>
+          <a href="{{ url_for('purchases.doc_new', doc_kind='bills') }}"><span class="sap-menu-lbl"><i data-feather="file-minus"></i> New A/P Supplier Bill</span></a>
+          {% endif %}
+          <div class="sap-menu-sep"></div>
+          {% if user_can('inventory', 'read') %}
+          <a href="{{ url_for('inventory.items') }}"><span class="sap-menu-lbl"><i data-feather="box"></i> Item Master Data</span></a>
+          <a href="{{ url_for('inventory.warehouses') }}"><span class="sap-menu-lbl"><i data-feather="home"></i> Warehouses</span></a>
+          <a href="{{ url_for('inventory.stock_balances') }}"><span class="sap-menu-lbl"><i data-feather="layers"></i> Stock Balances</span></a>
+          {% endif %}
+          {% if user_can('bp_master', 'read') %}
+          <a href="{{ url_for('bp_master.index') }}"><span class="sap-menu-lbl"><i data-feather="users"></i> Business Partner Master Data</span></a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Modules Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuModules', event)"><u>M</u>odules</button>
+        <div id="sapMenuModules" class="sap-menu-dropdown dropdown-menu">
+          {% if user_can('settings', 'read') %}
+          <a href="{{ url_for('settings.index') }}"><span class="sap-menu-lbl"><i data-feather="sliders"></i> Administration</span></a>
+          {% endif %}
+          {% if user_can('finance', 'read') %}
+          <a href="{{ url_for('finance.index') }}"><span class="sap-menu-lbl"><i data-feather="bar-chart-2"></i> Financials</span></a>
+          {% endif %}
+          {% if user_can('sales', 'read') %}
+          <a href="{{ url_for('sales.index') }}"><span class="sap-menu-lbl"><i data-feather="shopping-cart"></i> Sales - A/R</span></a>
+          {% endif %}
+          {% if user_can('purchases', 'read') %}
+          <a href="{{ url_for('purchases.index') }}"><span class="sap-menu-lbl"><i data-feather="truck"></i> Purchasing - A/P</span></a>
+          {% endif %}
+          {% if user_can('bp_master', 'read') %}
+          <a href="{{ url_for('bp_master.index') }}"><span class="sap-menu-lbl"><i data-feather="users"></i> Business Partners</span></a>
+          {% endif %}
+          {% if user_can('banking', 'read') %}
+          <a href="{{ url_for('banking.index') }}"><span class="sap-menu-lbl"><i data-feather="credit-card"></i> Banking</span></a>
+          {% endif %}
+          {% if user_can('payments', 'read') %}
+          <a href="{{ url_for('payments.index') }}"><span class="sap-menu-lbl"><i data-feather="dollar-sign"></i> Payments</span></a>
+          {% endif %}
+          {% if user_can('inventory', 'read') %}
+          <a href="{{ url_for('inventory.index') }}"><span class="sap-menu-lbl"><i data-feather="package"></i> Inventory</span></a>
+          {% endif %}
+          {% if user_can('production', 'read') %}
+          <a href="{{ url_for('production.index') }}"><span class="sap-menu-lbl"><i data-feather="cpu"></i> Production</span></a>
+          {% endif %}
+          {% if user_can('hr', 'read') %}
+          <a href="{{ url_for('hr.index') }}"><span class="sap-menu-lbl"><i data-feather="user-check"></i> Human Resources</span></a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Tools Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuTools', event)"><u>T</u>ools</button>
+        <div id="sapMenuTools" class="sap-menu-dropdown dropdown-menu">
+          {% if session.get('role') == 'Admin' %}
+          <a href="{{ url_for('settings.print_layouts') }}"><span class="sap-menu-lbl"><i data-feather="printer"></i> Print Layout &amp; POS Designer</span></a>
+          {% endif %}
+          {% if user_can('settings', 'read') %}
+          <a href="{{ url_for('settings.data_import') }}"><span class="sap-menu-lbl"><i data-feather="upload-cloud"></i> Data Import Workbench (DTW)</span></a>
+          <a href="{{ url_for('settings.audit_log') }}"><span class="sap-menu-lbl"><i data-feather="activity"></i> Audit Trail / Change Log</span></a>
+          <a href="{{ url_for('settings.backups') }}"><span class="sap-menu-lbl"><i data-feather="database"></i> Database Backup &amp; Restore</span></a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Window Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuWindow', event)"><u>W</u>indow</button>
+        <div id="sapMenuWindow" class="sap-menu-dropdown dropdown-menu">
+          <a href="{{ url_for('overview.dashboard') }}"><span class="sap-menu-lbl"><i data-feather="home"></i> Main Dashboard Window</span></a>
+          <button type="button" onclick="document.body.classList.toggle('sidebar-collapsed')">
+            <span class="sap-menu-lbl"><i data-feather="layout"></i> Show / Hide Main Menu Tree</span>
+          </button>
+          <button type="button" onclick="toggleAllSapTree()">
+            <span class="sap-menu-lbl"><i data-feather="list"></i> Expand / Collapse All Folders</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Help Menu -->
+      <div class="sap-menu-item">
+        <button type="button" class="sap-menu-btn" onclick="toggleSapTopMenu('sapMenuHelp', event)"><u>H</u>elp</button>
+        <div id="sapMenuHelp" class="sap-menu-dropdown dropdown-menu">
+          <button type="button" onclick="alert('Cellar & Crumb ERP — SAP Business One Navigation Edition\n\nShortcuts:\n• Golden Arrow (➜): Drill down to Item, BP, or Warehouse Master Data\n• First / Prev / Next / Last arrows: Browse documents sequentially\n• Print / POS icons: Print A4 or 80mm/58mm Thermal Receipt')">
+            <span class="sap-menu-lbl"><i data-feather="help-circle"></i> SAP Navigation &amp; Shortcuts Guide</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center/Right SAP Company & User Identifier (like "AJ'S LTD | manager") -->
+    <div class="sap-company-banner" onclick="window.location.href='{{ url_for('settings.company') if user_can('settings', 'read') else url_for('overview.dashboard') }}'" title="Company &amp; Active User">
+      {{ global_company_name or 'Cellar & Crumb Operations' }} | {{ session.get('username', 'admin') }}
+      {% if active_branch %} ({{ active_branch.code }}){% endif %}
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- SAP Business One Icon Toolbar Strip                                  -->
+  <!-- ==================================================================== -->
+  <div class="sap-iconbar">
+    <button type="button" class="sap-tool-btn" onclick="sapAction('print_a4')" title="Print Preview (A4)">
+      <i data-feather="file-text"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapAction('print_a4')" title="Print Document (Ctrl+P)">
+      <i data-feather="printer"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapAction('print_pos')" title="POS Thermal Receipt Print (80mm / 58mm)">
+      <span class="sap-badge-icon" style="color:#fbbf24; border-color:#fbbf24;">POS</span>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapAction('export_csv')" title="Export Table to Excel / CSV">
+      <span class="sap-badge-icon" style="color:#34d399; border-color:#34d399;">XLS</span>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapAction('print_a4')" title="Export / Save as PDF">
+      <span class="sap-badge-icon" style="color:#f87171; border-color:#f87171;">PDF</span>
+    </button>
+
+    <div class="sap-tool-sep"></div>
+
+    <!-- Find & Add Mode (Binoculars + New Doc icon) -->
+    <button type="button" class="sap-tool-btn" onclick="sapAction('find')" title="Find Mode / Search Records (Ctrl+F)">
+      <i data-feather="search"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapAction('new')" title="Add Mode / New Document (Ctrl+N)">
+      <i data-feather="file-plus"></i>
+    </button>
+
+    <div class="sap-tool-sep"></div>
+
+    <!-- SAP Data Record Navigation: First |<, Previous <-, Next ->, Last >| -->
+    <button type="button" class="sap-tool-btn" onclick="sapNavRecord('first')" title="First Data Record">
+      <i data-feather="skip-back"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapNavRecord('prev')" title="Previous Data Record">
+      <i data-feather="arrow-left"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapNavRecord('next')" title="Next Data Record">
+      <i data-feather="arrow-right"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="sapNavRecord('last')" title="Last Data Record">
+      <i data-feather="skip-forward"></i>
+    </button>
+
+    <div class="sap-tool-sep"></div>
+
+    <!-- Filter / Refresh / Base & Target Docs -->
+    <button type="button" class="sap-tool-btn" onclick="sapAction('find')" title="Filter Table">
+      <i data-feather="filter"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="window.location.reload()" title="Refresh Record (F5)">
+      <i data-feather="refresh-cw"></i>
+    </button>
+
+    <div class="sap-tool-sep"></div>
+
+    <!-- Quick Module Launchers (Journal, Cash/Payments, Inventory, BP, Print Designer, Users, Help) -->
+    {% if user_can('finance', 'read') %}
+    <a href="{{ url_for('finance.journal_list') }}" class="sap-tool-btn" title="Journal Entries / Transaction Journal">
+      <i data-feather="book"></i>
+    </a>
+    <a href="{{ url_for('finance.trial_balance') }}" class="sap-tool-btn" title="Trial Balance &amp; Financial Reports">
+      <i data-feather="bar-chart-2"></i>
+    </a>
+    {% endif %}
+    {% if user_can('payments', 'read') %}
+    <a href="{{ url_for('payments.index') }}" class="sap-tool-btn" title="Payment Means / Incoming &amp; Outgoing Payments">
+      <i data-feather="dollar-sign"></i>
+    </a>
+    {% endif %}
+    {% if user_can('inventory', 'read') %}
+    <a href="{{ url_for('inventory.items') }}" class="sap-tool-btn" title="Item Master Data">
+      <i data-feather="package"></i>
+    </a>
+    {% endif %}
+    {% if user_can('bp_master', 'read') %}
+    <a href="{{ url_for('bp_master.index') }}" class="sap-tool-btn" title="Business Partner Master Data">
+      <i data-feather="users"></i>
+    </a>
+    {% endif %}
+
+    <div class="sap-tool-sep"></div>
+
+    {% if session.get('role') == 'Admin' %}
+    <a href="{{ url_for('settings.print_layouts') }}" class="sap-tool-btn" title="Form Settings / Print Layout &amp; POS Designer (Admin)">
+      <i data-feather="sliders"></i>
+    </a>
+    {% endif %}
+    {% if user_can('settings', 'read') %}
+    <a href="{{ url_for('settings.users') }}" class="sap-tool-btn" title="Users &amp; Authorizations">
+      <i data-feather="user"></i>
+    </a>
+    {% endif %}
+    <button type="button" class="sap-tool-btn" onclick="document.body.classList.toggle('sidebar-collapsed')" title="Toggle SAP Modules Tree Panel">
+      <i data-feather="sidebar"></i>
+    </button>
+    <button type="button" class="sap-tool-btn" onclick="alert('SAP Business One Toolbar\n\n• |<  <-  ->  >| : Navigate First, Previous, Next, Last Document\n• Binoculars : Find / List Mode\n• File+ : Create New Document\n• Printer / POS : Print A4 or Thermal Receipt\n• XLS : Export current table to CSV')" title="Context Help">
+      <i data-feather="help-circle"></i>
+    </button>
+  </div>
+
   <!-- Topbar -->
   <div class="topbar">
     <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
@@ -331,10 +1052,165 @@
 
   // Close dropdowns when clicking outside
   document.addEventListener('click', function(e) {
-    if (!e.target.closest('.dropdown-menu') && !e.target.closest('[onclick*="toggleDropdown"]')) {
+    if (!e.target.closest('.dropdown-menu') && !e.target.closest('[onclick*="toggleDropdown"]') && !e.target.closest('[onclick*="toggleSapTopMenu"]')) {
       document.querySelectorAll('.dropdown-menu').forEach(function(m) {
         m.style.display = 'none';
       });
+      document.querySelectorAll('.sap-menu-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+    }
+  });
+
+  // SAP Top Menu Bar dropdown toggle
+  window.toggleSapTopMenu = function(id, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isOpen = menu.style.display === 'block';
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+      m.style.display = 'none';
+    });
+    document.querySelectorAll('.sap-menu-btn').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    if (!isOpen) {
+      menu.style.display = 'block';
+      if (e && e.currentTarget) e.currentTarget.classList.add('active');
+      if (window.feather) feather.replace();
+    }
+  };
+
+  // SAP Sidebar Module Tree collapsible folders
+  window.toggleSapTree = function(btn) {
+    var grp = btn.closest('.sap-tree-group');
+    if (!grp) return;
+    grp.classList.toggle('open');
+  };
+
+  window.toggleAllSapTree = function() {
+    var groups = document.querySelectorAll('.sap-tree-group');
+    var anyClosed = Array.from(groups).some(function(g) { return !g.classList.contains('open'); });
+    groups.forEach(function(g) {
+      if (anyClosed) g.classList.add('open');
+      else g.classList.remove('open');
+    });
+  };
+
+  // SAP Data Record Navigation (First |<, Prev <-, Next ->, Last >|)
+  window.sapNavRecord = function(dir) {
+    var bp = {{ (request.blueprint or '')|tojson }};
+    var path = window.location.pathname;
+    fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=' + encodeURIComponent(dir))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.url) {
+          window.location.href = data.url;
+        }
+      })
+      .catch(function(err) { console.error('SAP Nav error:', err); });
+  };
+
+  // SAP Toolbar & Menu Bar Context Actions
+  window.sapAction = function(act) {
+    var bp = {{ (request.blueprint or '')|tojson }};
+    var path = window.location.pathname;
+
+    if (act === 'print_a4') {
+      var printLink = document.querySelector('a[href*="/print"]:not([href*="format=pos"])');
+      if (printLink) {
+        window.open(printLink.href, '_blank');
+      } else {
+        window.print();
+      }
+    } else if (act === 'print_pos') {
+      var posLink = document.querySelector('a[href*="format=pos"]');
+      if (posLink) {
+        window.open(posLink.href, '_blank');
+      } else {
+        var printLink2 = document.querySelector('a[href*="/print"]');
+        if (printLink2) {
+          var sep = printLink2.href.indexOf('?') === -1 ? '?' : '&';
+          window.open(printLink2.href + sep + 'format=pos', '_blank');
+        } else {
+          window.print();
+        }
+      }
+    } else if (act === 'export_csv') {
+      var table = document.querySelector('table');
+      if (!table) {
+        alert('No data table on the current screen to export.');
+        return;
+      }
+      var rows = Array.from(table.querySelectorAll('tr'));
+      var csv = rows.map(function(row) {
+        var cells = Array.from(row.querySelectorAll('th, td'));
+        return cells.map(function(c) {
+          var inp = c.querySelector('input, select, textarea');
+          var txt = inp ? (inp.selectedOptions ? (inp.selectedOptions[0]?.text || inp.value) : inp.value) : c.innerText;
+          txt = (txt || '').replace(/\u279c/g, '').trim().replace(/"/g, '""');
+          return '"' + txt + '"';
+        }).join(',');
+      }).join('\n');
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = (document.title.split('—')[0].trim().replace(/\s+/g, '_') || 'ERP_Export') + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (act === 'find') {
+      var searchInput = document.querySelector('input[name="search"], input[type="search"], input[placeholder*="Search"]');
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+        return;
+      }
+      fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=last')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.find_url) window.location.href = data.find_url;
+        });
+    } else if (act === 'new') {
+      var newBtn = document.querySelector('a[href*="/new"]');
+      if (newBtn && !newBtn.closest('.sap-menu-dropdown') && !newBtn.closest('.sap-tree-children')) {
+        window.location.href = newBtn.href;
+        return;
+      }
+      fetch('/api/sap-nav?bp=' + encodeURIComponent(bp) + '&path=' + encodeURIComponent(path) + '&dir=last')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.new_url) window.location.href = data.new_url;
+        });
+    } else if (act === 'add_row') {
+      if (typeof window.addRow === 'function') {
+        window.addRow();
+      } else {
+        var addLineBtn = document.getElementById('addLineBtn');
+        if (addLineBtn) addLineBtn.click();
+      }
+    } else if (act === 'del_row') {
+      var delBtns = document.querySelectorAll('.remove-line, .remove-btn');
+      if (delBtns.length > 1) {
+        delBtns[delBtns.length - 1].click();
+      }
+    }
+  };
+
+  // Keyboard shortcuts (Ctrl+F Find, Ctrl+N New, F2 Toggle Sidebar)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'F2') {
+      e.preventDefault();
+      document.body.classList.toggle('sidebar-collapsed');
+    } else if (e.altKey && e.key === 'ArrowLeft') {
+      e.preventDefault();
+      window.sapNavRecord('prev');
+    } else if (e.altKey && e.key === 'ArrowRight') {
+      e.preventDefault();
+      window.sapNavRecord('next');
     }
   });
 </script>

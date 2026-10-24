@@ -99,13 +99,20 @@ def create_app():
                 except Exception as e:
                     print(f"[GlobalContext] Error loading active_branch: {e}")
                     active_branch = None
-                
+
+            company_row = None
+            try:
+                company_row = conn.execute("SELECT name, currency FROM company WHERE id = 1").fetchone()
+            except Exception:
+                pass
+
             return {
                 'user_can': user_can,
                 'all_accessible_branches': branches,
                 'active_branch_id': active_branch_id,
                 'active_branch': active_branch,
-                'can_switch_all_branches': (role in ['Admin', 'Manager'])
+                'can_switch_all_branches': (role in ['Admin', 'Manager']),
+                'global_company_name': (company_row['name'] if company_row and company_row['name'] else 'Cellar & Crumb Operations'),
             }
         finally:
             try:
@@ -142,6 +149,155 @@ a {{ color: #38bdf8; text-decoration: underline; margin-right: 15px; font-weight
 </div>
 </body>
 </html>""", 500
+
+    @app.route('/api/sap-nav')
+    def api_sap_nav():
+        """SAP Business One Data Record Navigation (First / Previous / Next / Last) & Quick Find."""
+        if 'user_id' not in session:
+            return redirect(url_for('auth.login'))
+        from flask import request, jsonify
+        from database import get_db, PH
+        bp = request.args.get('bp', '')
+        path = request.args.get('path', '')
+        dir_action = request.args.get('dir', 'next')  # first, prev, next, last
+        conn = get_db()
+        try:
+            parts = [p for p in path.strip('/').split('/') if p]
+            target_url = None
+            find_url = None
+            new_url = None
+
+            def _resolve_id(table, current_id, where_sql="", params=()):
+                w_base = f"WHERE {where_sql}" if where_sql else ""
+                w_and = f"AND ({where_sql})" if where_sql else ""
+                if dir_action == 'first':
+                    r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id ASC LIMIT 1", params).fetchone()
+                elif dir_action == 'last':
+                    r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id DESC LIMIT 1", params).fetchone()
+                elif dir_action == 'prev':
+                    if current_id:
+                        r = conn.execute(f"SELECT id FROM {table} WHERE id < {PH} {w_and} ORDER BY id DESC LIMIT 1", (current_id,) + tuple(params)).fetchone()
+                        if not r:
+                            r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id ASC LIMIT 1", params).fetchone()
+                    else:
+                        r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id DESC LIMIT 1", params).fetchone()
+                else:  # next
+                    if current_id:
+                        r = conn.execute(f"SELECT id FROM {table} WHERE id > {PH} {w_and} ORDER BY id ASC LIMIT 1", (current_id,) + tuple(params)).fetchone()
+                        if not r:
+                            r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id DESC LIMIT 1", params).fetchone()
+                    else:
+                        r = conn.execute(f"SELECT id FROM {table} {w_base} ORDER BY id ASC LIMIT 1", params).fetchone()
+                return r['id'] if r else None
+
+            # 1. Sales Documents (/sales/<doc_kind>/<id> or /sales/<doc_kind>/new or /sales/<doc_kind>)
+            if bp == 'sales' and len(parts) >= 2:
+                from routes.sales import DOC_TYPES
+                doc_kind = parts[1]
+                if doc_kind in DOC_TYPES:
+                    dtype = DOC_TYPES[doc_kind]
+                    cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                    nid = _resolve_id('sales_docs', cur_id, f"doc_type = {PH}", (dtype,))
+                    find_url = f"/sales/{doc_kind}"
+                    new_url = f"/sales/{doc_kind}/new"
+                    target_url = f"/sales/{doc_kind}/{nid}" if nid else find_url
+
+            # 2. Purchase Documents (/purchases/<doc_kind>/<id>)
+            elif bp == 'purchases' and len(parts) >= 2:
+                from routes.purchases import DOC_TYPES as P_DOC_TYPES
+                doc_kind = parts[1]
+                if doc_kind in P_DOC_TYPES:
+                    dtype = P_DOC_TYPES[doc_kind]
+                    cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                    nid = _resolve_id('purchase_docs', cur_id, f"doc_type = {PH}", (dtype,))
+                    find_url = f"/purchases/{doc_kind}"
+                    new_url = f"/purchases/{doc_kind}/new"
+                    target_url = f"/purchases/{doc_kind}/{nid}" if nid else find_url
+
+            # 3. Inventory (items, warehouses, receipts, issues, transfers, counts)
+            elif bp == 'inventory' and len(parts) >= 2:
+                sub = parts[1]
+                cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                inv_map = {
+                    'items': ('items', '/inventory/items', '/inventory/items/new'),
+                    'warehouses': ('warehouses', '/inventory/warehouses', '/inventory/warehouses/new'),
+                    'receipts': ('goods_receipts', '/inventory/receipts', '/inventory/receipts/new'),
+                    'issues': ('goods_issues', '/inventory/issues', '/inventory/issues/new'),
+                    'transfers': ('stock_transfers', '/inventory/transfers', '/inventory/transfers/new'),
+                    'counts': ('inventory_counts', '/inventory/counts', '/inventory/counts/new'),
+                }
+                if sub in inv_map:
+                    tbl, f_url, n_url = inv_map[sub]
+                    nid = _resolve_id(tbl, cur_id)
+                    find_url, new_url = f_url, n_url
+                    target_url = f"/inventory/{sub}/{nid}" if nid else f_url
+
+            # 4. Business Partners (/bp/<id> or /bp/)
+            elif bp == 'bp_master':
+                cur_id = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else None
+                nid = _resolve_id('partners', cur_id)
+                find_url = '/bp/'
+                new_url = '/bp/new'
+                target_url = f"/bp/{nid}" if nid else find_url
+
+            # 5. Payments (/payments/<id> or /payments/incoming or /payments/outgoing)
+            elif bp == 'payments':
+                cur_id = None
+                for p in parts[1:]:
+                    if p.isdigit():
+                        cur_id = int(p)
+                        break
+                nid = _resolve_id('payments', cur_id)
+                find_url = '/payments/incoming'
+                new_url = '/payments/incoming/new'
+                target_url = f"/payments/{nid}" if nid else find_url
+
+            # 6. Production (/production/orders/<id> or /production/bom/<id>)
+            elif bp == 'production' and len(parts) >= 2:
+                sub = parts[1]
+                cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                if sub == 'bom':
+                    nid = _resolve_id('bom', cur_id)
+                    find_url, new_url = '/production/bom', '/production/bom/new'
+                    target_url = f"/production/bom/{nid}" if nid else find_url
+                else:
+                    nid = _resolve_id('production_orders', cur_id)
+                    find_url, new_url = '/production/orders', '/production/orders/new'
+                    target_url = f"/production/orders/{nid}" if nid else find_url
+
+            # 7. Finance (/finance/journals/<id> or /finance/coa/<id>)
+            elif bp == 'finance' and len(parts) >= 2:
+                sub = parts[1]
+                cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                if sub == 'coa':
+                    nid = _resolve_id('coa', cur_id)
+                    find_url, new_url = '/finance/coa', '/finance/coa/new'
+                    target_url = f"/finance/coa/{nid}" if nid else find_url
+                else:
+                    nid = _resolve_id('journal_entries', cur_id)
+                    find_url, new_url = '/finance/journals', '/finance/journals/new'
+                    target_url = f"/finance/journals/{nid}" if nid else find_url
+
+            # 8. HR (/hr/employees/<id>)
+            elif bp == 'hr':
+                cur_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+                nid = _resolve_id('employees', cur_id)
+                find_url, new_url = '/hr/employees', '/hr/employees/new'
+                target_url = f"/hr/employees/{nid}" if nid else find_url
+
+            # Default fallback: Sales Orders
+            if not target_url:
+                nid = _resolve_id('sales_docs', None, f"doc_type = {PH}", ('Sales Order',))
+                find_url = '/sales/orders'
+                new_url = '/sales/orders/new'
+                target_url = f"/sales/orders/{nid}" if nid else find_url
+
+            return jsonify({'url': target_url, 'find_url': find_url, 'new_url': new_url})
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     @app.route('/')
     def index():
