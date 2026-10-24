@@ -26,13 +26,16 @@ def create_app():
     app = Flask(__name__)
     app.secret_key = get_or_create_secret_key()
     
-    # Secure Session Cookies and Template Auto-Reload
+    # Secure Session Cookies, Upload Limits, and Template Auto-Reload
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
-        TEMPLATES_AUTO_RELOAD=True
+        TEMPLATES_AUTO_RELOAD=True,
+        MAX_CONTENT_LENGTH=16 * 1024 * 1024,
+        MAX_FORM_MEMORY_SIZE=16 * 1024 * 1024,
     )
+    app.request_class.max_form_memory_size = 16 * 1024 * 1024
     
     init_db()
     

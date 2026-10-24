@@ -1208,7 +1208,7 @@ def print_layouts():
         logo_file = request.files.get('logo_file')
         if logo_file and logo_file.filename:
             raw_bytes = logo_file.read()
-            if raw_bytes and len(raw_bytes) <= 2 * 1024 * 1024:  # up to 2MB
+            if raw_bytes and len(raw_bytes) <= 15 * 1024 * 1024:  # up to 15MB
                 mime = logo_file.mimetype or 'image/png'
                 b64_str = base64.b64encode(raw_bytes).decode('ascii')
                 logo_url = f"data:{mime};base64,{b64_str}"

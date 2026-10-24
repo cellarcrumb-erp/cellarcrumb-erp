@@ -411,12 +411,40 @@ function setAccent(hex) {
 
 function previewLogoFile(input) {
   if (input.files && input.files[0]) {
+    var file = input.files[0];
     var reader = new FileReader();
     reader.onload = function(e) {
-      document.getElementById('logoUrlInput').value = e.target.result;
-      updatePreview();
+      var dataUrl = e.target.result;
+      // Optimize/resize large images client-side so form submission is instant and compact
+      var img = new Image();
+      img.onload = function() {
+        var maxW = 600, maxH = 240;
+        var w = img.width, h = img.height;
+        if (w > maxW || h > maxH || dataUrl.length > 180000) {
+          var scale = Math.min(maxW / (w || 1), maxH / (h || 1), 1);
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = cw;
+          canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, cw, ch);
+          dataUrl = canvas.toDataURL('image/png');
+        }
+        document.getElementById('logoUrlInput').value = dataUrl;
+        document.getElementById('showLogoChk').checked = true;
+        // Clear file input so the browser doesn't double-submit the raw multi-MB file
+        input.value = '';
+        updatePreview();
+      };
+      img.onerror = function() {
+        document.getElementById('logoUrlInput').value = dataUrl;
+        input.value = '';
+        updatePreview();
+      };
+      img.src = dataUrl;
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.readAsDataURL(file);
   }
 }
 
