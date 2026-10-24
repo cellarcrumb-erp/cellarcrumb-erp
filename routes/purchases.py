@@ -501,11 +501,16 @@ def doc_post(doc_kind, id):
 @purchases_bp.route('/<doc_kind>/<int:id>/print')
 @login_required
 def doc_print(doc_kind, id):
+    from database import get_print_settings
     conn = get_db()
     doc = conn.execute("""
-        SELECT d.*, p.name as supplier_name, p.address as supplier_address, p.phone as supplier_phone
+        SELECT d.*, p.name as supplier_name, p.code as supplier_code, p.address as supplier_address,
+               p.phone as supplier_phone, p.email as supplier_email, p.tax_id as supplier_tax_id,
+               b.name as branch_name, w.name as warehouse_name
         FROM purchase_docs d
         LEFT JOIN partners p ON d.supplier_id = p.id
+        LEFT JOIN branches b ON d.branch_id = b.id
+        LEFT JOIN warehouses w ON d.warehouse_id = w.id
         WHERE d.id = ?
     """, (id,)).fetchone()
     if not doc:
@@ -519,4 +524,5 @@ def doc_print(doc_kind, id):
     """, (id,)).fetchall()
     
     company = conn.execute("SELECT * FROM company WHERE id = 1").fetchone()
-    return render_template('purchases/bill_print.html', doc=doc, lines=lines, company=company)
+    print_cfg = get_print_settings(conn)
+    return render_template('purchases/bill_print.html', doc=doc, lines=lines, company=company, print_cfg=print_cfg)

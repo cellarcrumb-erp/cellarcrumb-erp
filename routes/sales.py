@@ -558,11 +558,16 @@ def doc_post(doc_kind, id):
 @sales_bp.route('/<doc_kind>/<int:id>/print')
 @login_required
 def doc_print(doc_kind, id):
+    from database import get_print_settings
     conn = get_db()
     doc = conn.execute("""
-        SELECT d.*, p.name as customer_name, p.address as customer_address, p.phone as customer_phone
+        SELECT d.*, p.name as customer_name, p.code as customer_code, p.address as customer_address,
+               p.phone as customer_phone, p.email as customer_email, p.tax_id as customer_tax_id,
+               b.name as branch_name, w.name as warehouse_name
         FROM sales_docs d
         LEFT JOIN partners p ON d.customer_id = p.id
+        LEFT JOIN branches b ON d.branch_id = b.id
+        LEFT JOIN warehouses w ON d.warehouse_id = w.id
         WHERE d.id = ?
     """, (id,)).fetchone()
     if not doc:
@@ -576,7 +581,8 @@ def doc_print(doc_kind, id):
     """, (id,)).fetchall()
     
     company = conn.execute("SELECT * FROM company WHERE id = 1").fetchone()
-    return render_template('sales/invoice_print.html', doc=doc, lines=lines, company=company)
+    print_cfg = get_print_settings(conn)
+    return render_template('sales/invoice_print.html', doc=doc, lines=lines, company=company, print_cfg=print_cfg)
 
 
 # ── Invoice + Payment: quick receive payment directly from invoice detail ──

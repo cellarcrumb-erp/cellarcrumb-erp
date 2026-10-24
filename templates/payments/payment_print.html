@@ -1,60 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>{{ payment.doc_ref }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% set cfg = print_cfg if print_cfg is defined and print_cfg else {} %}
+  {% set accent = request.args.get('color') or cfg.get('accent_color', '#b45309') %}
+  {% set curr = company.currency if company and company.currency else 'KES' %}
   <style>
-    body { font-family: sans-serif; color: #333; margin: 0; padding: 20px; }
-    .header { text-align: center; margin-bottom: 40px; }
-    .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-    .info-box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
-    .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-    .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .table th, .table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    .footer { margin-top: 50px; display: flex; justify-content: space-between; }
-    .sign-line { width: 200px; border-top: 1px solid #000; text-align: center; padding-top: 5px; }
-    @media print { .no-print { display: none; } }
+    :root { --accent: {{ accent }}; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
-<body>
-  <div class="no-print" style="margin-bottom:20px;">
-    <button onclick="window.print()" style="padding:10px 20px; background:#c9a84c; color:#fff; border:none; cursor:pointer;">Print</button>
-  </div>
-  <div class="header">
-    <div class="title">{% if payment.payment_type == 'Incoming' %}RECEIPT{% else %}PAYMENT VOUCHER{% endif %}</div>
-    <div>{{ company.name }}</div>
-    <div>{{ company.address }} | {{ company.phone }}</div>
-  </div>
-  <div class="info-box">
-    <div class="row"><div><strong>Ref No:</strong> {{ payment.doc_ref }}</div><div><strong>Date:</strong> {{ payment.doc_date }}</div></div>
-    <div class="row"><div><strong>{% if payment.payment_type == 'Incoming' %}Received From{% else %}Paid To{% endif %}:</strong> {{ payment.partner_name or '-' }}</div></div>
-  </div>
-  <div class="info-box">
-    <div class="row">
-      <div style="font-size: 18px;"><strong>Amount:</strong> KES {{ payment.amount }}</div>
+<body class="bg-slate-100 p-6">
+  <div class="no-print max-w-3xl mx-auto mb-4 bg-slate-900 text-white px-5 py-3 rounded-lg shadow flex justify-between items-center">
+    <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Payment Voucher / Receipt Preview</span>
+    <div class="flex gap-2">
+      <a href="{{ url_for('settings.print_layouts') }}" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded font-semibold">
+        Customize Layout
+      </a>
+      <button onclick="window.print()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded font-bold shadow">
+        Print / Save PDF
+      </button>
     </div>
-    <div class="row">
-      <div><strong>Payment Method:</strong> {{ payment.payment_method_name }}</div>
-      <div><strong>Bank Account:</strong> {{ payment.bank_account_name }}</div>
+  </div>
+
+  <div class="max-w-3xl mx-auto bg-white p-10 shadow-xl relative" style="border-top: 6px solid var(--accent);">
+    <div class="flex justify-between items-start border-b-2 border-slate-200 pb-5 mb-6">
+      <div class="flex items-center gap-4">
+        {% if cfg.get('show_logo', True) and cfg.get('logo_url') %}
+        <img src="{{ cfg.get('logo_url') }}" alt="Logo" style="max-height:56px; max-width:120px; object-fit:contain;">
+        {% endif %}
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">{{ company.name if company else 'Cellar & Crumb Operations' }}</h1>
+          <p class="text-xs text-slate-500">{{ company.address if company else 'Nairobi, Kenya' }} | {{ company.phone if company else '' }}</p>
+          {% if cfg.get('show_tax_id', True) and company and company.tax_id %}
+          <p class="text-xs font-bold text-slate-700">KRA PIN: {{ company.tax_id }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="text-right">
+        <h2 class="text-xl font-black uppercase tracking-wider" style="color: var(--accent);">
+          {% if payment.payment_type == 'Incoming' %}OFFICIAL RECEIPT{% elif payment.payment_type == 'Outgoing' %}PAYMENT VOUCHER{% else %}EXPENSE VOUCHER{% endif %}
+        </h2>
+        <p class="text-lg font-bold text-slate-900 mt-1">{{ payment.doc_ref }}</p>
+        <p class="text-xs text-slate-600">Date: {{ payment.doc_date }}</p>
+      </div>
     </div>
-    {% if payment.reference %}
-    <div class="row"><div><strong>Reference:</strong> {{ payment.reference }}</div></div>
+
+    <div class="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6 text-xs">
+      <div>
+        <div class="text-[10px] font-bold uppercase text-slate-400">{% if payment.payment_type == 'Incoming' %}Received From{% else %}Paid To{% endif %}</div>
+        <div class="text-sm font-bold text-slate-900 mt-0.5">{{ payment.partner_name or 'Direct / Sundry' }}</div>
+        {% if payment.partner_address %}<div class="text-slate-600">{{ payment.partner_address }}</div>{% endif %}
+        {% if payment.partner_phone %}<div class="text-slate-600">{{ payment.partner_phone }}</div>{% endif %}
+      </div>
+      <div class="text-right">
+        <div class="text-[10px] font-bold uppercase text-slate-400">Amount</div>
+        <div class="text-xl font-black mt-0.5" style="color: var(--accent);">{{ curr }} {{ "{:,.2f}".format(payment.amount or 0) }}</div>
+        <div class="text-slate-600 mt-1">Method: <span class="font-semibold">{{ payment.method_name or '-' }}</span> | Account: <span class="font-semibold">{{ payment.account_name or '-' }}</span></div>
+        {% if payment.reference %}<div class="text-slate-600">Ref: <span class="font-semibold">{{ payment.reference }}</span></div>{% endif %}
+      </div>
+    </div>
+
+    {% if allocations %}
+    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Applied Document Allocations</h3>
+    <table class="w-full text-left border-collapse mb-6 text-xs">
+      <thead>
+        <tr style="background: var(--accent); color: #fff;">
+          <th class="p-2.5">Document Type</th>
+          <th class="p-2.5">Document Ref</th>
+          <th class="p-2.5 text-right">Allocated Amount ({{ curr }})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in allocations %}
+        <tr class="border-b border-slate-200">
+          <td class="p-2.5">{{ a.doc_type }}</td>
+          <td class="p-2.5 font-mono font-semibold">{{ a.invoice_ref or ('#' ~ a.doc_id) }}</td>
+          <td class="p-2.5 text-right font-bold">{{ "{:,.2f}".format(a.amount or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% endif %}
-  </div>
-  {% if allocations %}
-  <h3>Allocations</h3>
-  <table class="table">
-    <thead><tr><th>Document</th><th>Amount</th></tr></thead>
-    <tbody>
-      {% for a in allocations %}
-      <tr><td>{{ a.doc_type }} #{{ a.doc_id }}</td><td>{{ a.amount }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <div class="footer">
-    <div class="sign-line">Prepared By</div>
-    <div class="sign-line">Authorized By</div>
-    <div class="sign-line">Received By</div>
+
+    {% if cfg.get('show_signatures', True) %}
+    <div class="flex justify-between items-end gap-6 mt-12 pt-4">
+      <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">{{ cfg.get('sig_1_label', 'Prepared By') }}</div>
+      <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">{{ cfg.get('sig_2_label', 'Authorized By') }}</div>
+      <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">{{ cfg.get('sig_3_label', 'Received By') }}</div>
+    </div>
+    {% endif %}
+
+    {% if cfg.get('footer_note') %}
+    <div class="text-center text-[11px] text-slate-400 mt-6 pt-3 border-t border-slate-100">
+      {{ cfg.get('footer_note') }}
+    </div>
+    {% endif %}
   </div>
 </body>
 </html>

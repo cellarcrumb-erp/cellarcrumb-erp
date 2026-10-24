@@ -432,4 +432,5 @@ def print_payment(id):
         LEFT JOIN purchase_docs p ON a.doc_id=p.id AND a.doc_type='Bill'
         WHERE a.payment_id=?
     ''', (id,)).fetchall()
-    return render_template('payments/payment_print.html', payment=payment, company=company, allocations=allocations)
+    from database import get_print_settings
+    return render_template('payments/payment_print.html', payment=payment, company=company, allocations=allocations, print_cfg=get_print_settings(conn))

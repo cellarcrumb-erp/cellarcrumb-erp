@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+{% block page_title %}Print Layouts & Branding{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('settings.index') }}">Settings</a>
+  <span class="breadcrumb-sep">/</span>
+  <span>Print Layouts &amp; Branding</span>
+</div>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
+  <div>
+    <h2 style="margin:0; font-size:22px; font-weight:700;">Marketing Document Print Layouts</h2>
+    <div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
+      Customize print templates, branding, columns, terms &amp; conditions, and signature blocks for Sales, Purchasing, and Payment documents
+    </div>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <form method="POST" action="{{ url_for('settings.reset_print_layouts') }}" onsubmit="return confirm('Reset all print layout settings to defaults?');" style="margin:0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-secondary btn-sm">
+        <i data-feather="rotate-ccw" style="width:14px;height:14px;"></i> Reset Defaults
+      </button>
+    </form>
+    <button type="submit" form="printLayoutForm" class="btn btn-primary">
+      <i data-feather="save" style="width:15px;height:15px;"></i> Save Print Layout
+    </button>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: minmax(420px, 1.05fr) minmax(420px, 1fr); gap:24px; align-items:start;">
+  <!-- LEFT: CONFIGURATION FORM -->
+  <form id="printLayoutForm" method="POST" action="{{ url_for('settings.print_layouts') }}" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:20px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- 1. Layout Style & Brand Color -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="layout" style="width:16px;height:16px;"></i> 1. Template Style &amp; Brand Color
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        {% set styles = [
+          ('corporate', 'Classic Corporate', 'Executive header bar, structured boxes & zebra rows'),
+          ('modern', 'Modern Clean', 'Sleek accent border, minimal typography & airy layout'),
+          ('sap_grid', 'SAP B1 Boxed Grid', 'Full bordered grid tables & official ERP boxes'),
+          ('compact', 'Compact / Counter', 'Space-saving layout for quick counter or A5 printouts')
+        ] %}
+        {% for val, label, desc in styles %}
+        <label style="border:1.5px solid {% if cfg.layout_style == val %}var(--gold){% else %}rgba(255,255,255,0.12){% endif %}; border-radius:10px; padding:12px; cursor:pointer; background:{% if cfg.layout_style == val %}rgba(201,168,76,0.12){% else %}rgba(255,255,255,0.02){% endif %}; display:flex; gap:10px; align-items:flex-start;" class="style-card">
+          <input type="radio" name="layout_style" value="{{ val }}" {% if cfg.layout_style == val %}checked{% endif %} onchange="updatePreview()" style="margin-top:3px;">
+          <div>
+            <div style="font-weight:700; font-size:13px; color:#f8fafc;">{{ label }}</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">{{ desc }}</div>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:end;">
+        <div>
+          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Brand Accent Color</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="color" id="accentColorInput" name="accent_color" value="{{ cfg.accent_color }}" onchange="updatePreview()" style="width:44px; height:36px; border:none; border-radius:6px; cursor:pointer; background:transparent;">
+            <div style="display:flex; gap:6px;">
+              {% for preset_hex, preset_name in [('#b45309', 'Gold'), ('#1e3a8a', 'Navy'), ('#065f46', 'Emerald'), ('#881337', 'Burgundy'), ('#1e293b', 'Slate')] %}
+              <button type="button" onclick="setAccent('{{ preset_hex }}')" title="{{ preset_name }}"
+                      style="width:26px; height:26px; border-radius:50%; background:{{ preset_hex }}; border:2px solid rgba(255,255,255,0.4); cursor:pointer;"></button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Paper Size</label>
+          <select name="paper_size" class="form-control">
+            <option value="A4" {% if cfg.paper_size == 'A4' %}selected{% endif %}>A4 Standard (210 × 297 mm)</option>
+            <option value="Letter" {% if cfg.paper_size == 'Letter' %}selected{% endif %}>US Letter (8.5 × 11 in)</option>
+            <option value="A5" {% if cfg.paper_size == 'A5' %}selected{% endif %}>A5 Half-Sheet (148 × 210 mm)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Header, Logo & Branding -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="image" style="width:16px;height:16px;"></i> 2. Header &amp; Company Branding
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <div>
+          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Upload Logo Image (PNG/JPG/SVG)</label>
+          <input type="file" name="logo_file" accept="image/*" class="form-control" onchange="previewLogoFile(this)">
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Or Logo URL / Data URI</label>
+          <input type="text" id="logoUrlInput" name="logo_url" value="{{ cfg.logo_url }}" placeholder="https://... or leave blank" class="form-control" oninput="updatePreview()">
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Company Tagline / Subtitle</label>
+        <input type="text" id="taglineInput" name="company_tagline" value="{{ cfg.company_tagline }}" class="form-control" oninput="updatePreview()">
+      </div>
+
+      <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:10px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="showLogoChk" name="show_logo" {% if cfg.show_logo %}checked{% endif %} onchange="updatePreview()"> Show Company Logo
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="showTaxIdChk" name="show_tax_id" {% if cfg.show_tax_id %}checked{% endif %} onchange="updatePreview()"> Show KRA PIN / Tax ID
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="showBranchChk" name="show_branch_info" {% if cfg.show_branch_info %}checked{% endif %} onchange="updatePreview()"> Show Branch &amp; Warehouse
+        </label>
+      </div>
+    </div>
+
+    <!-- 3. Line Columns & Document Sections -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="columns" style="width:16px;height:16px;"></i> 3. Visible Columns &amp; Document Sections
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="colCodeChk" name="show_item_code" {% if cfg.show_item_code %}checked{% endif %} onchange="updatePreview()"> Show Item Code Column
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="colDescChk" name="show_description" {% if cfg.show_description %}checked{% endif %} onchange="updatePreview()"> Show Line Description / Notes
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="colDiscChk" name="show_discount" {% if cfg.show_discount %}checked{% endif %} onchange="updatePreview()"> Show Discount % Column
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="colTaxChk" name="show_tax_column" {% if cfg.show_tax_column %}checked{% endif %} onchange="updatePreview()"> Show Tax / VAT Column
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="secPaidChk" name="show_amount_paid" {% if cfg.show_amount_paid %}checked{% endif %} onchange="updatePreview()"> Show Amount Paid &amp; Balance Due
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="secWatermarkChk" name="show_watermark" {% if cfg.show_watermark %}checked{% endif %} onchange="updatePreview()"> Show Status Watermark (DRAFT / PAID)
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="secSigChk" name="show_signatures" {% if cfg.show_signatures %}checked{% endif %} onchange="updatePreview()"> Show Signature Lines at Bottom
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+          <input type="checkbox" id="secStampChk" name="show_stamp_box" {% if cfg.show_stamp_box %}checked{% endif %} onchange="updatePreview()"> Show Official Stamp Box
+        </label>
+      </div>
+    </div>
+
+    <!-- 4. Custom Document Titles -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="file-text" style="width:16px;height:16px;"></i> 4. Printed Document Headings
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Sales Invoice Heading</label>
+          <input type="text" id="titleInvoiceInput" name="title_sales_invoice" value="{{ cfg.title_sales_invoice }}" class="form-control" oninput="updatePreview()">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Sales Quotation Heading</label>
+          <input type="text" name="title_sales_quotation" value="{{ cfg.title_sales_quotation }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Sales Order Heading</label>
+          <input type="text" name="title_sales_order" value="{{ cfg.title_sales_order }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Delivery Note Heading</label>
+          <input type="text" name="title_sales_delivery" value="{{ cfg.title_sales_delivery }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Sales Return / Credit Note Heading</label>
+          <input type="text" name="title_sales_return" value="{{ cfg.title_sales_return }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Purchase Order (LPO) Heading</label>
+          <input type="text" name="title_purchase_order" value="{{ cfg.title_purchase_order }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Purchase Quotation (RFQ) Heading</label>
+          <input type="text" name="title_purchase_quotation" value="{{ cfg.title_purchase_quotation }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Goods Receipt (GRN) Heading</label>
+          <input type="text" name="title_purchase_receipt" value="{{ cfg.title_purchase_receipt }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Supplier Bill Heading</label>
+          <input type="text" name="title_purchase_invoice" value="{{ cfg.title_purchase_invoice }}" class="form-control">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Purchase Return / Debit Note Heading</label>
+          <input type="text" name="title_purchase_return" value="{{ cfg.title_purchase_return }}" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Payment Details, Terms & Signatures -->
+    <div class="card" style="padding:20px;">
+      <div style="font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <i data-feather="align-left" style="width:16px;height:16px;"></i> 5. Payment Details, Terms &amp; Signatories
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Bank / M-Pesa Payment Instructions (Printed on Invoices)</label>
+        <textarea id="payInstInput" name="payment_instructions" rows="2" class="form-control" oninput="updatePreview()">{{ cfg.payment_instructions }}</textarea>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Sales Terms &amp; Conditions</label>
+        <textarea id="salesTermsInput" name="sales_terms" rows="2" class="form-control" oninput="updatePreview()">{{ cfg.sales_terms }}</textarea>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Purchase Order / Supplier Terms &amp; Conditions</label>
+        <textarea name="purchase_terms" rows="2" class="form-control">{{ cfg.purchase_terms }}</textarea>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Signature 1 Label</label>
+          <input type="text" id="sig1Input" name="sig_1_label" value="{{ cfg.sig_1_label }}" class="form-control" oninput="updatePreview()">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Signature 2 Label</label>
+          <input type="text" id="sig2Input" name="sig_2_label" value="{{ cfg.sig_2_label }}" class="form-control" oninput="updatePreview()">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:4px;">Signature 3 Label</label>
+          <input type="text" id="sig3Input" name="sig_3_label" value="{{ cfg.sig_3_label }}" class="form-control" oninput="updatePreview()">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Bottom Footer Note</label>
+        <input type="text" id="footerInput" name="footer_note" value="{{ cfg.footer_note }}" class="form-control" oninput="updatePreview()">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end;">
+      <button type="submit" class="btn btn-primary" style="padding:10px 24px;">
+        <i data-feather="save" style="width:16px;height:16px;"></i> Save All Print Layout Settings
+      </button>
+    </div>
+  </form>
+
+  <!-- RIGHT: LIVE INTERACTIVE PREVIEW -->
+  <div style="position:sticky; top:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--gold);">
+        Live Printout Preview
+      </span>
+      <span style="font-size:11px; color:var(--text-secondary);">Updates immediately as you edit</span>
+    </div>
+
+    <div id="livePreviewSheet" style="background:#ffffff; color:#1e293b; border-radius:10px; padding:28px; box-shadow:0 20px 50px rgba(0,0,0,0.45); font-family:Inter, system-ui, sans-serif; position:relative; overflow:hidden; border-top:6px solid {{ cfg.accent_color }};">
+      <!-- Watermark -->
+      <div id="pvWatermark" style="position:absolute; top:42%; left:50%; transform:translate(-50%, -50%) rotate(-28deg); font-size:64px; font-weight:900; color:rgba(16,185,129,0.09); pointer-events:none; text-transform:uppercase; letter-spacing:0.15em;">
+        POSTED
+      </div>
+
+      <!-- Header -->
+      <div id="pvHeader" style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #e2e8f0; padding-bottom:16px; margin-bottom:18px;">
+        <div style="display:flex; gap:14px; align-items:center;">
+          <img id="pvLogo" src="{{ cfg.logo_url }}" alt="Logo" style="max-height:52px; max-width:120px; object-fit:contain; {% if not cfg.logo_url or not cfg.show_logo %}display:none;{% endif %}">
+          <div>
+            <div style="font-size:20px; font-weight:800; color:#0f172a;">{{ company.name if company else 'Cellar & Crumb Operations' }}</div>
+            <div id="pvTagline" style="font-size:11.5px; color:#64748b; font-weight:500;">{{ cfg.company_tagline }}</div>
+            <div style="font-size:11px; color:#64748b; margin-top:3px;">
+              {{ company.address if company else 'Nairobi, Kenya' }} | {{ company.phone if company else '+254 700 000 000' }}
+            </div>
+            <div id="pvTaxId" style="font-size:11px; font-weight:600; color:#334155; margin-top:2px;">
+              KRA PIN / Tax ID: {{ company.tax_id if company and company.tax_id else 'P051234567A' }}
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div id="pvDocTitle" style="font-size:18px; font-weight:900; letter-spacing:0.06em; color:{{ cfg.accent_color }};">{{ cfg.title_sales_invoice }}</div>
+          <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:4px;">SI-000104</div>
+          <div style="font-size:11px; color:#64748b;">Date: 2026-10-24 | Due: 2026-11-23</div>
+          <div id="pvBranchInfo" style="font-size:11px; color:#475569; margin-top:2px;">Branch: Main Bakery &amp; HQ (HQ)</div>
+        </div>
+      </div>
+
+      <!-- Partner Info -->
+      <div id="pvPartnerBox" style="display:flex; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:11.5px;">
+        <div>
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b;">Billed To</div>
+          <div style="font-weight:700; font-size:13px; color:#0f172a;">Garden View Hotel (BPS0001)</div>
+          <div style="color:#475569;">Nairobi, Kenya | +254 711 222 333</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b;">Payment Terms</div>
+          <div style="font-weight:600; color:#0f172a;">Net 30 Days</div>
+          <div style="color:#475569;">Currency: {{ company.currency if company else 'KES' }}</div>
+        </div>
+      </div>
+
+      <!-- Line Items Table -->
+      <table id="pvTable" style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:16px;">
+        <thead>
+          <tr id="pvTableHead" style="background:{{ cfg.accent_color }}; color:#ffffff;">
+            <th class="pv-col-code" style="padding:7px 8px; text-align:left;">Code</th>
+            <th style="padding:7px 8px; text-align:left;">Item / Description</th>
+            <th style="padding:7px 8px; text-align:right;">Qty</th>
+            <th style="padding:7px 8px; text-align:right;">Unit Price</th>
+            <th class="pv-col-disc" style="padding:7px 8px; text-align:right;">Disc %</th>
+            <th class="pv-col-tax" style="padding:7px 8px; text-align:right;">VAT</th>
+            <th style="padding:7px 8px; text-align:right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td class="pv-col-code" style="padding:7px 8px; font-family:monospace;">FG-CAKE</td>
+            <td style="padding:7px 8px;">
+              <div style="font-weight:700;">Vanilla Cake</div>
+              <div class="pv-col-desc" style="font-size:10px; color:#64748b;">Freshly baked 2kg celebratory cake</div>
+            </td>
+            <td style="padding:7px 8px; text-align:right;">10.00</td>
+            <td style="padding:7px 8px; text-align:right;">950.00</td>
+            <td class="pv-col-disc" style="padding:7px 8px; text-align:right;">0.0%</td>
+            <td class="pv-col-tax" style="padding:7px 8px; text-align:right;">1,520.00</td>
+            <td style="padding:7px 8px; text-align:right; font-weight:700;">11,020.00</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td class="pv-col-code" style="padding:7px 8px; font-family:monospace;">WS-WINE-RED</td>
+            <td style="padding:7px 8px;">
+              <div style="font-weight:700;">Cabernet 750ml</div>
+              <div class="pv-col-desc" style="font-size:10px; color:#64748b;">Cellar reserve red wine</div>
+            </td>
+            <td style="padding:7px 8px; text-align:right;">6.00</td>
+            <td style="padding:7px 8px; text-align:right;">1,250.00</td>
+            <td class="pv-col-disc" style="padding:7px 8px; text-align:right;">5.0%</td>
+            <td class="pv-col-tax" style="padding:7px 8px; text-align:right;">1,140.00</td>
+            <td style="padding:7px 8px; text-align:right; font-weight:700;">8,265.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Payment Info + Totals -->
+      <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom:16px;">
+        <div style="flex:1; font-size:10.5px; color:#475569;">
+          <div style="font-weight:700; color:#0f172a; text-transform:uppercase; margin-bottom:3px;">Payment Instructions</div>
+          <div id="pvPayInst" style="white-space:pre-line; background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0;">{{ cfg.payment_instructions }}</div>
+        </div>
+        <div style="width:210px; font-size:11.5px;">
+          <div style="display:flex; justify-content:space-between; padding:3px 0;">
+            <span style="color:#64748b;">Subtotal:</span>
+            <span>KES 16,625.00</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #e2e8f0;">
+            <span style="color:#64748b;">Tax (VAT):</span>
+            <span>KES 2,660.00</span>
+          </div>
+          <div id="pvTotalBar" style="display:flex; justify-content:space-between; padding:6px 8px; margin-top:4px; background:{{ cfg.accent_color }}; color:#fff; font-weight:800; border-radius:4px;">
+            <span>Total:</span>
+            <span>KES 19,285.00</span>
+          </div>
+          <div id="pvPaidBlock">
+            <div style="display:flex; justify-content:space-between; padding:3px 2px; color:#059669; font-weight:600; font-size:11px;">
+              <span>Amount Paid:</span>
+              <span>KES 10,000.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:3px 2px; color:#dc2626; font-weight:700; font-size:11px;">
+              <span>Balance Due:</span>
+              <span>KES 9,285.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terms -->
+      <div style="border-top:1px solid #e2e8f0; padding-top:10px; margin-bottom:18px; font-size:10.5px; color:#475569;">
+        <div style="font-weight:700; color:#0f172a; margin-bottom:2px;">Terms &amp; Conditions</div>
+        <div id="pvTerms" style="white-space:pre-line;">{{ cfg.sales_terms }}</div>
+      </div>
+
+      <!-- Signatures & Stamp -->
+      <div id="pvSigRow" style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:22px; padding-top:10px;">
+        <div style="flex:1; border-top:1px solid #94a3b8; text-align:center; padding-top:4px; font-size:10.5px; font-weight:600; color:#475569;" id="pvSig1">{{ cfg.sig_1_label }}</div>
+        <div style="flex:1; border-top:1px solid #94a3b8; text-align:center; padding-top:4px; font-size:10.5px; font-weight:600; color:#475569;" id="pvSig2">{{ cfg.sig_2_label }}</div>
+        <div style="flex:1; border-top:1px solid #94a3b8; text-align:center; padding-top:4px; font-size:10.5px; font-weight:600; color:#475569;" id="pvSig3">{{ cfg.sig_3_label }}</div>
+        <div id="pvStampBox" style="width:90px; height:52px; border:1.5px dashed #94a3b8; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#94a3b8; text-transform:uppercase; font-weight:700;">
+          Company Stamp
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div id="pvFooter" style="text-align:center; font-size:10px; color:#94a3b8; margin-top:14px; border-top:1px solid #f1f5f9; padding-top:8px;">
+        {{ cfg.footer_note }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setAccent(hex) {
+  document.getElementById('accentColorInput').value = hex;
+  updatePreview();
+}
+
+function previewLogoFile(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('logoUrlInput').value = e.target.result;
+      updatePreview();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function updatePreview() {
+  var accent = document.getElementById('accentColorInput').value || '#b45309';
+  var styleEl = document.querySelector('input[name="layout_style"]:checked');
+  var style = styleEl ? styleEl.value : 'corporate';
+
+  var sheet = document.getElementById('livePreviewSheet');
+  var docTitle = document.getElementById('pvDocTitle');
+  var tableHead = document.getElementById('pvTableHead');
+  var totalBar = document.getElementById('pvTotalBar');
+
+  sheet.style.borderTop = (style === 'modern') ? 'none' : ('6px solid ' + accent);
+  sheet.style.borderLeft = (style === 'modern') ? ('8px solid ' + accent) : 'none';
+  sheet.style.padding = (style === 'compact') ? '16px' : '28px';
+
+  docTitle.style.color = accent;
+  docTitle.textContent = document.getElementById('titleInvoiceInput').value || 'TAX INVOICE';
+  tableHead.style.background = (style === 'modern') ? '#f1f5f9' : accent;
+  tableHead.style.color = (style === 'modern') ? '#0f172a' : '#ffffff';
+  totalBar.style.background = accent;
+
+  // Table borders for sap_grid
+  var cells = document.querySelectorAll('#pvTable th, #pvTable td');
+  cells.forEach(function(c) {
+    c.style.border = (style === 'sap_grid') ? '1px solid #cbd5e1' : '';
+  });
+
+  // Logo & Header toggles
+  var logoUrl = document.getElementById('logoUrlInput').value.trim();
+  var showLogo = document.getElementById('showLogoChk').checked;
+  var pvLogo = document.getElementById('pvLogo');
+  if (logoUrl && showLogo) {
+    pvLogo.src = logoUrl;
+    pvLogo.style.display = 'block';
+  } else {
+    pvLogo.style.display = 'none';
+  }
+
+  document.getElementById('pvTagline').textContent = document.getElementById('taglineInput').value;
+  document.getElementById('pvTaxId').style.display = document.getElementById('showTaxIdChk').checked ? 'block' : 'none';
+  document.getElementById('pvBranchInfo').style.display = document.getElementById('showBranchChk').checked ? 'block' : 'none';
+
+  // Columns
+  var showCode = document.getElementById('colCodeChk').checked;
+  document.querySelectorAll('.pv-col-code').forEach(function(el) { el.style.display = showCode ? '' : 'none'; });
+
+  var showDesc = document.getElementById('colDescChk').checked;
+  document.querySelectorAll('.pv-col-desc').forEach(function(el) { el.style.display = showDesc ? 'block' : 'none'; });
+
+  var showDisc = document.getElementById('colDiscChk').checked;
+  document.querySelectorAll('.pv-col-disc').forEach(function(el) { el.style.display = showDisc ? '' : 'none'; });
+
+  var showTax = document.getElementById('colTaxChk').checked;
+  document.querySelectorAll('.pv-col-tax').forEach(function(el) { el.style.display = showTax ? '' : 'none'; });
+
+  document.getElementById('pvPaidBlock').style.display = document.getElementById('secPaidChk').checked ? 'block' : 'none';
+  document.getElementById('pvWatermark').style.display = document.getElementById('secWatermarkChk').checked ? 'block' : 'none';
+  document.getElementById('pvSigRow').style.display = document.getElementById('secSigChk').checked ? 'flex' : 'none';
+  document.getElementById('pvStampBox').style.display = document.getElementById('secStampChk').checked ? 'flex' : 'none';
+
+  document.getElementById('pvPayInst').textContent = document.getElementById('payInstInput').value;
+  document.getElementById('pvTerms').textContent = document.getElementById('salesTermsInput').value;
+  document.getElementById('pvSig1').textContent = document.getElementById('sig1Input').value;
+  document.getElementById('pvSig2').textContent = document.getElementById('sig2Input').value;
+  document.getElementById('pvSig3').textContent = document.getElementById('sig3Input').value;
+  document.getElementById('pvFooter').textContent = document.getElementById('footerInput').value;
+}
+
+document.addEventListener('DOMContentLoaded', updatePreview);
+</script>
+{% endblock %}

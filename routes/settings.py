@@ -9,7 +9,7 @@ from pathlib import Path
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response, jsonify, send_from_directory
 from functools import wraps
 from werkzeug.utils import secure_filename
-from database import get_db, log_audit, DB_PATH, update_stock
+from database import get_db, log_audit, DB_PATH, update_stock, get_print_settings, save_print_settings, DEFAULT_PRINT_SETTINGS
 from auth import login_required, require_permission, MODULE_DEFINITIONS, user_can
 import bcrypt
 
@@ -1192,3 +1192,68 @@ def edit_payment_term(id):
 
 
 
+
+
+# ── Print Layouts & Branding Customizer ──────────────────────────────────────
+@settings_bp.route('/print-layouts', methods=['GET', 'POST'])
+@login_required
+def print_layouts():
+    import base64
+    conn = get_db()
+    if request.method == 'POST':
+        current_cfg = get_print_settings(conn)
+        logo_url = request.form.get('logo_url', '').strip()
+
+        # Check if a logo image file was uploaded
+        logo_file = request.files.get('logo_file')
+        if logo_file and logo_file.filename:
+            raw_bytes = logo_file.read()
+            if raw_bytes and len(raw_bytes) <= 2 * 1024 * 1024:  # up to 2MB
+                mime = logo_file.mimetype or 'image/png'
+                b64_str = base64.b64encode(raw_bytes).decode('ascii')
+                logo_url = f"data:{mime};base64,{b64_str}"
+
+        bool_fields = [
+            'show_logo', 'show_tax_id', 'show_branch_info',
+            'show_item_code', 'show_description', 'show_discount',
+            'show_tax_column', 'show_amount_paid', 'show_signatures',
+            'show_stamp_box', 'show_watermark'
+        ]
+        text_fields = [
+            'layout_style', 'accent_color', 'paper_size', 'company_tagline',
+            'payment_instructions', 'sales_terms', 'purchase_terms', 'footer_note',
+            'sig_1_label', 'sig_2_label', 'sig_3_label',
+            'title_sales_quotation', 'title_sales_order', 'title_sales_delivery',
+            'title_sales_invoice', 'title_sales_down_payment', 'title_sales_return',
+            'title_purchase_request', 'title_purchase_quotation', 'title_purchase_order',
+            'title_purchase_receipt', 'title_purchase_invoice', 'title_purchase_down_payment',
+            'title_purchase_return'
+        ]
+
+        updated = dict(current_cfg)
+        updated['logo_url'] = logo_url
+        for bf in bool_fields:
+            updated[bf] = bool(request.form.get(bf))
+        for tf in text_fields:
+            val = request.form.get(tf)
+            if val is not None:
+                updated[tf] = val.strip()
+
+        save_print_settings(conn, updated)
+        log_audit(conn, session.get('user_id'), 'Settings', 'Update', 'PrintLayout', 1, 'Updated marketing document print layout settings')
+        flash('Print layout settings saved successfully.', 'success')
+        return redirect(url_for('settings.print_layouts'))
+
+    cfg = get_print_settings(conn)
+    co = conn.execute('SELECT * FROM company WHERE id=1').fetchone()
+    return render_template('settings/print_layouts.html', cfg=cfg, company=co)
+
+
+@settings_bp.route('/print-layouts/reset', methods=['POST'])
+@login_required
+def reset_print_layouts():
+    conn = get_db()
+    save_print_settings(conn, dict(DEFAULT_PRINT_SETTINGS))
+    log_audit(conn, session.get('user_id'), 'Settings', 'Reset', 'PrintLayout', 1, 'Reset print layout settings to defaults')
+    flash('Print layout settings reset to defaults.', 'success')
+    return redirect(url_for('settings.print_layouts'))

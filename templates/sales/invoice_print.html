@@ -4,85 +4,245 @@
     <meta charset="UTF-8">
     <title>{{ doc.doc_type }} - {{ doc.doc_ref }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    {% set cfg = print_cfg if print_cfg is defined and print_cfg else {} %}
+    {% set style = request.args.get('style') or cfg.get('layout_style', 'corporate') %}
+    {% set accent = request.args.get('color') or cfg.get('accent_color', '#b45309') %}
+    {% set curr = company.currency if company and company.currency else 'KES' %}
+    {% set title_map = {
+        'Quotation': cfg.get('title_sales_quotation', 'SALES QUOTATION'),
+        'Sales Order': cfg.get('title_sales_order', 'SALES ORDER'),
+        'Order': cfg.get('title_sales_order', 'SALES ORDER'),
+        'Delivery': cfg.get('title_sales_delivery', 'DELIVERY NOTE'),
+        'Invoice': cfg.get('title_sales_invoice', 'TAX INVOICE'),
+        'Down Payment Invoice': cfg.get('title_sales_down_payment', 'PROFORMA / DOWN PAYMENT INVOICE'),
+        'Sales Return': cfg.get('title_sales_return', 'CREDIT NOTE'),
+        'Return': cfg.get('title_sales_return', 'CREDIT NOTE')
+    } %}
+    {% set doc_heading = title_map.get(doc.doc_type, doc.doc_type|upper) %}
     <style>
+        :root { --accent: {{ accent }}; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
         @media print {
-            body { -webkit-print-color-adjust: exact; }
-            .no-print { display: none; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; padding: 0 !important; }
+            .no-print { display: none !important; }
+            .print-sheet { box-shadow: none !important; max-width: 100% !important; margin: 0 !important; }
         }
+        {% if style == 'sap_grid' %}
+        .doc-table th, .doc-table td { border: 1px solid #cbd5e1; }
+        {% endif %}
     </style>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white p-10 shadow-lg relative">
-        <div class="no-print absolute top-4 right-4">
-            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Print</button>
+<body class="bg-slate-100 p-6">
+    <!-- Top Interactive Print Toolbar (Hidden on Print) -->
+    <div class="no-print max-w-4xl mx-auto mb-4 bg-slate-900 text-white px-5 py-3 rounded-lg shadow flex flex-wrap justify-between items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Layout Style:</span>
+            {% for s_code, s_label in [('corporate', 'Corporate'), ('modern', 'Modern'), ('sap_grid', 'SAP Grid'), ('compact', 'Compact')] %}
+            <a href="?style={{ s_code }}&color={{ accent|urlencode }}"
+               class="text-xs px-2.5 py-1 rounded {% if style == s_code %}bg-amber-600 text-white font-bold{% else %}bg-slate-800 text-slate-300 hover:bg-slate-700{% endif %}">
+                {{ s_label }}
+            </a>
+            {% endfor %}
         </div>
-        
-        <div class="flex justify-between items-start border-b pb-6 mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Cellar & Crumb</h1>
-                <p class="text-gray-500 text-sm">123 ERP Street, Business City</p>
-                <p class="text-gray-500 text-sm">Phone: +1 234 567 890</p>
-                <p class="text-gray-500 text-sm">Email: hello@cellarcrumb.com</p>
-            </div>
-            <div class="text-right">
-                <h2 class="text-4xl font-bold text-gray-300 uppercase tracking-widest">{{ doc.doc_type }}</h2>
-                <p class="text-xl font-semibold text-gray-800 mt-2">{{ doc.doc_ref }}</p>
-                <p class="text-gray-500">Date: {{ doc.doc_date }}</p>
-                {% if doc.due_date %}<p class="text-gray-500">Due Date: {{ doc.due_date }}</p>{% endif %}
-            </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('settings.print_layouts') }}" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded font-semibold">
+                Customize Default Layout
+            </a>
+            <button onclick="window.print()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded font-bold shadow">
+                Print / Save PDF
+            </button>
         </div>
-        
-        <div class="mb-8">
-            <h3 class="text-gray-500 text-sm font-semibold uppercase mb-2">Billed To</h3>
-            <p class="text-lg font-bold text-gray-800">{{ doc.customer_name }}</p>
-            {% if doc.customer_address %}<p class="text-gray-600 whitespace-pre-line">{{ doc.customer_address }}</p>{% endif %}
-            {% if doc.customer_phone %}<p class="text-gray-600">{{ doc.customer_phone }}</p>{% endif %}
+    </div>
+
+    <div class="print-sheet max-w-4xl mx-auto bg-white shadow-xl relative overflow-hidden {% if style == 'compact' %}p-6{% else %}p-10{% endif %}"
+         style="{% if style == 'modern' %}border-left: 8px solid var(--accent);{% else %}border-top: 6px solid var(--accent);{% endif %}">
+
+        {% if cfg.get('show_watermark', True) and doc.status %}
+        <div style="position:absolute; top:45%; left:50%; transform:translate(-50%, -50%) rotate(-28deg); font-size:72px; font-weight:900; color:{% if doc.status == 'Draft' %}rgba(239,68,68,0.08){% else %}rgba(16,185,129,0.07){% endif %}; pointer-events:none; text-transform:uppercase; letter-spacing:0.15em; z-index:0;">
+            {{ doc.status }}
         </div>
-        
-        <table class="w-full text-left border-collapse mb-8">
-            <thead>
-                <tr class="bg-gray-100 border-b-2 border-gray-300">
-                    <th class="p-3 text-sm font-semibold text-gray-700">Description</th>
-                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Qty</th>
-                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Unit Price</th>
-                    <th class="p-3 text-sm font-semibold text-gray-700 text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for l in lines %}
-                <tr class="border-b">
-                    <td class="p-3 text-sm">
-                        <div class="font-bold text-gray-800">{{ l.item_name }}</div>
-                        {% if l.description %}<div class="text-gray-500 text-xs">{{ l.description }}</div>{% endif %}
-                    </td>
-                    <td class="p-3 text-sm text-right">{{ l.quantity }}</td>
-                    <td class="p-3 text-sm text-right">${{ "%.2f"|format(l.unit_price) }}</td>
-                    <td class="p-3 text-sm text-right font-bold">${{ "%.2f"|format(l.line_total) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        
-        <div class="flex justify-end mb-12">
-            <div class="w-64">
-                <div class="flex justify-between py-2 border-b">
-                    <span class="font-semibold text-gray-600">Subtotal:</span>
-                    <span>${{ "%.2f"|format(doc.subtotal) }}</span>
+        {% endif %}
+
+        <div class="relative z-10">
+            <!-- Header -->
+            <div class="flex justify-between items-start border-b-2 border-slate-200 pb-5 mb-6">
+                <div class="flex items-center gap-4">
+                    {% if cfg.get('show_logo', True) and cfg.get('logo_url') %}
+                    <img src="{{ cfg.get('logo_url') }}" alt="Logo" style="max-height:64px; max-width:140px; object-fit:contain;">
+                    {% endif %}
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-slate-900">{{ company.name if company and company.name else 'Cellar & Crumb Operations' }}</h1>
+                        {% if cfg.get('company_tagline') %}
+                        <p class="text-xs font-medium text-slate-500">{{ cfg.get('company_tagline') }}</p>
+                        {% endif %}
+                        <p class="text-slate-600 text-xs mt-1">{{ company.address if company and company.address else 'Nairobi, Kenya' }} | Tel: {{ company.phone if company and company.phone else '+254 700 000 000' }}</p>
+                        <p class="text-slate-600 text-xs">Email: {{ company.email if company and company.email else 'info@cellarncrumb.co.ke' }}</p>
+                        {% if cfg.get('show_tax_id', True) and company and company.tax_id %}
+                        <p class="text-slate-800 text-xs font-bold mt-0.5">KRA PIN / Tax ID: {{ company.tax_id }}</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="flex justify-between py-2 border-b">
-                    <span class="font-semibold text-gray-600">Tax:</span>
-                    <span>${{ "%.2f"|format(doc.tax_total) }}</span>
-                </div>
-                <div class="flex justify-between py-2 bg-gray-100 px-2 mt-2">
-                    <span class="font-bold text-gray-800 text-lg">Total:</span>
-                    <span class="font-bold text-gray-800 text-lg">${{ "%.2f"|format(doc.total) }}</span>
+                <div class="text-right">
+                    <h2 class="text-2xl font-black uppercase tracking-wider" style="color: var(--accent);">{{ doc_heading }}</h2>
+                    <p class="text-lg font-bold text-slate-900 mt-1">{{ doc.doc_ref }}</p>
+                    <p class="text-xs text-slate-600">Date: <span class="font-semibold">{{ doc.doc_date }}</span></p>
+                    {% if doc.due_date %}<p class="text-xs text-slate-600">Due Date: <span class="font-semibold">{{ doc.due_date }}</span></p>{% endif %}
+                    {% if cfg.get('show_branch_info', True) %}
+                        {% if doc.branch_name is defined and doc.branch_name %}<p class="text-xs text-slate-500">Branch: {{ doc.branch_name }}</p>{% endif %}
+                        {% if doc.warehouse_name is defined and doc.warehouse_name %}<p class="text-xs text-slate-500">Warehouse: {{ doc.warehouse_name }}</p>{% endif %}
+                    {% endif %}
                 </div>
             </div>
-        </div>
-        
-        <div class="border-t pt-6">
-            <h3 class="font-semibold text-gray-800 mb-2">Terms & Conditions</h3>
-            <p class="text-sm text-gray-500">Please make payment within 30 days of the invoice date. Late payments may be subject to a fee.</p>
+
+            <!-- Customer & Document Metadata Box -->
+            <div class="grid grid-cols-2 gap-6 bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6 text-xs">
+                <div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Customer / Billed To</div>
+                    <div class="text-sm font-bold text-slate-900">
+                        {{ doc.customer_name or 'Walk-in Customer' }}
+                        {% if doc.customer_code is defined and doc.customer_code %}<span class="text-slate-500 font-normal">({{ doc.customer_code }})</span>{% endif %}
+                    </div>
+                    {% if doc.customer_address %}<div class="text-slate-600 whitespace-pre-line mt-0.5">{{ doc.customer_address }}</div>{% endif %}
+                    {% if doc.customer_phone %}<div class="text-slate-600">Tel: {{ doc.customer_phone }}</div>{% endif %}
+                    {% if doc.customer_email is defined and doc.customer_email %}<div class="text-slate-600">Email: {{ doc.customer_email }}</div>{% endif %}
+                    {% if doc.customer_tax_id is defined and doc.customer_tax_id %}<div class="text-slate-700 font-semibold mt-0.5">PIN / Tax ID: {{ doc.customer_tax_id }}</div>{% endif %}
+                </div>
+                <div class="text-right flex flex-col justify-between">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Document Status</div>
+                        <span class="inline-block px-2.5 py-0.5 rounded font-bold text-xs {% if doc.status in ('Posted', 'Paid') %}bg-emerald-100 text-emerald-800{% elif doc.status == 'Draft' %}bg-amber-100 text-amber-800{% else %}bg-slate-200 text-slate-700{% endif %}">
+                            {{ doc.status }}
+                        </span>
+                    </div>
+                    {% if doc.source_doc_ref %}
+                    <div class="mt-2 text-slate-600">Base Ref: <span class="font-semibold text-slate-800">{{ doc.source_doc_type }} #{{ doc.source_doc_ref }}</span></div>
+                    {% endif %}
+                    <div class="mt-1 text-slate-600">Currency: <span class="font-bold text-slate-800">{{ curr }}</span></div>
+                </div>
+            </div>
+
+            <!-- Line Items Table -->
+            <table class="doc-table w-full text-left border-collapse mb-6 text-xs">
+                <thead>
+                    <tr style="{% if style == 'modern' %}background:#f1f5f9; color:#0f172a; border-bottom:2px solid var(--accent);{% else %}background:var(--accent); color:#ffffff;{% endif %}">
+                        <th class="p-2.5 font-bold w-10">#</th>
+                        {% if cfg.get('show_item_code', True) %}
+                        <th class="p-2.5 font-bold">Item Code</th>
+                        {% endif %}
+                        <th class="p-2.5 font-bold">Item / Description</th>
+                        <th class="p-2.5 font-bold text-right">Qty</th>
+                        <th class="p-2.5 font-bold text-right">Unit Price ({{ curr }})</th>
+                        {% if cfg.get('show_discount', True) %}
+                        <th class="p-2.5 font-bold text-right">Disc %</th>
+                        {% endif %}
+                        {% if cfg.get('show_tax_column', True) %}
+                        <th class="p-2.5 font-bold text-right">Tax ({{ curr }})</th>
+                        {% endif %}
+                        <th class="p-2.5 font-bold text-right">Line Total ({{ curr }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lines %}
+                    <tr class="border-b border-slate-200 {% if loop.index is even and style == 'corporate' %}bg-slate-50/60{% endif %}">
+                        <td class="p-2.5 text-slate-500">{{ loop.index }}</td>
+                        {% if cfg.get('show_item_code', True) %}
+                        <td class="p-2.5 font-mono text-slate-700">{{ l.item_code or '-' }}</td>
+                        {% endif %}
+                        <td class="p-2.5">
+                            <div class="font-bold text-slate-900">{{ l.item_name }}</div>
+                            {% if cfg.get('show_description', True) and l.description and l.description != l.item_name %}
+                            <div class="text-slate-500 text-[11px]">{{ l.description }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="p-2.5 text-right font-medium">{{ "{:,.2f}".format(l.quantity or 0) }}</td>
+                        <td class="p-2.5 text-right">{{ "{:,.2f}".format(l.unit_price or 0) }}</td>
+                        {% if cfg.get('show_discount', True) %}
+                        <td class="p-2.5 text-right">{{ "{:,.1f}".format(l.discount_pct or 0) }}%</td>
+                        {% endif %}
+                        {% if cfg.get('show_tax_column', True) %}
+                        <td class="p-2.5 text-right">{{ "{:,.2f}".format(l.tax_amount or 0) }}</td>
+                        {% endif %}
+                        <td class="p-2.5 text-right font-bold text-slate-900">{{ "{:,.2f}".format(l.line_total or 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Payment Instructions & Totals Summary -->
+            <div class="flex flex-wrap justify-between items-start gap-6 mb-8">
+                <div class="flex-1 min-w-[260px] text-xs">
+                    {% if cfg.get('payment_instructions') %}
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
+                        <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider mb-1">Payment Instructions</div>
+                        <div class="text-slate-600 whitespace-pre-line leading-relaxed">{{ cfg.get('payment_instructions') }}</div>
+                    </div>
+                    {% endif %}
+                    {% if doc.remarks %}
+                    <div class="text-slate-600">
+                        <span class="font-bold text-slate-800">Remarks:</span> {{ doc.remarks }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="w-72 text-xs">
+                    <div class="flex justify-between py-1.5 border-b border-slate-200">
+                        <span class="font-semibold text-slate-600">Subtotal:</span>
+                        <span class="font-semibold text-slate-800">{{ curr }} {{ "{:,.2f}".format(doc.subtotal or 0) }}</span>
+                    </div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-200">
+                        <span class="font-semibold text-slate-600">Tax / VAT:</span>
+                        <span class="font-semibold text-slate-800">{{ curr }} {{ "{:,.2f}".format(doc.tax_total or 0) }}</span>
+                    </div>
+                    <div class="flex justify-between py-2.5 px-3 mt-2 rounded text-white font-extrabold text-sm" style="background: var(--accent);">
+                        <span>Total:</span>
+                        <span>{{ curr }} {{ "{:,.2f}".format(doc.total or 0) }}</span>
+                    </div>
+                    {% if cfg.get('show_amount_paid', True) and doc.doc_type in ('Invoice', 'Down Payment Invoice') %}
+                    <div class="flex justify-between py-1 px-2 text-emerald-700 font-semibold mt-1">
+                        <span>Amount Paid:</span>
+                        <span>{{ curr }} {{ "{:,.2f}".format(doc.amount_paid or 0) }}</span>
+                    </div>
+                    <div class="flex justify-between py-1 px-2 text-red-700 font-bold border-t border-slate-200">
+                        <span>Balance Due:</span>
+                        <span>{{ curr }} {{ "{:,.2f}".format(doc.balance_due or 0) }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Terms & Conditions -->
+            {% if cfg.get('sales_terms') %}
+            <div class="border-t border-slate-200 pt-3 mb-6 text-xs">
+                <h3 class="font-bold text-slate-800 uppercase text-[10px] tracking-wider mb-1">Terms &amp; Conditions</h3>
+                <p class="text-slate-600 whitespace-pre-line leading-relaxed">{{ cfg.get('sales_terms') }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Signatures & Stamp -->
+            {% if cfg.get('show_signatures', True) %}
+            <div class="flex justify-between items-end gap-6 mt-10 pt-4">
+                <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">
+                    {{ cfg.get('sig_1_label', 'Prepared By') }}
+                </div>
+                <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">
+                    {{ cfg.get('sig_2_label', 'Authorized By') }}
+                </div>
+                <div class="flex-1 border-t border-slate-400 text-center pt-1.5 text-xs font-semibold text-slate-600">
+                    {{ cfg.get('sig_3_label', 'Received By / Stamp') }}
+                </div>
+                {% if cfg.get('show_stamp_box', True) %}
+                <div class="w-28 h-16 border-2 border-dashed border-slate-300 rounded flex items-center justify-center text-[10px] font-bold uppercase text-slate-400">
+                    Company Stamp
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if cfg.get('footer_note') %}
+            <div class="text-center text-[11px] text-slate-400 mt-6 pt-3 border-t border-slate-100">
+                {{ cfg.get('footer_note') }}
+            </div>
+            {% endif %}
         </div>
     </div>
 </body>
