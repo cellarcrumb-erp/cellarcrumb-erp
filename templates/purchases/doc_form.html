@@ -34,7 +34,10 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Supplier *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">
+                <a id="bpMasterLink" href="{{ url_for('bp_master.partner_detail', id=doc.supplier_id) if doc and doc.supplier_id else '#' }}" target="_blank" class="sap-arrow" title="Open Supplier Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Supplier first.');return false;}">➜</a>
+                Supplier *
+            </label>
             <select name="supplier_id" id="supplierSelect" required class="w-full border rounded p-2 text-sm" onchange="onSupplierChange()">
                 <option value="">Select Supplier</option>
                 {% for s in suppliers %}
@@ -67,8 +70,11 @@
             <input type="date" name="due_date" id="dueDateInput" class="w-full border rounded p-2 text-sm" value="{{ doc.due_date if doc else '' }}">
         </div>
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Warehouse</label>
-            <select name="warehouse_id" class="w-full border rounded p-2 text-sm">
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">
+                <a id="whMasterLink" href="{{ url_for('inventory.warehouse_detail', id=doc.warehouse_id) if doc and doc.warehouse_id else '#' }}" target="_blank" class="sap-arrow" title="Open Warehouse Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Warehouse first.');return false;}">➜</a>
+                Warehouse
+            </label>
+            <select name="warehouse_id" id="warehouseSelect" class="w-full border rounded p-2 text-sm" onchange="const w=this.value; document.getElementById('whMasterLink').href=w?('/inventory/warehouses/'+w):'#';">
                 <option value="">Select Warehouse</option>
                 {% for w in warehouses %}
                 <option value="{{ w.id }}" {% if doc and doc.warehouse_id == w.id %}selected{% endif %}>{{ w.name }}</option>
@@ -82,7 +88,9 @@
         <table class="w-full text-left border-collapse" id="itemsTable">
             <thead>
                 <tr style="background:rgba(15,23,42,0.75); border-bottom:1px solid rgba(255,255,255,0.12);">
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1; width:44px;">#</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item Code *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item Description</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1;">UOM</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Qty *</th>
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Unit Cost *</th>
@@ -192,15 +200,28 @@
 
     let currentSupplierPriceListId = null;
 
+    function renumberLines() {
+        document.querySelectorAll('#itemsTable tbody tr').forEach((r, idx) => {
+            const numCell = r.querySelector('.line-num-cell');
+            if (numCell) numCell.innerText = idx + 1;
+        });
+    }
+
     function itemChanged(sel) {
         const row = sel.closest('tr');
         const id = sel.value;
         const uomCell = row.querySelector('.uom-cell');
+        const descInput = row.querySelector('.desc-input');
+        const itemLink = row.querySelector('.item-master-link');
         if(!id || !ITEMS[id]) {
             if (uomCell) uomCell.innerText = '-';
+            if (descInput) descInput.value = '';
+            if (itemLink) itemLink.href = '#';
             return;
         }
         if (uomCell) uomCell.innerText = ITEMS[id].uom_name || 'PCS';
+        if (descInput) descInput.value = ITEMS[id].name || '';
+        if (itemLink) itemLink.href = `/inventory/items/${id}`;
 
         const supplierId = document.getElementById('supplierSelect').value;
         fetch(`/inventory/api/resolve-price?item_id=${id}${supplierId ? '&partner_id=' + supplierId : ''}${currentSupplierPriceListId ? '&price_list_id=' + currentSupplierPriceListId : ''}`)
@@ -225,6 +246,8 @@
 
     function onSupplierChange() {
         const supId = document.getElementById('supplierSelect').value;
+        const bpLink = document.getElementById('bpMasterLink');
+        if (bpLink) bpLink.href = supId ? (`/bp/${supId}`) : '#';
         const contactSel = document.getElementById('contactSelect');
         const dueDateInput = document.getElementById('dueDateInput');
         const docDateInput = document.getElementById('docDateInput');
@@ -280,23 +303,33 @@
         document.getElementById('grandTotal').innerText = subtotal.toFixed(2);
     }
     
-    function addLine(item_id='', qty=1, cost=0, disc=0, source_line_id='') {
+    function addLine(item_id='', qty=1, cost=0, disc=0, source_line_id='', desc='') {
         const tbody = document.querySelector('#itemsTable tbody');
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-gray-50';
         
-        let options = '<option value="">Select Item</option>';
+        let options = '<option value="">Select Code</option>';
         for(let id in ITEMS) {
-            options += `<option value="${id}" ${id == item_id ? 'selected' : ''}>${ITEMS[id].code} - ${ITEMS[id].name}</option>`;
+            options += `<option value="${id}" ${id == item_id ? 'selected' : ''}>${ITEMS[id].code} — ${ITEMS[id].name}</option>`;
         }
         const uomText = (item_id && ITEMS[item_id]) ? (ITEMS[item_id].uom_name || 'PCS') : '-';
+        const descText = desc || ((item_id && ITEMS[item_id]) ? (ITEMS[item_id].name || '') : '');
+        const itemHref = item_id ? `/inventory/items/${item_id}` : '#';
+        const rowNum = tbody.children.length + 1;
         
         tr.innerHTML = `
+            <td class="p-2 text-center text-xs font-bold line-num-cell" style="color:#94a3b8;">${rowNum}</td>
             <td class="p-2">
                 <input type="hidden" name="source_line_id[]" value="${source_line_id}">
-                <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select" onchange="itemChanged(this)">
-                    ${options}
-                </select>
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <a href="${itemHref}" target="_blank" class="sap-arrow item-master-link" title="Open Item Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select an Item first.');return false;}">➜</a>
+                    <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select font-mono" onchange="itemChanged(this)">
+                        ${options}
+                    </select>
+                </div>
+            </td>
+            <td class="p-2">
+                <input type="text" name="description[]" class="w-full border rounded p-1 text-sm desc-input" value="${descText}" placeholder="Item description">
             </td>
             <td class="p-2 text-center text-xs font-bold uom-cell" style="color:#94a3b8;">${uomText}</td>
             <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-24 border rounded p-1 text-sm text-right qty-input" value="${qty}" oninput="recalc(this)"></td>
@@ -308,6 +341,7 @@
             </td>
         `;
         tbody.appendChild(tr);
+        renumberLines();
         recalc(tr.querySelector('.qty-input'));
     }
     
@@ -315,6 +349,7 @@
         const tbody = document.querySelector('#itemsTable tbody');
         if(tbody.children.length > 1) {
             btn.closest('tr').remove();
+            renumberLines();
             recalc(tbody.querySelector('input'));
         } else {
             alert('A document must have at least one line item.');

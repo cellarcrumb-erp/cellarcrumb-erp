@@ -1194,10 +1194,13 @@ def edit_payment_term(id):
 
 
 
-# ── Print Layouts & Branding Customizer ──────────────────────────────────────
+# ── Print Layouts & Branding Customizer (Admin Only) ─────────────────────────
 @settings_bp.route('/print-layouts', methods=['GET', 'POST'])
 @login_required
 def print_layouts():
+    if session.get('role') != 'Admin':
+        flash('Access Denied: Only Administrators can configure Print Layouts.', 'error')
+        return redirect(url_for('settings.index'))
     import base64
     conn = get_db()
     if request.method == 'POST':
@@ -1217,7 +1220,8 @@ def print_layouts():
             'show_logo', 'show_tax_id', 'show_branch_info',
             'show_item_code', 'show_uom', 'show_description', 'show_discount',
             'show_tax_column', 'show_amount_paid', 'show_signatures',
-            'show_stamp_box', 'show_watermark'
+            'show_stamp_box', 'show_watermark',
+            'pos_show_code', 'pos_show_uom', 'pos_show_tax'
         ]
         text_fields = [
             'layout_style', 'accent_color', 'paper_size', 'company_tagline',
@@ -1227,7 +1231,8 @@ def print_layouts():
             'title_sales_invoice', 'title_sales_down_payment', 'title_sales_return',
             'title_purchase_request', 'title_purchase_quotation', 'title_purchase_order',
             'title_purchase_receipt', 'title_purchase_invoice', 'title_purchase_down_payment',
-            'title_purchase_return'
+            'title_purchase_return',
+            'pos_width_mm', 'pos_header_note', 'pos_footer_note'
         ]
 
         updated = dict(current_cfg)
@@ -1252,6 +1257,9 @@ def print_layouts():
 @settings_bp.route('/print-layouts/reset', methods=['POST'])
 @login_required
 def reset_print_layouts():
+    if session.get('role') != 'Admin':
+        flash('Access Denied: Only Administrators can reset Print Layouts.', 'error')
+        return redirect(url_for('settings.index'))
     conn = get_db()
     save_print_settings(conn, dict(DEFAULT_PRINT_SETTINGS))
     log_audit(conn, session.get('user_id'), 'Settings', 'Reset', 'PrintLayout', 1, 'Reset print layout settings to defaults')

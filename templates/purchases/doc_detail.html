@@ -52,7 +52,10 @@
     {% endif %}
 
     <a href="{{ url_for('purchases.doc_print', doc_kind=doc_kind, id=doc.id) }}" target="_blank" class="btn btn-secondary btn-sm">
-      <i data-feather="printer" style="width:14px;height:14px;"></i> Print
+      <i data-feather="printer" style="width:14px;height:14px;"></i> Print (A4)
+    </a>
+    <a href="{{ url_for('purchases.doc_print', doc_kind=doc_kind, id=doc.id, format='pos') }}" target="_blank" class="btn btn-secondary btn-sm" style="border-color:rgba(245,158,11,0.5); color:#fbbf24;">
+      <i data-feather="file-text" style="width:14px;height:14px;"></i> POS Print
     </a>
   </div>
 </div>
@@ -62,7 +65,12 @@
   <div class="detail-grid">
     <div>
       <div class="detail-label">Supplier</div>
-      <div class="detail-value">{{ doc.supplier_name }}</div>
+      <div class="detail-value">
+        {% if doc.supplier_id %}
+        <a href="{{ url_for('bp_master.partner_detail', id=doc.supplier_id) }}" class="sap-arrow" title="Open Supplier Master Data">➜</a>
+        {% endif %}
+        {{ doc.supplier_name }}
+      </div>
     </div>
     <div>
       <div class="detail-label">Branch</div>
@@ -79,7 +87,12 @@
     </div>
     <div>
       <div class="detail-label">Warehouse</div>
-      <div class="detail-value">{{ doc.warehouse_name or '-' }}</div>
+      <div class="detail-value">
+        {% if doc.warehouse_id %}
+        <a href="{{ url_for('inventory.warehouse_detail', id=doc.warehouse_id) }}" class="sap-arrow" title="Open Warehouse Master Data">➜</a>
+        {% endif %}
+        {{ doc.warehouse_name or '-' }}
+      </div>
     </div>
     <div>
       <div class="detail-label">Total Amount</div>
@@ -103,21 +116,30 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Item</th>
+          <th style="width:46px;">#</th>
+          <th>Item Code</th>
+          <th>Item Description</th>
           <th class="text-center">UOM</th>
           <th class="text-right">Ordered Qty</th>
           <th class="text-right">Drawn / Copied</th>
           <th class="text-right">Open Qty</th>
-          <th class="text-right">Unit Price</th>
+          <th class="text-right">Unit Cost</th>
           <th class="text-right">Total</th>
         </tr>
       </thead>
       <tbody>
         {% for l in lines %}
         <tr>
+          <td style="color:var(--text-secondary); font-weight:700;">{{ loop.index }}</td>
+          <td>
+            <a href="{{ url_for('inventory.item_detail', id=l.item_id) }}" class="sap-arrow" title="Open Item Master Data">➜</a>
+            <span style="font-family:monospace; font-weight:700; color:var(--gold);">{{ l.item_code }}</span>
+          </td>
           <td>
             <div class="font-bold">{{ l.item_name }}</div>
-            <div style="font-size:11.5px; color:var(--text-secondary);">{{ l.item_code }}</div>
+            {% if l.description and l.description != l.item_name %}
+            <div style="font-size:11.5px; color:var(--text-secondary);">{{ l.description }}</div>
+            {% endif %}
           </td>
           <td class="text-center">
             <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1; font-size:11px; padding:2px 8px;">{{ l.uom_name or 'PCS' }}</span>
@@ -134,7 +156,7 @@
       </tbody>
       <tfoot>
         <tr style="background:rgba(15, 23, 42, 0.6); font-weight:700; border-top:1px solid rgba(255, 255, 255, 0.12);">
-          <td colspan="6" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
+          <td colspan="8" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
           <td class="text-right text-erp-gold font-bold" style="font-size:16px; padding:14px 18px; color:var(--gold);">KES {{ "%.2f"|format(doc.total) }}</td>
         </tr>
       </tfoot>

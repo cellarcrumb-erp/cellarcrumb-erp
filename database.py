@@ -588,6 +588,12 @@ DEFAULT_PRINT_SETTINGS = {
     'title_purchase_invoice': 'SUPPLIER BILL / AP INVOICE',
     'title_purchase_down_payment': 'AP DOWN PAYMENT REQUEST',
     'title_purchase_return': 'DEBIT NOTE / PURCHASE RETURN',
+    'pos_width_mm': '80',
+    'pos_show_code': True,
+    'pos_show_uom': True,
+    'pos_show_tax': True,
+    'pos_header_note': 'Official Point of Sale Receipt',
+    'pos_footer_note': 'Thank you for your business! Goods once sold are not returnable.',
 }
 
 

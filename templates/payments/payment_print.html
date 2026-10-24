@@ -6,29 +6,79 @@
   <script src="https://cdn.tailwindcss.com"></script>
   {% set cfg = print_cfg if print_cfg is defined and print_cfg else {} %}
   {% set accent = request.args.get('color') or cfg.get('accent_color', '#b45309') %}
+  {% set fmt = request.args.get('format') or ('pos' if cfg.get('paper_size') == 'POS80' else ('pos58' if cfg.get('paper_size') == 'POS58' else 'a4')) %}
+  {% set is_pos = fmt in ('pos', 'pos80', 'pos58') %}
   {% set curr = company.currency if company and company.currency else 'KES' %}
   <style>
     :root { --accent: {{ accent }}; }
-    body { font-family: 'Inter', system-ui, sans-serif; }
+    body { font-family: {% if is_pos %}'Courier New', Courier, monospace{% else %}'Inter', system-ui, sans-serif{% endif %}; }
+    {% if fmt == 'pos58' %}
+    @page { size: 58mm auto; margin: 2mm; }
+    {% elif is_pos %}
+    @page { size: 80mm auto; margin: 2mm; }
+    {% endif %}
     @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; padding: 0 !important; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; padding: 0 !important; margin: 0 !important; }
       .no-print { display: none !important; }
     }
   </style>
 </head>
 <body class="bg-slate-100 p-6">
-  <div class="no-print max-w-3xl mx-auto mb-4 bg-slate-900 text-white px-5 py-3 rounded-lg shadow flex justify-between items-center">
-    <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Payment Voucher / Receipt Preview</span>
+  <div class="no-print max-w-3xl mx-auto mb-4 bg-slate-900 text-white px-5 py-3 rounded-lg shadow flex flex-wrap justify-between items-center gap-3" style="font-family: 'Inter', system-ui, sans-serif;">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Print Format:</span>
+      <a href="?format=a4" class="text-xs px-2.5 py-1 rounded {% if not is_pos %}bg-amber-600 text-white font-bold{% else %}bg-slate-800 text-slate-300 hover:bg-slate-700{% endif %}">Standard A4</a>
+      <a href="?format=pos" class="text-xs px-2.5 py-1 rounded {% if fmt in ('pos', 'pos80') %}bg-amber-600 text-white font-bold{% else %}bg-slate-800 text-slate-300 hover:bg-slate-700{% endif %}">POS Thermal (80mm)</a>
+      <a href="?format=pos58" class="text-xs px-2.5 py-1 rounded {% if fmt == 'pos58' %}bg-amber-600 text-white font-bold{% else %}bg-slate-800 text-slate-300 hover:bg-slate-700{% endif %}">POS Thermal (58mm)</a>
+    </div>
     <div class="flex gap-2">
+      {% if session.get('role') == 'Admin' %}
       <a href="{{ url_for('settings.print_layouts') }}" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded font-semibold">
-        Customize Layout
+        Admin Layout Setup
       </a>
+      {% endif %}
       <button onclick="window.print()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded font-bold shadow">
-        Print / Save PDF
+        Print Now
       </button>
     </div>
   </div>
 
+  {% if is_pos %}
+  <div class="mx-auto bg-white shadow-xl text-black p-4" style="width: {% if fmt == 'pos58' %}225px{% else %}308px{% endif %}; font-size: 11.5px; line-height: 1.35;">
+    <div class="text-center pb-2" style="border-bottom: 1px dashed #000;">
+      {% if cfg.get('show_logo', True) and cfg.get('logo_url') %}
+      <img src="{{ cfg.get('logo_url') }}" alt="Logo" style="max-height:48px; max-width:140px; object-fit:contain; margin:0 auto 6px auto; display:block;">
+      {% endif %}
+      <div style="font-size: 14px; font-weight: 900; text-transform: uppercase;">{{ company.name if company else 'Cellar & Crumb Operations' }}</div>
+      <div style="font-size: 10.5px;">{{ company.address if company else 'Nairobi, Kenya' }}</div>
+      <div style="font-size: 10.5px;">Tel: {{ company.phone if company else '' }}</div>
+      {% if cfg.get('show_tax_id', True) and company and company.tax_id %}
+      <div style="font-size: 10.5px; font-weight: 700;">PIN: {{ company.tax_id }}</div>
+      {% endif %}
+    </div>
+
+    <div class="py-2" style="border-bottom: 1px dashed #000;">
+      <div class="text-center font-black uppercase" style="font-size: 13px;">
+        {% if payment.payment_type == 'Incoming' %}OFFICIAL RECEIPT{% elif payment.payment_type == 'Outgoing' %}PAYMENT VOUCHER{% else %}EXPENSE VOUCHER{% endif %}
+      </div>
+      <div class="flex justify-between mt-1"><span>Ref:</span><span class="font-bold">{{ payment.doc_ref }}</span></div>
+      <div class="flex justify-between"><span>Date:</span><span>{{ payment.doc_date }}</span></div>
+      <div class="flex justify-between"><span>Method:</span><span>{{ payment.method_name or '-' }}</span></div>
+      <div class="mt-1 pt-1" style="border-top: 1px dotted #999;">
+        <div><strong>{% if payment.payment_type == 'Incoming' %}From:{% else %}To:{% endif %}</strong> {{ payment.partner_name or 'Direct / Sundry' }}</div>
+      </div>
+    </div>
+
+    <div class="py-2 font-black flex justify-between" style="font-size: 13.5px; border-bottom: 1px dashed #000;">
+      <span>AMOUNT:</span>
+      <span>{{ curr }} {{ "{:,.2f}".format(payment.amount or 0) }}</span>
+    </div>
+
+    <div class="text-center mt-3 pt-2 text-[10px]">
+      {{ cfg.get('pos_footer_note') or cfg.get('footer_note', 'Thank you for your business!') }}
+    </div>
+  </div>
+  {% else %}
   <div class="max-w-3xl mx-auto bg-white p-10 shadow-xl relative" style="border-top: 6px solid var(--accent);">
     <div class="flex justify-between items-start border-b-2 border-slate-200 pb-5 mb-6">
       <div class="flex items-center gap-4">
@@ -72,6 +122,7 @@
     <table class="w-full text-left border-collapse mb-6 text-xs">
       <thead>
         <tr style="background: var(--accent); color: #fff;">
+          <th class="p-2.5 w-10">#</th>
           <th class="p-2.5">Document Type</th>
           <th class="p-2.5">Document Ref</th>
           <th class="p-2.5 text-right">Allocated Amount ({{ curr }})</th>
@@ -80,6 +131,7 @@
       <tbody>
         {% for a in allocations %}
         <tr class="border-b border-slate-200">
+          <td class="p-2.5 text-slate-500 font-semibold">{{ loop.index }}</td>
           <td class="p-2.5">{{ a.doc_type }}</td>
           <td class="p-2.5 font-mono font-semibold">{{ a.invoice_ref or ('#' ~ a.doc_id) }}</td>
           <td class="p-2.5 text-right font-bold">{{ "{:,.2f}".format(a.amount or 0) }}</td>
@@ -103,5 +155,6 @@
     </div>
     {% endif %}
   </div>
+  {% endif %}
 </body>
 </html>

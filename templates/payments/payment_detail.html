@@ -9,7 +9,15 @@
 <div class="card" style="padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-start;">
   <div>
     <h2>{{ payment.doc_ref }} <span class="badge {% if payment.status=='Posted' %}badge-posted{% elif payment.status=='Cancelled' %}badge-cancelled{% else %}badge-draft{% endif %}">{{ payment.status }}</span></h2>
-    <div style="color:var(--text-secondary); margin-top:5px;">Date: {{ payment.doc_date }} | Partner: {{ payment.partner_name or '-' }}</div>
+    <div style="color:var(--text-secondary); margin-top:5px;">
+      Date: {{ payment.doc_date }} | Partner: 
+      {% if payment.partner_id %}
+      <a href="{{ url_for('bp_master.partner_detail', id=payment.partner_id) }}" class="sap-arrow" title="Open Business Partner Master Data" target="_blank">➜</a>
+      <a href="{{ url_for('bp_master.partner_detail', id=payment.partner_id) }}" style="color:var(--text-primary); font-weight:600; text-decoration:none;">{{ payment.partner_name or '-' }}</a>
+      {% else %}
+      {{ payment.partner_name or '-' }}
+      {% endif %}
+    </div>
   </div>
   <div style="text-align:right;">
     <div style="font-size:14px; color:var(--text-secondary);">Amount</div>
@@ -22,7 +30,8 @@
     <button type="submit" class="btn btn-primary">Post Payment</button>
   </form>
   {% endif %}
-  <a href="{{ url_for('payments.print_payment', id=payment.id) }}" target="_blank" class="btn btn-secondary">Print</a>
+  <a href="{{ url_for('payments.print_payment', id=payment.id) }}" target="_blank" class="btn btn-secondary"><i data-feather="printer" style="width:14px;height:14px;"></i> Print (A4)</a>
+  <a href="{{ url_for('payments.print_payment', id=payment.id, format='pos') }}" target="_blank" class="btn btn-secondary" title="Print on 80mm / 58mm Thermal POS Receipt Printer"><i data-feather="file-text" style="width:14px;height:14px;"></i> POS Print</a>
   {% if payment.status != 'Cancelled' %}
   <button class="btn btn-danger">Cancel Payment</button>
   {% endif %}

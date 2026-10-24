@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Stock Transfer: {{ transfer.doc_ref }}</h2>
-<p>Status: {{ transfer.status }} | Date: {{ transfer.doc_date }} | From: {{ transfer.from_wh }} | To: {{ transfer.to_wh }}</p>
+<p>
+  Status: {{ transfer.status }} | Date: {{ transfer.doc_date }} |
+  From: {% if transfer.from_warehouse_id %}<a href="{{ url_for('inventory.warehouse_detail', id=transfer.from_warehouse_id) }}" class="sap-arrow" title="Open Source Warehouse Master">➜</a>{% endif %}{{ transfer.from_wh }} |
+  To: {% if transfer.to_warehouse_id %}<a href="{{ url_for('inventory.warehouse_detail', id=transfer.to_warehouse_id) }}" class="sap-arrow" title="Open Destination Warehouse Master">➜</a>{% endif %}{{ transfer.to_wh }}
+</p>
 
 {% if transfer.status == 'Draft' %}
 <form method="POST" action="{{ url_for('inventory.post_transfer', id=transfer.id) }}" class="mb-3">
@@ -10,10 +14,11 @@
 {% endif %}
 
 <table class="table">
-    <tr><th>Code</th><th>Item</th><th>UOM</th><th>Qty</th></tr>
+    <tr><th style="width:46px;">#</th><th>Item Code</th><th>Item Description</th><th>UOM</th><th>Qty</th></tr>
     {% for l in lines %}
     <tr>
-        <td>{{ l.item_code }}</td>
+        <td>{{ loop.index }}</td>
+        <td><a href="{{ url_for('inventory.item_detail', id=l.item_id) }}" class="sap-arrow" title="Open Item Master">➜</a> {{ l.item_code }}</td>
         <td>{{ l.item_name }}</td>
         <td>{{ l.uom_name or 'PCS' }}</td>
         <td>{{ l.quantity }}</td>

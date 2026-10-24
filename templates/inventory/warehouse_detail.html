@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block page_title %}Warehouse Master: {{ warehouse.name }}{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <div class="flex items-center gap-3">
+      <h2 class="text-2xl font-bold" style="margin:0;">{{ warehouse.name }} ({{ warehouse.code }})</h2>
+      <span class="badge {% if warehouse.is_active %}badge-posted{% else %}badge-cancelled{% endif %}">
+        {{ 'Active' if warehouse.is_active else 'Inactive' }}
+      </span>
+    </div>
+    <p class="text-xs" style="color:var(--text-secondary); margin-top:4px;">
+      Warehouse Master Data (OWHS) &bull; Branch: {{ warehouse.branch_name or 'Main HQ' }} &bull; Location: {{ warehouse.location or '-' }}
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <a href="{{ url_for('inventory.warehouses') }}" class="btn btn-secondary">← Back to Warehouses</a>
+    <a href="{{ url_for('inventory.edit_warehouse', id=warehouse.id) }}" class="btn btn-primary">Edit Warehouse</a>
+  </div>
+</div>
+
+<div class="card p-6 mb-6">
+  <h3 class="text-lg font-bold mb-4">Stock Balances in {{ warehouse.name }}</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:50px;">#</th>
+        <th>Item Code</th>
+        <th>Item Description</th>
+        <th style="text-align:center;">UOM</th>
+        <th style="text-align:right;">On Hand Qty</th>
+        <th style="text-align:right;">Unit Cost</th>
+        <th style="text-align:right;">Total Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in balances %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <a href="{{ url_for('inventory.item_detail', id=b.item_id) }}" class="sap-arrow" title="Open Item Master Data">➜</a>
+          <span class="font-mono font-bold" style="color:var(--gold);">{{ b.code }}</span>
+        </td>
+        <td>{{ b.name }}</td>
+        <td style="text-align:center;">{{ b.uom_name or 'PCS' }}</td>
+        <td style="text-align:right; font-weight:700;">{{ "{:,.2f}".format(b.quantity or 0) }}</td>
+        <td style="text-align:right;">KES {{ "{:,.2f}".format(b.cost or 0) }}</td>
+        <td style="text-align:right; font-weight:700; color:var(--gold);">KES {{ "{:,.2f}".format(b.value or 0) }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center; padding:20px; color:var(--text-secondary);">No stock items recorded in this warehouse yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

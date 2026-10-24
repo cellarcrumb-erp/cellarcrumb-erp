@@ -252,6 +252,30 @@ def new_warehouse():
     branches = conn.execute("SELECT * FROM branches WHERE is_active=1 ORDER BY is_main DESC, name ASC").fetchall()
     return render_template('inventory/warehouse_form.html', warehouse=None, branches=branches)
 
+@inventory_bp.route('/warehouses/<int:id>')
+@login_required
+def warehouse_detail(id):
+    conn = get_db()
+    wh = conn.execute("""
+        SELECT w.*, b.name as branch_name, b.code as branch_code
+        FROM warehouses w
+        LEFT JOIN branches b ON w.branch_id = b.id
+        WHERE w.id = ?
+    """, (id,)).fetchone()
+    if not wh:
+        flash('Warehouse not found.', 'warning')
+        return redirect(url_for('inventory.warehouses'))
+    balances = conn.execute("""
+        SELECT i.id as item_id, i.code, i.name, COALESCE(u.code, u.name, 'PCS') as uom_name,
+               sb.quantity, i.cost, (sb.quantity * i.cost) as value
+        FROM stock_balances sb
+        JOIN items i ON sb.item_id = i.id
+        LEFT JOIN uom u ON i.uom_id = u.id
+        WHERE sb.warehouse_id = ?
+        ORDER BY i.code
+    """, (id,)).fetchall()
+    return render_template('inventory/warehouse_detail.html', warehouse=wh, balances=balances)
+
 @inventory_bp.route('/warehouses/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_warehouse(id):
@@ -277,7 +301,7 @@ def edit_warehouse(id):
 @login_required
 def stock_balances():
     conn = get_db()
-    balances = conn.execute("""SELECT i.code, i.name, COALESCE(u.code, u.name, 'PCS') as uom_name, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
+    balances = conn.execute("""SELECT i.id as item_id, i.code, i.name, COALESCE(u.code, u.name, 'PCS') as uom_name, w.id as warehouse_id, w.name as warehouse, sb.quantity, i.cost, (sb.quantity * i.cost) as value 
                              FROM stock_balances sb 
                              JOIN items i ON sb.item_id = i.id 
                              LEFT JOIN uom u ON i.uom_id = u.id

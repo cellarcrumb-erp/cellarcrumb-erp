@@ -28,7 +28,12 @@
     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div>
             <p class="text-sm text-gray-500">Warehouse</p>
-            <p class="font-semibold text-gray-800">{{ issue.warehouse_name or '-' }}</p>
+            <p class="font-semibold text-gray-800">
+                {% if issue.warehouse_id %}
+                <a href="{{ url_for('inventory.warehouse_detail', id=issue.warehouse_id) }}" class="sap-arrow" title="Open Warehouse Master Data">➜</a>
+                {% endif %}
+                {{ issue.warehouse_name or '-' }}
+            </p>
         </div>
         <div>
             <p class="text-sm text-gray-500">Total Value</p>
@@ -45,7 +50,9 @@
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
-                    <th class="p-3">Item</th>
+                    <th class="p-3 text-center" style="width:46px;">#</th>
+                    <th class="p-3">Item Code</th>
+                    <th class="p-3">Item Description</th>
                     <th class="p-3 text-center">UOM</th>
                     <th class="p-3 text-right">Issued Quantity</th>
                     <th class="p-3 text-right">Unit Cost</th>
@@ -55,10 +62,12 @@
             <tbody>
                 {% for l in lines %}
                 <tr class="border-b hover:bg-gray-50 text-sm">
+                    <td class="p-3 text-center font-bold text-gray-500">{{ loop.index }}</td>
                     <td class="p-3">
-                        <div class="font-semibold text-gray-800">{{ l.item_name }}</div>
-                        <div class="text-xs text-gray-500">{{ l.item_code }}</div>
+                        <a href="{{ url_for('inventory.item_detail', id=l.item_id) }}" class="sap-arrow" title="Open Item Master Data">➜</a>
+                        <span class="font-mono font-bold text-erp-gold">{{ l.item_code }}</span>
                     </td>
+                    <td class="p-3 font-semibold text-gray-800">{{ l.item_name }}</td>
                     <td class="p-3 text-center font-semibold text-gray-600">{{ l.uom_name or 'PCS' }}</td>
                     <td class="p-3 text-right font-medium">{{ "%.2f"|format(l.quantity) }}</td>
                     <td class="p-3 text-right">${{ "%.2f"|format(l.unit_cost) }}</td>

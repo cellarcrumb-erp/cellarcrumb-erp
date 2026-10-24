@@ -15,8 +15,9 @@
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Code</th>
-            <th>Name</th>
+            <th style="width:42px; text-align:center;">#</th>
+            <th>Item Code</th>
+            <th>Item Description</th>
             <th>Type</th>
             <th>UOM</th>
             <th>Cost</th>
@@ -28,7 +29,11 @@
     <tbody>
         {% for item in items %}
         <tr>
-            <td>{{ item.code }}</td>
+            <td class="text-center font-mono">{{ loop.index }}</td>
+            <td class="font-mono">
+                <a href="{{ url_for('inventory.item_detail', id=item.id) }}" class="sap-arrow" title="Open Item Master Data">➜</a>
+                <a href="{{ url_for('inventory.item_detail', id=item.id) }}" style="font-weight:700; text-decoration:none;">{{ item.code }}</a>
+            </td>
             <td>{{ item.name }}</td>
             <td>{{ item.item_type }}</td>
             <td>{{ item.uom_name or 'PCS' }}</td>

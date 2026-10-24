@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block page_title %}Warehouses{% endblock %}
 
 {% block content %}
@@ -22,23 +22,28 @@
   <table class="table">
     <thead>
       <tr>
-        <th style="width:120px;">Code</th>
+        <th style="width:42px; text-align:center;">#</th>
+        <th style="width:140px;">Code</th>
         <th>Warehouse Name</th>
         <th>Physical Location</th>
         <th style="width:180px;">Operating Branch</th>
         <th style="width:100px;">Status</th>
-        <th class="text-right" style="width:100px;">Actions</th>
+        <th class="text-right" style="width:140px;">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% if warehouses %}
         {% for w in warehouses %}
         <tr>
+          <td class="text-center font-mono" style="color:var(--text-muted);">{{ loop.index }}</td>
           <td>
-            <span class="font-bold" style="color:var(--gold-dark); letter-spacing:0.04em;">{{ w.code }}</span>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <a href="{{ url_for('inventory.warehouse_detail', id=w.id) }}" class="sap-arrow" title="Open Warehouse Master Data">➜</a>
+              <a href="{{ url_for('inventory.warehouse_detail', id=w.id) }}" class="font-bold font-mono" style="color:var(--gold-dark); letter-spacing:0.04em; text-decoration:none;">{{ w.code }}</a>
+            </div>
           </td>
           <td>
-            <div class="font-bold" style="color:var(--text-primary);">{{ w.name }}</div>
+            <a href="{{ url_for('inventory.warehouse_detail', id=w.id) }}" class="font-bold" style="color:var(--text-primary); text-decoration:none;">{{ w.name }}</a>
           </td>
           <td style="color:var(--text-secondary);">{{ w.location or '—' }}</td>
           <td>

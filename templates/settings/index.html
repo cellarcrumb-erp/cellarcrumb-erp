@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block page_title %}System Settings{% endblock %}
 
 {% block content %}
@@ -16,17 +16,19 @@
 </div>
 
 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px;">
-    <a href="{{ url_for('settings.print_layouts') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s; border:1px solid rgba(201,168,76,0.35);">
+  {% if session.get('role') == 'Admin' %}
+  <a href="{{ url_for('settings.print_layouts') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s; border:1px solid rgba(201,168,76,0.35);">
     <div style="display:flex;align-items:center;gap:14px;">
       <div style="width:44px; height:44px; border-radius:10px; background:rgba(201,168,76,0.18); display:flex; align-items:center; justify-content:center;">
         <i data-feather="printer" style="color:var(--gold);width:22px;height:22px;"></i>
       </div>
       <div>
-        <div class="card-title" style="font-size:14px; font-weight:700; color:var(--gold);">Print Layouts &amp; Branding</div>
-        <div style="font-size:11.5px;color:var(--text-secondary);">Customize invoice/PO templates, logo, columns &amp; terms</div>
+        <div class="card-title" style="font-size:14px; font-weight:700; color:var(--gold);">Print Layouts &amp; POS Setup</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">Admin Only — Customize A4 &amp; POS printouts, logo &amp; terms</div>
       </div>
     </div>
   </a>
+  {% endif %}
 
   <a href="{{ url_for('settings.company') }}" class="card" style="text-decoration:none; transition:transform 0.15s, box-shadow 0.15s;">
     <div style="display:flex;align-items:center;gap:14px;">

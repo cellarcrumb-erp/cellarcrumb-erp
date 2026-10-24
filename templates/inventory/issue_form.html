@@ -25,8 +25,11 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Issue Warehouse *</label>
-            <select name="warehouse_id" id="warehouseSelect" required class="w-full border rounded p-2 text-sm">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                <a id="whMasterLink" href="#" target="_blank" class="sap-arrow" title="Open Warehouse Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Warehouse first.');return false;}">➜</a>
+                Issue Warehouse *
+            </label>
+            <select name="warehouse_id" id="warehouseSelect" required class="w-full border rounded p-2 text-sm" onchange="const w=this.value; document.getElementById('whMasterLink').href=w?('/inventory/warehouses/'+w):'#';">
                 <option value="">Select Warehouse</option>
                 {% for w in warehouses %}
                 <option value="{{ w.id }}">{{ w.name }} ({{ w.code }})</option>
@@ -44,7 +47,9 @@
         <table class="w-full text-left border-collapse" id="linesTable">
             <thead>
                 <tr class="bg-gray-50 border-b text-xs text-gray-600 uppercase">
-                    <th class="p-2">Item *</th>
+                    <th class="p-2 text-center" style="width:44px;">#</th>
+                    <th class="p-2">Item Code *</th>
+                    <th class="p-2">Item Description</th>
                     <th class="p-2 text-center">UOM</th>
                     <th class="p-2 text-right">Quantity *</th>
                     <th class="p-2 text-center"></th>
@@ -52,15 +57,20 @@
             </thead>
             <tbody>
                 <tr class="border-b line-row">
+                    <td class="p-2 text-center text-xs font-bold line-num-cell">1</td>
                     <td class="p-2">
                         <input type="hidden" name="source_line_id[]" value="">
-                        <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select" onchange="itemSelected(this)">
-                            <option value="">Select Item</option>
-                            {% for i in items %}
-                            <option value="{{ i.id }}" data-uom="{{ i.uom_name or 'PCS' }}">{{ i.code }} - {{ i.name }}</option>
-                            {% endfor %}
-                        </select>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <a href="#" target="_blank" class="sap-arrow item-master-link" title="Open Item Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select an Item first.');return false;}">➜</a>
+                            <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select font-mono" onchange="itemSelected(this)">
+                                <option value="">Select Code</option>
+                                {% for i in items %}
+                                <option value="{{ i.id }}" data-name="{{ i.name }}" data-uom="{{ i.uom_name or 'PCS' }}">{{ i.code }} — {{ i.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </td>
+                    <td class="p-2 text-sm font-semibold item-desc-cell">-</td>
                     <td class="p-2 text-center text-xs font-bold text-gray-500 uom-cell">-</td>
                     <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-28 border rounded p-1 text-sm text-right qty-input" value="1"></td>
                     <td class="p-2 text-center">
@@ -103,10 +113,22 @@
 </div>
 
 <script>
+function renumberRows() {
+    document.querySelectorAll('#linesTable tbody tr').forEach((r, idx) => {
+        const c = r.querySelector('.line-num-cell');
+        if (c) c.innerText = idx + 1;
+    });
+}
 function itemSelected(sel) {
     const uom = sel.selectedOptions[0]?.getAttribute('data-uom') || '-';
-    const uomCell = sel.closest('tr').querySelector('.uom-cell');
+    const name = sel.selectedOptions[0]?.getAttribute('data-name') || '-';
+    const row = sel.closest('tr');
+    const uomCell = row.querySelector('.uom-cell');
     if (uomCell) uomCell.innerText = uom;
+    const descCell = row.querySelector('.item-desc-cell');
+    if (descCell) descCell.innerText = name;
+    const link = row.querySelector('.item-master-link');
+    if (link) link.href = sel.value ? (`/inventory/items/${sel.value}`) : '#';
 }
 function addRow(itemId='', qty=1, sLineId='', uom='') {
     const tbody = document.querySelector('#linesTable tbody');
@@ -114,15 +136,22 @@ function addRow(itemId='', qty=1, sLineId='', uom='') {
     const sel = tr.querySelector('.item-select');
     sel.value = itemId;
     const resolvedUom = uom || sel.selectedOptions[0]?.getAttribute('data-uom') || '-';
+    const resolvedName = sel.selectedOptions[0]?.getAttribute('data-name') || '-';
     const uomCell = tr.querySelector('.uom-cell');
     if (uomCell) uomCell.innerText = resolvedUom;
+    const descCell = tr.querySelector('.item-desc-cell');
+    if (descCell) descCell.innerText = resolvedName;
+    const link = tr.querySelector('.item-master-link');
+    if (link) link.href = itemId ? (`/inventory/items/${itemId}`) : '#';
     tr.querySelector('.qty-input').value = qty;
     tr.querySelector('input[name="source_line_id[]"]').value = sLineId;
     tbody.appendChild(tr);
+    renumberRows();
 }
 function removeRow(btn) {
     if(document.querySelectorAll('.line-row').length > 1) {
         btn.closest('tr').remove();
+        renumberRows();
     }
 }
 function openCopyFromModal() {
