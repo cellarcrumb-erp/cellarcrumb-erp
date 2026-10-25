@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from functools import wraps
-from database import get_db, next_ref, post_journal, log_audit
+from database import get_db, next_ref, post_journal, log_audit, sync_document_statuses_and_balances
 from datetime import date
 
 banking_bp = Blueprint('banking', __name__, url_prefix='/banking')
@@ -12,6 +12,7 @@ from auth import login_required, require_permission
 @require_permission('banking', 'read')
 def index():
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     accounts = conn.execute('SELECT * FROM bank_accounts WHERE is_active=1').fetchall()
     return render_template('banking/index.html', accounts=accounts)
 
@@ -19,6 +20,7 @@ def index():
 @login_required
 def accounts():
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     accounts_list = conn.execute('SELECT b.*, c.name as coa_name FROM bank_accounts b LEFT JOIN coa c ON b.coa_id=c.id').fetchall()
     return render_template('banking/accounts.html', accounts=accounts_list)
 
@@ -49,7 +51,7 @@ def new_account():
             flash(f'Error creating account: {e}', 'error')
     coas = conn.execute("SELECT * FROM coa WHERE is_posting=1 AND account_type='Asset'").fetchall()
     curs = conn.execute("SELECT * FROM currencies").fetchall()
-    return render_template('banking/account_form.html', account=None, coas=coas, currencies=curs)
+    return render_template('banking/account_form.html', account=None, coas=coas, coa_accounts=coas, currencies=curs)
 
 @banking_bp.route('/accounts/<int:id>')
 @login_required
@@ -66,20 +68,28 @@ account_detail = view_account
 def edit_account(id):
     conn = get_db()
     if request.method == 'POST':
+        code = request.form.get('code')
         name = request.form.get('name')
-        bank_name = request.form.get('bank_name')
-        acc_num = request.form.get('account_number')
-        coa_id = request.form.get('coa_id')
-        is_active = 1 if request.form.get('is_active') else 0
-        conn.execute('UPDATE bank_accounts SET name=?, bank_name=?, account_number=?, coa_id=?, is_active=? WHERE id=?',
-                     (name, bank_name, acc_num, coa_id, is_active, id))
+        acc_type = request.form.get('account_type', 'Bank')
+        bank_name = request.form.get('bank_name', '')
+        acc_num = request.form.get('account_number', '')
+        currency = request.form.get('currency', 'KES')
+        coa_id = request.form.get('coa_id') or None
+        opening_balance = request.form.get('opening_balance', 0, type=float)
+        is_active = 1 if request.form.get('is_active', '1') in ('1', 'true', 'on', 'True') else 0
+        conn.execute('''UPDATE bank_accounts
+                        SET code=?, name=?, account_type=?, bank_name=?, account_number=?,
+                            currency=?, coa_id=?, opening_balance=?, is_active=?
+                        WHERE id=?''',
+                     (code, name, acc_type, bank_name, acc_num, currency, coa_id, opening_balance, is_active, id))
         conn.commit()
-        flash('Account updated successfully.', 'success')
+        sync_document_statuses_and_balances(conn)
+        flash('Account updated and balance synchronized.', 'success')
         return redirect(url_for('banking.accounts'))
     acc = conn.execute('SELECT * FROM bank_accounts WHERE id=?', (id,)).fetchone()
     coas = conn.execute("SELECT * FROM coa WHERE is_posting=1 AND account_type='Asset'").fetchall()
     curs = conn.execute("SELECT * FROM currencies").fetchall()
-    return render_template('banking/account_form.html', account=acc, coas=coas, currencies=curs)
+    return render_template('banking/account_form.html', account=acc, coas=coas, coa_accounts=coas, currencies=curs)
 
 @banking_bp.route('/deposits')
 @login_required
@@ -206,7 +216,7 @@ def new_withdrawal():
                 conn.execute('''
                     INSERT INTO bank_transactions(doc_ref, doc_date, bank_account_id, txn_type, amount, description, reference, partner_id, journal_id)
                     VALUES(?,?,?,?,?,?,?,?,?)
-                ''', (doc_ref, doc_date, bank_acc_id, 'Withdrawal', amount, desc, ref, partner_id, je_id))
+                ''', (doc_ref, doc_date, bank_acc_id, 'Withdrawal', -abs(amount), desc, ref, partner_id, je_id))
                 conn.commit()
                 log_audit(conn, session.get('user_id'), 'Banking', 'Post', 'Withdrawal', doc_ref, f'Withdrew KES {amount:,.2f}')
                 flash(f'Withdrawal {doc_ref} of KES {amount:,.2f} recorded.', 'success')

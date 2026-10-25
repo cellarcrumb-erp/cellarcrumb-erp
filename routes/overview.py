@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from database import get_db
+from database import get_db, sync_document_statuses_and_balances
 from auth import login_required, require_permission
 import datetime as _dt
 
@@ -11,13 +11,14 @@ overview_bp = Blueprint('overview', __name__, url_prefix='/overview')
 def dashboard():
     conn = get_db()
     try:
+        sync_document_statuses_and_balances(conn)
         active_branch_id = session.get('active_branch_id', 0)
         
         branch_sales_clause = " AND branch_id = ?" if active_branch_id > 0 else ""
         branch_purch_clause = " AND branch_id = ?" if active_branch_id > 0 else ""
         b_params = [active_branch_id] if active_branch_id > 0 else []
 
-        # Total Sales (Posted/Paid Invoices)
+        # 1. Total Net Sales (Posted/Paid/Partial Invoices minus Posted Sales Returns)
         total_sales = 0.0
         try:
             r_sales = conn.execute(f"""
@@ -25,11 +26,18 @@ def dashboard():
                 FROM sales_docs 
                 WHERE doc_type='Invoice' AND status IN ('Posted', 'Paid', 'Partial') {branch_sales_clause}
             """, b_params).fetchone()
-            total_sales = float(r_sales['val']) if r_sales and r_sales['val'] is not None else 0.0
+            r_sret = conn.execute(f"""
+                SELECT COALESCE(SUM(total), 0) as val 
+                FROM sales_docs 
+                WHERE doc_type='Sales Return' AND status IN ('Posted', 'Paid', 'Closed') {branch_sales_clause}
+            """, b_params).fetchone()
+            gross_sales = float(r_sales['val']) if r_sales and r_sales['val'] is not None else 0.0
+            sales_returns = float(r_sret['val']) if r_sret and r_sret['val'] is not None else 0.0
+            total_sales = max(0.0, gross_sales - sales_returns)
         except Exception as e:
             print(f"[Dashboard] Error calculating total_sales: {e}")
 
-        # Total Purchases
+        # 2. Total Net Purchases (Posted/Paid/Partial Bills minus Posted Purchase Returns)
         total_purchases = 0.0
         try:
             r_purch = conn.execute(f"""
@@ -37,35 +45,48 @@ def dashboard():
                 FROM purchase_docs 
                 WHERE doc_type IN ('Invoice', 'Bill') AND status IN ('Posted', 'Paid', 'Partial') {branch_purch_clause}
             """, b_params).fetchone()
-            total_purchases = float(r_purch['val']) if r_purch and r_purch['val'] is not None else 0.0
+            r_pret = conn.execute(f"""
+                SELECT COALESCE(SUM(total), 0) as val 
+                FROM purchase_docs 
+                WHERE doc_type='Purchase Return' AND status IN ('Posted', 'Paid', 'Closed') {branch_purch_clause}
+            """, b_params).fetchone()
+            gross_purch = float(r_purch['val']) if r_purch and r_purch['val'] is not None else 0.0
+            purch_returns = float(r_pret['val']) if r_pret and r_pret['val'] is not None else 0.0
+            total_purchases = max(0.0, gross_purch - purch_returns)
         except Exception as e:
             print(f"[Dashboard] Error calculating total_purchases: {e}")
 
-        # Open Receivables
+        # 3. Open Receivables (Tallies with Sales Cockpit & Finance AR)
         open_receivables = 0.0
         try:
             r_ar = conn.execute(f"""
                 SELECT COALESCE(SUM(balance_due), 0) as val 
                 FROM sales_docs 
-                WHERE doc_type='Invoice' AND status IN ('Posted', 'Partial') {branch_sales_clause}
+                WHERE doc_type IN ('Invoice', 'Down Payment Invoice')
+                  AND status IN ('Posted', 'Partial')
+                  AND COALESCE(balance_due, 0) > 0.005
+                  {branch_sales_clause}
             """, b_params).fetchone()
             open_receivables = float(r_ar['val']) if r_ar and r_ar['val'] is not None else 0.0
         except Exception as e:
             print(f"[Dashboard] Error calculating open_receivables: {e}")
 
-        # Open Payables
+        # 4. Open Payables (Tallies with Purchases Cockpit & Finance AP)
         open_payables = 0.0
         try:
             r_ap = conn.execute(f"""
                 SELECT COALESCE(SUM(balance_due), 0) as val 
                 FROM purchase_docs 
-                WHERE doc_type IN ('Invoice', 'Bill') AND status IN ('Posted', 'Partial') {branch_purch_clause}
+                WHERE doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice')
+                  AND status IN ('Posted', 'Partial')
+                  AND COALESCE(balance_due, 0) > 0.005
+                  {branch_purch_clause}
             """, b_params).fetchone()
             open_payables = float(r_ap['val']) if r_ap and r_ap['val'] is not None else 0.0
         except Exception as e:
             print(f"[Dashboard] Error calculating open_payables: {e}")
 
-        # Stock Value
+        # 5. Stock Value (Tallies with Inventory Dashboard)
         stock_value = 0.0
         try:
             if active_branch_id > 0:
@@ -73,32 +94,35 @@ def dashboard():
                     SELECT COALESCE(SUM(sb.quantity * i.cost), 0) as val
                     FROM stock_balances sb
                     JOIN items i ON sb.item_id = i.id
-                    JOIN warehouses w ON sb.warehouse_id = w.id
-                    WHERE w.branch_id = ?
+                    LEFT JOIN warehouses w ON sb.warehouse_id = w.id
+                    WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
+                      AND (w.branch_id = ? OR w.branch_id IS NULL)
                 """, (active_branch_id,)).fetchone()
             else:
                 r_stock = conn.execute("""
                     SELECT COALESCE(SUM(sb.quantity * i.cost), 0) as val
                     FROM stock_balances sb
                     JOIN items i ON sb.item_id = i.id
+                    WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
                 """).fetchone()
             stock_value = float(r_stock['val']) if r_stock and r_stock['val'] is not None else 0.0
         except Exception as e:
             print(f"[Dashboard] Error calculating stock_value: {e}")
 
-        # Low Stock Items count
+        # 6. Low Stock Items count (Tallies with Inventory Dashboard)
         low_stock_count = 0
         try:
             r_low = conn.execute("""
                 SELECT COUNT(*) as cnt FROM items i
                 WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
-                AND (SELECT COALESCE(SUM(sb.quantity), 0) FROM stock_balances sb WHERE sb.item_id = i.id) <= i.reorder_level
+                  AND COALESCE(i.reorder_level, 0) > 0
+                  AND (SELECT COALESCE(SUM(sb.quantity), 0) FROM stock_balances sb WHERE sb.item_id = i.id) <= i.reorder_level
             """).fetchone()
             low_stock_count = int(r_low['cnt']) if r_low and r_low['cnt'] is not None else 0
         except Exception as e:
             print(f"[Dashboard] Error calculating low_stock_count: {e}")
 
-        # Cash Balance
+        # 7. Cash & Bank Balance (Tallies with Banking Accounts)
         cash_balance = 0.0
         try:
             r_cash = conn.execute("SELECT COALESCE(SUM(current_balance), 0) as val FROM bank_accounts WHERE is_active = TRUE").fetchone()
@@ -106,7 +130,7 @@ def dashboard():
         except Exception as e:
             print(f"[Dashboard] Error calculating cash_balance: {e}")
 
-        # Pending Drafts Count
+        # 8. Pending Approvals / Open Drafts Count
         pending_count = 0
         try:
             r_pending_s = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE status = 'Draft' {branch_sales_clause}", b_params).fetchone()
@@ -153,7 +177,7 @@ def dashboard():
                 SELECT i.code, i.name, COALESCE(SUM(sb.quantity), 0) as stock_qty, i.reorder_level
                 FROM items i
                 LEFT JOIN stock_balances sb ON i.id = sb.item_id
-                WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
+                WHERE i.is_stock_item = TRUE AND i.is_active = TRUE AND COALESCE(i.reorder_level, 0) > 0
                 GROUP BY i.id, i.code, i.name, i.reorder_level
                 HAVING COALESCE(SUM(sb.quantity), 0) <= i.reorder_level
                 LIMIT 6
@@ -162,7 +186,7 @@ def dashboard():
             print(f"[Dashboard] Error fetching low_stock_items: {e}")
             low_stock_items = []
 
-        # Chart data (Monthly sales vs purchases — current year)
+        # Chart data (Monthly net sales vs net purchases — current year)
         cur_year = _dt.date.today().year
         chart_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
         chart_sales = [0.0] * 12
@@ -170,31 +194,35 @@ def dashboard():
 
         try:
             sales_rows = conn.execute(f"""
-                SELECT doc_date, total
+                SELECT doc_date, doc_type, total
                 FROM sales_docs
-                WHERE doc_type='Invoice' AND status IN ('Posted','Paid','Partial')
+                WHERE ((doc_type='Invoice' AND status IN ('Posted','Paid','Partial'))
+                    OR (doc_type='Sales Return' AND status IN ('Posted','Paid','Closed')))
                   AND CAST(doc_date AS TEXT) >= ? AND CAST(doc_date AS TEXT) <= ? {branch_sales_clause}
             """, [f"{cur_year}-01-01", f"{cur_year}-12-31"] + b_params).fetchall()
             for r in sales_rows:
                 d = r['doc_date']
                 m = (d.month - 1) if hasattr(d, 'month') else (int(str(d).split('-')[1]) - 1)
                 if 0 <= m < 12:
-                    chart_sales[m] = round(chart_sales[m] + float(r['total'] or 0), 2)
+                    sign = -1.0 if r['doc_type'] == 'Sales Return' else 1.0
+                    chart_sales[m] = round(chart_sales[m] + sign * float(r['total'] or 0), 2)
         except Exception as e:
             print(f"[Dashboard] Error compiling chart_sales: {e}")
 
         try:
             purch_rows = conn.execute(f"""
-                SELECT doc_date, total
+                SELECT doc_date, doc_type, total
                 FROM purchase_docs
-                WHERE doc_type IN ('Invoice','Bill') AND status IN ('Posted','Paid','Partial')
+                WHERE ((doc_type IN ('Invoice','Bill') AND status IN ('Posted','Paid','Partial'))
+                    OR (doc_type='Purchase Return' AND status IN ('Posted','Paid','Closed')))
                   AND CAST(doc_date AS TEXT) >= ? AND CAST(doc_date AS TEXT) <= ? {branch_purch_clause}
             """, [f"{cur_year}-01-01", f"{cur_year}-12-31"] + b_params).fetchall()
             for r in purch_rows:
                 d = r['doc_date']
                 m = (d.month - 1) if hasattr(d, 'month') else (int(str(d).split('-')[1]) - 1)
                 if 0 <= m < 12:
-                    chart_purchases[m] = round(chart_purchases[m] + float(r['total'] or 0), 2)
+                    sign = -1.0 if r['doc_type'] == 'Purchase Return' else 1.0
+                    chart_purchases[m] = round(chart_purchases[m] + sign * float(r['total'] or 0), 2)
         except Exception as e:
             print(f"[Dashboard] Error compiling chart_purchases: {e}")
 

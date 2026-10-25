@@ -35,6 +35,12 @@
     </form>
     {% endif %}
 
+    {% if doc.doc_type in ['Invoice', 'Bill', 'Down Payment Invoice'] and doc.status in ['Posted', 'Partial'] and (doc.balance_due or 0) > 0 %}
+    <button type="button" onclick="togglePayPanel()" class="btn btn-success btn-sm font-bold" id="makePayBtn">
+      <i data-feather="dollar-sign" style="width:14px;height:14px;"></i> Pay Bill
+    </button>
+    {% endif %}
+
     <!-- SAP Copy To Action Dropdown -->
     {% if valid_copy_to and doc.status != 'Cancelled' and not is_fully_copied %}
     <div style="position:relative; display:inline-block;">
@@ -59,6 +65,73 @@
     </a>
   </div>
 </div>
+
+<!-- ── Inline Pay Bill Panel ──────────────────────────────────────── -->
+{% if doc.doc_type in ['Invoice', 'Bill', 'Down Payment Invoice'] and doc.status in ['Posted', 'Partial'] and (doc.balance_due or 0) > 0 %}
+<div id="payPanel" style="display:none; margin-bottom:20px;">
+  <div class="card p-4" style="border:2px solid #10b981; background:rgba(6,78,59,0.35);">
+    <div class="flex justify-between items-center mb-3">
+      <h4 style="margin:0; font-size:15px; font-weight:700; color:#34d399; display:flex; align-items:center; gap:8px;">
+        <i data-feather="dollar-sign" style="width:16px;height:16px; color:#10b981;"></i>
+        Pay Supplier Bill — {{ doc.doc_ref }}
+      </h4>
+      <button type="button" onclick="togglePayPanel()" style="background:none; border:none; cursor:pointer; color:#94a3b8; font-size:18px; line-height:1;">✕</button>
+    </div>
+    <div class="detail-grid" style="background:rgba(15,23,42,0.6); border-color:rgba(52,211,153,0.3); margin-bottom:16px;">
+      <div>
+        <div class="detail-label">Bill Total</div>
+        <div class="detail-value">KES {{ "%.2f"|format(doc.total) }}</div>
+      </div>
+      <div>
+        <div class="detail-label">Amount Paid</div>
+        <div class="detail-value" style="color:#10b981;">KES {{ "%.2f"|format(doc.amount_paid or 0) }}</div>
+      </div>
+      <div>
+        <div class="detail-label">Balance Due</div>
+        <div class="detail-value" style="color:#f87171; font-size:18px;">KES {{ "%.2f"|format(doc.balance_due) }}</div>
+      </div>
+    </div>
+    <form method="POST" action="{{ url_for('purchases.make_payment', id=doc.id) }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Date *</label>
+          <input type="date" name="doc_date" class="form-control" required value="{{ doc.doc_date }}">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Amount (KES) *</label>
+          <input type="number" step="0.01" min="0.01" max="{{ doc.balance_due }}"
+                 name="amount" class="form-control" required
+                 value="{{ "%.2f"|format(doc.balance_due) }}">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Payment Method *</label>
+          <select name="payment_method_id" class="form-control" required>
+            {% for m in payment_methods %}
+            <option value="{{ m.id }}">{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Bank Account *</label>
+          <select name="bank_account_id" class="form-control" required>
+            {% for a in bank_accounts %}
+            <option value="{{ a.id }}">{{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Reference</label>
+          <input type="text" name="reference" class="form-control" placeholder="Cheque / M-Pesa ref">
+        </div>
+      </div>
+      <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" onclick="togglePayPanel()" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm font-bold">Confirm &amp; Post Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 
 <!-- Header Card -->
 <div class="card p-4">

@@ -7,11 +7,11 @@
 <!-- Stats Grid -->
 <div class="stats-grid">
   <div class="stat-card blue">
-    <div class="stat-label">Total Sales (MTD)</div>
+    <div class="stat-label">Total Net Sales</div>
     <div class="stat-value">{{ total_sales | default('0.00') }}</div>
   </div>
   <div class="stat-card blue">
-    <div class="stat-label">Total Purchases (MTD)</div>
+    <div class="stat-label">Total Net Purchases</div>
     <div class="stat-value">{{ total_purchases | default('0.00') }}</div>
   </div>
   <div class="stat-card gold">
@@ -31,11 +31,11 @@
     <div class="stat-value">{{ open_payables | default('0.00') }}</div>
   </div>
   <div class="stat-card green">
-    <div class="stat-label">Cash Balance</div>
+    <div class="stat-label">Cash & Bank Balance</div>
     <div class="stat-value">{{ cash_balance | default('0.00') }}</div>
   </div>
   <div class="stat-card gold">
-    <div class="stat-label">Pending Approvals</div>
+    <div class="stat-label">Open Drafts</div>
     <div class="stat-value">{{ pending_count | default('0') }}</div>
   </div>
 </div>

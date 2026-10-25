@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from functools import wraps
-from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit
+from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit, sync_document_statuses_and_balances
 from datetime import datetime, date
 
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
@@ -47,10 +47,58 @@ COPY_FROM_MAP = {
 @require_permission('purchases', 'read')
 def index():
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
+    active_branch_id = session.get('active_branch_id', 0)
+    b_clause = " AND d.branch_id = ?" if active_branch_id and int(active_branch_id) > 0 else ""
+    b_params = [int(active_branch_id)] if active_branch_id and int(active_branch_id) > 0 else []
+
     counts = {}
     for kind, doc_type in DOC_TYPES.items():
-        row = conn.execute("SELECT COUNT(*) as cnt, COALESCE(SUM(total), 0) as total FROM purchase_docs WHERE doc_type = ?", (doc_type,)).fetchone()
-        counts[kind] = {'count': row['cnt'], 'total': row['total']}
+        if doc_type in ('Request', 'Purchase Quotation', 'Purchase Order', 'Receipt'):
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt,
+                       COALESCE(SUM(
+                           CASE
+                               WHEN (SELECT COUNT(*) FROM purchase_lines l WHERE l.doc_id = d.id) > 0 THEN
+                                   (SELECT COALESCE(SUM((l.quantity - COALESCE(l.copied_qty, 0)) * l.unit_cost * (1.0 - COALESCE(l.discount_pct, 0) / 100.0)), 0)
+                                    FROM purchase_lines l WHERE l.doc_id = d.id AND (l.quantity - COALESCE(l.copied_qty, 0)) > 0)
+                               ELSE COALESCE(d.total, 0)
+                           END
+                       ), 0) as total
+                FROM purchase_docs d
+                WHERE d.doc_type = ?
+                  AND d.status NOT IN ('Closed', 'Cancelled', 'Paid')
+                  AND (
+                      (SELECT COUNT(*) FROM purchase_lines l WHERE l.doc_id = d.id) = 0
+                      OR (SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0) FROM purchase_lines l WHERE l.doc_id = d.id) > 0.0001
+                  )
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        elif doc_type in ('Invoice', 'Bill', 'Down Payment Invoice'):
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt,
+                       COALESCE(SUM(
+                           CASE WHEN d.status = 'Draft' THEN COALESCE(d.total, 0)
+                                ELSE COALESCE(d.balance_due, 0)
+                           END
+                       ), 0) as total
+                FROM purchase_docs d
+                WHERE d.doc_type = ?
+                  AND (
+                      d.status = 'Draft'
+                      OR (d.status IN ('Posted', 'Partial') AND COALESCE(d.balance_due, 0) > 0.005)
+                  )
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        else:
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt, COALESCE(SUM(d.total), 0) as total
+                FROM purchase_docs d
+                WHERE d.doc_type = ?
+                  AND d.status = 'Draft'
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        counts[kind] = {'count': int(row['cnt'] or 0), 'total': float(row['total'] or 0.0)}
     conn.close()
     return render_template('purchases/index.html', counts=counts)
 
@@ -182,6 +230,7 @@ def doc_list(doc_kind):
     doc_type = DOC_TYPES[doc_kind]
     
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     search = request.args.get('search', '').strip()
     status = request.args.get('status', '')
     supplier_id = request.args.get('supplier_id', '')
@@ -201,7 +250,14 @@ def doc_list(doc_kind):
     """
     params = [doc_type]
     
-    if status:
+    if status == 'Open':
+        if doc_type in ('Request', 'Purchase Quotation', 'Purchase Order', 'Receipt'):
+            query += " AND d.status NOT IN ('Closed', 'Cancelled', 'Paid') AND ((SELECT COUNT(*) FROM purchase_lines l WHERE l.doc_id = d.id) = 0 OR (SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0) FROM purchase_lines l WHERE l.doc_id = d.id) > 0.0001)"
+        elif doc_type in ('Invoice', 'Bill', 'Down Payment Invoice'):
+            query += " AND (d.status = 'Draft' OR (d.status IN ('Posted', 'Partial') AND COALESCE(d.balance_due, 0) > 0.005))"
+        else:
+            query += " AND d.status = 'Draft'"
+    elif status:
         query += " AND d.status = ?"
         params.append(status)
     if supplier_id:
@@ -314,9 +370,21 @@ def doc_new(doc_kind):
             SET subtotal = ?, tax_total = ?, total = ?, balance_due = ?
             WHERE id = ?
         """, (subtotal, tax_total, grand_total, grand_total, doc_id))
+
+        if source_doc_id:
+            rem_row = conn.execute("""
+                SELECT COALESCE(SUM(quantity - COALESCE(copied_qty, 0)), 0) as rem_qty
+                FROM purchase_lines WHERE doc_id = ?
+            """, (source_doc_id,)).fetchone()
+            if rem_row and float(rem_row['rem_qty'] or 0) <= 0.0001:
+                cursor.execute("UPDATE purchase_docs SET status = 'Closed', balance_due = 0 WHERE id = ?", (source_doc_id,))
         
         conn.commit()
+        sync_document_statuses_and_balances(conn)
         log_audit(conn, session.get('user_id'), 'Purchases', 'Create', doc_type, doc_id, f"Created {doc_type} {doc_ref}" + (f" copied from {source_doc_type} {source_doc_ref}" if source_doc_ref else ""))
+        if not request.form.get('is_draft'):
+            conn.close()
+            return doc_post(doc_kind, doc_id)
         flash(f"{doc_type} {doc_ref} created successfully.", "success")
         return redirect(url_for('purchases.doc_detail', doc_kind=doc_kind, id=doc_id))
         
@@ -369,6 +437,7 @@ def doc_detail(doc_kind, id):
         return "Not found", 404
     doc_type = DOC_TYPES[doc_kind]
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     doc = conn.execute("""
         SELECT d.*, p.name as supplier_name, w.name as warehouse_name,
                b.name as branch_name, b.code as branch_code
@@ -428,11 +497,18 @@ def doc_detail(doc_kind, id):
             
     total_open_qty = sum(max(0.0, l['open_qty']) for l in lines)
     is_fully_copied = (total_open_qty <= 0.0001 and len(lines) > 0)
+
+    payment_methods = []
+    bank_accounts = []
+    if doc['doc_type'] in ('Invoice', 'Bill', 'Down Payment Invoice'):
+        payment_methods = conn.execute('SELECT * FROM payment_methods WHERE is_active=1').fetchall()
+        bank_accounts = conn.execute('SELECT * FROM bank_accounts WHERE is_active=1').fetchall()
     
     return render_template('purchases/doc_detail.html', doc=doc, lines=lines, doc_kind=doc_kind,
                            base_docs=base_docs, target_docs=target_docs,
                            valid_copy_to=valid_copy_to, total_open_qty=total_open_qty,
-                           is_fully_copied=is_fully_copied, doc_kind_map=DOC_KIND_FROM_TYPE)
+                           is_fully_copied=is_fully_copied, doc_kind_map=DOC_KIND_FROM_TYPE,
+                           payment_methods=payment_methods, bank_accounts=bank_accounts)
 
 @purchases_bp.route('/<doc_kind>/<int:id>/post', methods=['POST'])
 @login_required
@@ -469,6 +545,18 @@ def doc_post(doc_kind, id):
         
         post_journal(conn, doc['doc_ref'], doc['doc_date'], 'Purchases', doc_type, id, f"Supplier Bill {doc['doc_ref']}", j_lines, session.get('user_id'), branch_id=doc['branch_id'])
         conn.execute("UPDATE partners SET balance = balance + ? WHERE id = ?", (doc['total'], doc['supplier_id']))
+
+        # --- Stock movement: if Bill was NOT copied from a posted Receipt, add stock directly ---
+        already_received = False
+        if doc['source_doc_id'] and doc['source_doc_type'] == 'Receipt':
+            src_r = conn.execute("SELECT status FROM purchase_docs WHERE id=?", (doc['source_doc_id'],)).fetchone()
+            if src_r and src_r['status'] in ('Posted', 'Closed', 'Paid'):
+                already_received = True
+        if not already_received and doc['warehouse_id']:
+            for line in lines:
+                item_row = conn.execute('SELECT is_stock_item FROM items WHERE id=?', (line['item_id'],)).fetchone()
+                if item_row and item_row['is_stock_item']:
+                    update_stock(conn, line['item_id'], doc['warehouse_id'], line['quantity'], 0, 'Bill', id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
         
     elif doc_type == 'Purchase Return':
         # Deduct stock and debit AP
@@ -511,6 +599,7 @@ def doc_post(doc_kind, id):
         
     conn.execute("UPDATE purchase_docs SET status = 'Posted', posted_at = datetime('now') WHERE id = ?", (id,))
     conn.commit()
+    sync_document_statuses_and_balances(conn)
     log_audit(conn, session.get('user_id'), 'Purchases', 'Post', doc_type, id, f"Posted {doc_type} {doc['doc_ref']}")
     flash(f"{doc_type} posted successfully.", "success")
     return redirect(url_for('purchases.doc_detail', doc_kind=doc_kind, id=id))
@@ -545,3 +634,96 @@ def doc_print(doc_kind, id):
     company = conn.execute("SELECT * FROM company WHERE id = 1").fetchone()
     print_cfg = get_print_settings(conn)
     return render_template('purchases/bill_print.html', doc=doc, lines=lines, company=company, print_cfg=print_cfg)
+
+
+@purchases_bp.route('/bills/<int:id>/make_payment', methods=['POST'])
+@login_required
+def make_payment(id):
+    """Create, post, and allocate an outgoing payment for a posted supplier bill in one step."""
+    conn = get_db()
+    doc = conn.execute("SELECT * FROM purchase_docs WHERE id=?", (id,)).fetchone()
+    if not doc or doc['doc_type'] not in ('Invoice', 'Bill', 'Down Payment Invoice') or doc['status'] not in ('Posted', 'Partial'):
+        flash('Payment can only be made for a Posted or Partial Supplier Bill.', 'error')
+        return redirect(url_for('purchases.doc_detail', doc_kind='bills', id=id))
+
+    amount      = request.form.get('amount', 0, type=float)
+    method_id   = request.form.get('payment_method_id')
+    bank_acc_id = request.form.get('bank_account_id')
+    pay_date    = request.form.get('doc_date', date.today().isoformat())
+    reference   = request.form.get('reference', '')
+
+    if amount <= 0:
+        flash('Please enter a valid payment amount.', 'error')
+        return redirect(url_for('purchases.doc_detail', doc_kind='bills', id=id))
+
+    max_payable = float(doc['balance_due'] or 0)
+    if amount > max_payable + 0.005:
+        flash(f'Amount exceeds balance due (KES {max_payable:,.2f}).', 'error')
+        return redirect(url_for('purchases.doc_detail', doc_kind='bills', id=id))
+
+    try:
+        pay_ref = next_ref('Payments', 'Outgoing', conn)
+        cursor = conn.execute('''
+            INSERT INTO payments (doc_ref, doc_date, payment_type, partner_id, bank_account_id,
+                                  payment_method_id, amount, amount_allocated, unallocated,
+                                  reference, remarks, status, branch_id, posted_by)
+            VALUES (?, ?, 'Outgoing', ?, ?, ?, ?, 0, ?, ?, ?, 'Draft', ?, ?)
+        ''', (pay_ref, pay_date, doc['supplier_id'], bank_acc_id, method_id,
+              amount, amount, reference, f"Payment for bill {doc['doc_ref']}",
+              doc['branch_id'], session.get('user_id')))
+        pay_id = cursor.lastrowid
+
+        bank_acc = conn.execute('SELECT * FROM bank_accounts WHERE id=?', (bank_acc_id,)).fetchone()
+        bank_coa_id = (bank_acc['coa_id'] if bank_acc and bank_acc['coa_id']
+                       else conn.execute("SELECT id FROM coa WHERE code='1110'").fetchone()[0])
+        ap_coa_id = conn.execute("SELECT id FROM coa WHERE code='2110'").fetchone()[0]
+
+        jlines = [
+            (ap_coa_id,   doc['supplier_id'], amount, 0,      f"AP reduction {pay_ref}"),
+            (bank_coa_id, doc['supplier_id'], 0,      amount, f"Supplier payment {pay_ref}"),
+        ]
+        je_id = post_journal(conn, pay_ref, pay_date, 'Payments', 'Outgoing Payment', pay_id,
+                             f"Payment for {doc['doc_ref']}", jlines, session.get('user_id'), branch_id=doc['branch_id'])
+
+        if bank_acc_id:
+            conn.execute('UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id=?',
+                         (amount, bank_acc_id))
+            conn.execute('''
+                INSERT INTO bank_transactions
+                  (doc_ref, doc_date, bank_account_id, txn_type, amount, description, reference, partner_id, journal_id)
+                VALUES (?,?,?,?,?,?,?,?,?)
+            ''', (pay_ref, pay_date, bank_acc_id, 'Withdrawal', -abs(amount),
+                  f"Supplier Payment {pay_ref}", reference, doc['supplier_id'], je_id))
+
+        if doc['supplier_id']:
+            conn.execute('UPDATE partners SET balance = balance - ? WHERE id=?',
+                         (amount, doc['supplier_id']))
+
+        conn.execute("UPDATE payments SET status='Posted', journal_id=?, posted_at=datetime('now') WHERE id=?",
+                     (je_id, pay_id))
+
+        apply_amt = min(amount, max_payable)
+        conn.execute('''
+            INSERT INTO payment_allocations (payment_id, doc_type, doc_id, amount, allocation_date)
+            VALUES (?, 'Bill', ?, ?, ?)
+        ''', (pay_id, id, apply_amt, pay_date))
+
+        new_paid   = round(float(doc['amount_paid'] or 0.0) + apply_amt, 2)
+        new_due    = max(0.0, round(max_payable - apply_amt, 2))
+        new_status = 'Paid' if new_due <= 0.005 else 'Partial'
+        conn.execute('UPDATE purchase_docs SET amount_paid=?, balance_due=?, status=? WHERE id=?',
+                     (new_paid, new_due, new_status, id))
+
+        conn.execute('UPDATE payments SET amount_allocated=?, unallocated=? WHERE id=?',
+                     (apply_amt, max(0.0, round(amount - apply_amt, 2)), pay_id))
+
+        conn.commit()
+        sync_document_statuses_and_balances(conn)
+        log_audit(conn, session.get('user_id'), 'Purchases', 'Make Payment',
+                  'Bill', id, f"Paid KES {amount:,.2f} via {pay_ref}")
+        flash(f'Payment {pay_ref} of KES {amount:,.2f} recorded and allocated. Bill status: {new_status}.', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error processing payment: {e}', 'error')
+
+    return redirect(url_for('purchases.doc_detail', doc_kind='bills', id=id))

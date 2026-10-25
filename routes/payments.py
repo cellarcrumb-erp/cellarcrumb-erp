@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from functools import wraps
-from database import get_db, next_ref, post_journal, log_audit
+from database import get_db, next_ref, post_journal, log_audit, sync_document_statuses_and_balances
 from datetime import date
 
 payments_bp = Blueprint('payments', __name__, url_prefix='/payments')
@@ -12,12 +12,13 @@ from auth import login_required, require_permission
 @require_permission('payments', 'read')
 def index():
     conn = get_db()
-    month = date.today().strftime('%Y-%m')
+    sync_document_statuses_and_balances(conn)
+    month_prefix = date.today().strftime('%Y-%m') + '%'
     total_received = conn.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type='Incoming' AND status='Posted' AND strftime('%Y-%m',doc_date)=?", (month,)
+        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type='Incoming' AND status='Posted' AND CAST(doc_date AS TEXT) LIKE ?", (month_prefix,)
     ).fetchone()[0] or 0
     total_paid = conn.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type='Outgoing' AND status='Posted' AND strftime('%Y-%m',doc_date)=?", (month,)
+        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type='Outgoing' AND status='Posted' AND CAST(doc_date AS TEXT) LIKE ?", (month_prefix,)
     ).fetchone()[0] or 0
     unallocated = conn.execute(
         "SELECT COALESCE(SUM(unallocated),0) FROM payments WHERE status='Posted'"
@@ -179,6 +180,7 @@ def post_payment(id):
             
             conn.execute("UPDATE payments SET status='Posted', journal_id=?, posted_at=datetime('now') WHERE id=?", (je_id, id))
             conn.commit()
+            sync_document_statuses_and_balances(conn)
             log_audit(conn, session.get('user_id'), 'Payments', 'Post', 'Incoming Payment', payment['doc_ref'], f'Posted customer receipt KES {amount:,.2f}')
             flash('Payment posted successfully to ledger and bank balance.', 'success')
             
@@ -203,6 +205,7 @@ def post_payment(id):
                 
             conn.execute("UPDATE payments SET status='Posted', journal_id=?, posted_at=datetime('now') WHERE id=?", (je_id, id))
             conn.commit()
+            sync_document_statuses_and_balances(conn)
             log_audit(conn, session.get('user_id'), 'Payments', 'Post', 'Outgoing Payment', payment['doc_ref'], f'Paid supplier KES {amount:,.2f}')
             flash('Payment voucher posted successfully.', 'success')
             
@@ -273,6 +276,7 @@ def allocate_payment(id):
             new_unalloc = max(0, payment['amount'] - new_total_alloc)
             conn.execute('UPDATE payments SET amount_allocated=?, unallocated=? WHERE id=?', (new_total_alloc, new_unalloc, id))
             conn.commit()
+            sync_document_statuses_and_balances(conn)
             flash(f'Allocated KES {total_allocated:,.2f} to invoice(s)/bill(s).', 'success')
         else:
             flash('No allocations entered.', 'warning')

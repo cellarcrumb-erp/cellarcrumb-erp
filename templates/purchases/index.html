@@ -18,7 +18,7 @@
     <p>Internal requests for materials.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      {{ counts.requests.count }} Pending
+      {{ counts.requests.count }} Open Requests
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(37,99,235,0.1)"/>
@@ -40,7 +40,7 @@
     <p>Vendor bids and supplier price quotes (SAP OPQT).</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      {{ counts.quotations.count if counts.quotations else 0 }} Quotations
+      {{ counts.quotations.count if counts.quotations else 0 }} Open Quotations
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(37,99,235,0.1)"/>
@@ -57,7 +57,7 @@
     <p>Orders sent to suppliers.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(253,211,77,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      {{ "%.0f"|format(counts.orders.total) }} Open Value
+      {{ counts.orders.count }} Open · {{ "{:,.0f}".format(counts.orders.total) }}
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="65" cy="65" r="47" fill="rgba(201,168,76,0.1)"/>
@@ -83,7 +83,7 @@
     <p>Receive inventory into warehouses.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(110,231,183,0.9)" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      {{ counts.receipts.count }} Pending
+      {{ counts.receipts.count }} Open Receipts
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="65" cy="65" r="47" fill="rgba(16,185,129,0.1)"/>
@@ -104,7 +104,7 @@
     <p>Record and process supplier invoices.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(196,181,253,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      {{ "%.0f"|format(counts.bills.total) }} Open Value Flow
+      {{ counts.bills.count }} Open · {{ "{:,.0f}".format(counts.bills.total) }}
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="65" cy="65" r="47" fill="rgba(139,92,246,0.1)"/>
@@ -130,7 +130,7 @@
     <p>Supplier prepayments and advance deposits (SAP ODPO).</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      {{ counts.down_payments.count if counts.down_payments else 0 }} Down Payments
+      {{ counts.down_payments.count if counts.down_payments else 0 }} Open Down Payments
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(13,148,136,0.12)"/>
@@ -147,7 +147,7 @@
     <p>Return items and claim supplier credits.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(252,165,165,0.9)" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.77"/></svg>
-      {{ counts.returns.count }} Returns
+      {{ counts.returns.count }} Open Returns
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(220,38,38,0.1)"/>

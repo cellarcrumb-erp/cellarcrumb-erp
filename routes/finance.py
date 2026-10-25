@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response
 from functools import wraps
-from database import get_db, next_ref, post_journal, log_audit
+from database import get_db, next_ref, post_journal, log_audit, sync_document_statuses_and_balances
 import csv
 from io import StringIO
 from datetime import datetime, date, timedelta
@@ -23,6 +23,7 @@ def get_branch_filter(req, sess):
 @require_permission('finance', 'read')
 def index():
     db = get_db()
+    sync_document_statuses_and_balances(db)
     today = date.today()
     this_year = f"{today.year}-01-01"
     
@@ -52,7 +53,7 @@ def index():
     ar_row = db.execute("""
         SELECT COALESCE(SUM(balance_due), 0) as total_ar, COUNT(*) as cnt
         FROM sales_docs
-        WHERE doc_type = 'Invoice' AND status = 'Posted' AND balance_due > 0
+        WHERE doc_type IN ('Invoice', 'Down Payment Invoice') AND status IN ('Posted', 'Partial') AND balance_due > 0.005
     """).fetchone()
     total_ar = ar_row['total_ar'] if ar_row else 0.0
     ar_count = ar_row['cnt'] if ar_row else 0
@@ -61,7 +62,7 @@ def index():
     ap_row = db.execute("""
         SELECT COALESCE(SUM(balance_due), 0) as total_ap, COUNT(*) as cnt
         FROM purchase_docs
-        WHERE doc_type = 'Invoice' AND status = 'Posted' AND balance_due > 0
+        WHERE doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice') AND status IN ('Posted', 'Partial') AND balance_due > 0.005
     """).fetchone()
     total_ap = ap_row['total_ap'] if ap_row else 0.0
     ap_count = ap_row['cnt'] if ap_row else 0
@@ -689,7 +690,7 @@ def ar_list():
                p.id as partner_id, p.name as customer_name, p.phone as customer_phone, p.email as customer_email
         FROM sales_docs s
         JOIN partners p ON s.customer_id = p.id
-        WHERE s.doc_type = 'Invoice' AND s.status = 'Posted'
+        WHERE s.doc_type IN ('Invoice', 'Down Payment Invoice') AND s.status IN ('Posted', 'Partial')
           AND s.balance_due > 0 AND s.doc_date <= ?
           {branch_clause}
         ORDER BY p.name ASC, s.due_date ASC
@@ -797,7 +798,7 @@ def ap_list():
                part.id as partner_id, part.name as supplier_name, part.phone as supplier_phone, part.email as supplier_email
         FROM purchase_docs p_doc
         JOIN partners part ON p_doc.supplier_id = part.id
-        WHERE p_doc.doc_type = 'Invoice' AND p_doc.status = 'Posted'
+        WHERE p_doc.doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice') AND p_doc.status IN ('Posted', 'Partial')
           AND p_doc.balance_due > 0 AND p_doc.doc_date <= ?
           {branch_clause}
         ORDER BY part.name ASC, p_doc.due_date ASC

@@ -12,14 +12,24 @@ inventory_bp = Blueprint('inventory', __name__, url_prefix='/inventory')
 @require_permission('inventory', 'read')
 def index():
     conn = get_db()
-    total_items = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
-    total_warehouses = conn.execute("SELECT COUNT(*) FROM warehouses").fetchone()[0]
-    low_stock = conn.execute("SELECT COUNT(*) FROM items WHERE is_stock_item = 1 AND reorder_level > 0").fetchone()[0]
+    total_items = conn.execute("SELECT COUNT(*) FROM items WHERE is_active = TRUE").fetchone()[0]
+    total_warehouses = conn.execute("SELECT COUNT(*) FROM warehouses WHERE is_active = TRUE").fetchone()[0]
+    low_stock = conn.execute("""
+        SELECT COUNT(*) FROM items i
+        WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
+          AND COALESCE(i.reorder_level, 0) > 0
+          AND (SELECT COALESCE(SUM(sb.quantity), 0) FROM stock_balances sb WHERE sb.item_id = i.id) <= i.reorder_level
+    """).fetchone()[0]
     
-    total_value = 0
-    stocks = conn.execute("SELECT sb.quantity, i.cost FROM stock_balances sb JOIN items i ON sb.item_id = i.id").fetchall()
+    total_value = 0.0
+    stocks = conn.execute("""
+        SELECT sb.quantity, i.cost
+        FROM stock_balances sb
+        JOIN items i ON sb.item_id = i.id
+        WHERE i.is_stock_item = TRUE AND i.is_active = TRUE
+    """).fetchall()
     for s in stocks:
-        total_value += (s['quantity'] * s['cost'])
+        total_value += float(s['quantity'] or 0) * float(s['cost'] or 0)
 
     return render_template('inventory/index.html', 
                            total_items=total_items, 

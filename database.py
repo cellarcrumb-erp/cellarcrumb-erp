@@ -1511,3 +1511,556 @@ def _seed_role_permissions(c, conn):
             (perms_json, r_name)
         )
     conn.commit()
+
+def sync_document_statuses_and_balances(conn):
+    """
+    Synchronize end-to-end document statuses, line copied quantities,
+    automatic FIFO payment allocations for unallocated posted payments,
+    invoice/bill balances, partner balances, and bank account balances.
+    Works seamlessly on both SQLite and PostgreSQL.
+    """
+    try:
+        # ------------------------------------------------------------------
+        # 1. Heal corrupted bank opening balances / transactions (>= 1B typo)
+        #    and fix positive Withdrawal amounts, then recompute current_balance
+        # ------------------------------------------------------------------
+        conn.execute("""
+            UPDATE bank_accounts
+            SET opening_balance = 0
+            WHERE ABS(COALESCE(opening_balance, 0)) >= 1000000000
+        """)
+        conn.execute("""
+            DELETE FROM bank_transactions
+            WHERE ABS(COALESCE(amount, 0)) >= 1000000000
+        """)
+        conn.execute("""
+            UPDATE bank_transactions
+            SET amount = -ABS(amount)
+            WHERE txn_type = 'Withdrawal' AND amount > 0
+        """)
+        conn.execute("""
+            UPDATE bank_accounts
+            SET current_balance = COALESCE(opening_balance, 0) + COALESCE(
+                (SELECT SUM(t.amount) FROM bank_transactions t WHERE t.bank_account_id = bank_accounts.id),
+                0
+            )
+        """)
+
+        # ------------------------------------------------------------------
+        # 2. Auto-allocate any Posted Incoming/Outgoing Payments that have
+        #    unallocated > 0 against open Customer Invoices / Supplier Bills
+        # ------------------------------------------------------------------
+        unalloc_incoming = conn.execute("""
+            SELECT id, partner_id, COALESCE(amount, 0) as amount,
+                   COALESCE(amount_allocated, 0) as amount_allocated,
+                   COALESCE(unallocated, 0) as unallocated, doc_date
+            FROM payments
+            WHERE payment_type = 'Incoming'
+              AND status = 'Posted'
+              AND partner_id IS NOT NULL
+              AND COALESCE(unallocated, 0) > 0.005
+            ORDER BY doc_date ASC, id ASC
+        """).fetchall()
+
+        for pay in unalloc_incoming:
+            rem_unalloc = float(pay['unallocated'] or 0)
+            if rem_unalloc <= 0.005:
+                continue
+            open_invs = conn.execute("""
+                SELECT id, COALESCE(total, 0) as total,
+                       COALESCE(amount_paid, 0) as amount_paid,
+                       COALESCE(balance_due, total, 0) as balance_due
+                FROM sales_docs
+                WHERE customer_id = ?
+                  AND doc_type IN ('Invoice', 'Down Payment Invoice')
+                  AND status IN ('Posted', 'Partial')
+                  AND COALESCE(balance_due, total, 0) > 0.005
+                ORDER BY doc_date ASC, id ASC
+            """, (pay['partner_id'],)).fetchall()
+            allocated_now = 0.0
+            for inv in open_invs:
+                if rem_unalloc <= 0.005:
+                    break
+                inv_bal = float(inv['balance_due'] or 0)
+                apply_amt = round(min(rem_unalloc, inv_bal), 2)
+                if apply_amt > 0.005:
+                    conn.execute("""
+                        INSERT INTO payment_allocations (payment_id, doc_type, doc_id, amount, allocation_date)
+                        VALUES (?, 'Invoice', ?, ?, ?)
+                    """, (pay['id'], inv['id'], apply_amt, pay['doc_date']))
+                    new_paid = round(float(inv['amount_paid'] or 0) + apply_amt, 2)
+                    new_due = max(0.0, round(inv_bal - apply_amt, 2))
+                    new_st = 'Paid' if new_due <= 0.005 else 'Partial'
+                    conn.execute("""
+                        UPDATE sales_docs SET amount_paid = ?, balance_due = ?, status = ? WHERE id = ?
+                    """, (new_paid, new_due, new_st, inv['id']))
+                    rem_unalloc = round(rem_unalloc - apply_amt, 2)
+                    allocated_now = round(allocated_now + apply_amt, 2)
+            if allocated_now > 0.005:
+                new_tot_alloc = round(float(pay['amount_allocated'] or 0) + allocated_now, 2)
+                conn.execute("""
+                    UPDATE payments SET amount_allocated = ?, unallocated = ? WHERE id = ?
+                """, (new_tot_alloc, max(0.0, rem_unalloc), pay['id']))
+
+        unalloc_outgoing = conn.execute("""
+            SELECT id, partner_id, COALESCE(amount, 0) as amount,
+                   COALESCE(amount_allocated, 0) as amount_allocated,
+                   COALESCE(unallocated, 0) as unallocated, doc_date
+            FROM payments
+            WHERE payment_type = 'Outgoing'
+              AND status = 'Posted'
+              AND partner_id IS NOT NULL
+              AND COALESCE(unallocated, 0) > 0.005
+            ORDER BY doc_date ASC, id ASC
+        """).fetchall()
+
+        for pay in unalloc_outgoing:
+            rem_unalloc = float(pay['unallocated'] or 0)
+            if rem_unalloc <= 0.005:
+                continue
+            open_bills = conn.execute("""
+                SELECT id, COALESCE(total, 0) as total,
+                       COALESCE(amount_paid, 0) as amount_paid,
+                       COALESCE(balance_due, total, 0) as balance_due
+                FROM purchase_docs
+                WHERE supplier_id = ?
+                  AND doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice')
+                  AND status IN ('Posted', 'Partial')
+                  AND COALESCE(balance_due, total, 0) > 0.005
+                ORDER BY doc_date ASC, id ASC
+            """, (pay['partner_id'],)).fetchall()
+            allocated_now = 0.0
+            for bill in open_bills:
+                if rem_unalloc <= 0.005:
+                    break
+                bill_bal = float(bill['balance_due'] or 0)
+                apply_amt = round(min(rem_unalloc, bill_bal), 2)
+                if apply_amt > 0.005:
+                    conn.execute("""
+                        INSERT INTO payment_allocations (payment_id, doc_type, doc_id, amount, allocation_date)
+                        VALUES (?, 'Bill', ?, ?, ?)
+                    """, (pay['id'], bill['id'], apply_amt, pay['doc_date']))
+                    new_paid = round(float(bill['amount_paid'] or 0) + apply_amt, 2)
+                    new_due = max(0.0, round(bill_bal - apply_amt, 2))
+                    new_st = 'Paid' if new_due <= 0.005 else 'Partial'
+                    conn.execute("""
+                        UPDATE purchase_docs SET amount_paid = ?, balance_due = ?, status = ? WHERE id = ?
+                    """, (new_paid, new_due, new_st, bill['id']))
+                    rem_unalloc = round(rem_unalloc - apply_amt, 2)
+                    allocated_now = round(allocated_now + apply_amt, 2)
+            if allocated_now > 0.005:
+                new_tot_alloc = round(float(pay['amount_allocated'] or 0) + allocated_now, 2)
+                conn.execute("""
+                    UPDATE payments SET amount_allocated = ?, unallocated = ? WHERE id = ?
+                """, (new_tot_alloc, max(0.0, rem_unalloc), pay['id']))
+
+        # ------------------------------------------------------------------
+        # 3. Reconcile Sales Invoices & Down Payment Invoices with Payments & Returns
+        # ------------------------------------------------------------------
+        sales_inv_rows = conn.execute("""
+            SELECT d.id, d.doc_type, d.status, COALESCE(d.total, 0) as total,
+                   COALESCE(d.amount_paid, 0) as amount_paid,
+                   COALESCE(d.balance_due, 0) as balance_due,
+                   COALESCE((
+                       SELECT SUM(pa.amount)
+                       FROM payment_allocations pa
+                       JOIN payments p ON pa.payment_id = p.id
+                       WHERE pa.doc_type IN ('Sales Invoice', 'Invoice', 'Down Payment Invoice')
+                         AND pa.doc_id = d.id
+                         AND p.status NOT IN ('Cancelled', 'Draft')
+                   ), 0) as alloc_paid,
+                   COALESCE((
+                       SELECT SUM(r.total)
+                       FROM sales_docs r
+                       WHERE r.doc_type = 'Sales Return'
+                         AND r.source_doc_id = d.id
+                         AND r.status IN ('Posted', 'Paid', 'Closed')
+                   ), 0) as return_credited
+            FROM sales_docs d
+            WHERE d.doc_type IN ('Invoice', 'Down Payment Invoice')
+              AND d.status NOT IN ('Draft', 'Cancelled')
+        """).fetchall()
+
+        for r in sales_inv_rows:
+            total = float(r['total'] or 0)
+            recorded_paid = float(r['amount_paid'] or 0)
+            alloc_paid = float(r['alloc_paid'] or 0)
+            ret_cred = float(r['return_credited'] or 0)
+            eff_paid = max(recorded_paid, alloc_paid) + ret_cred
+            if eff_paid > total and total > 0:
+                eff_paid = total
+            new_bal = max(0.0, round(total - eff_paid, 2))
+            if r['doc_type'] == 'Down Payment Invoice' and r['status'] == 'Closed':
+                new_status = 'Closed'
+                new_bal = 0.0
+            elif total > 0 and new_bal <= 0.005:
+                new_status = 'Paid'
+                new_bal = 0.0
+            elif eff_paid > 0.005 and new_bal > 0.005:
+                new_status = 'Partial'
+            else:
+                new_status = 'Posted'
+            if abs(new_bal - float(r['balance_due'] or 0)) > 0.005 or new_status != r['status'] or abs(eff_paid - recorded_paid) > 0.005:
+                conn.execute("""
+                    UPDATE sales_docs
+                    SET amount_paid = ?, balance_due = ?, status = ?
+                    WHERE id = ?
+                """, (round(eff_paid, 2), new_bal, new_status, r['id']))
+
+        # ------------------------------------------------------------------
+        # 4. Reconcile Purchase Bills & Down Payment Invoices with Payments & Returns
+        # ------------------------------------------------------------------
+        purch_bill_rows = conn.execute("""
+            SELECT d.id, d.doc_type, d.status, COALESCE(d.total, 0) as total,
+                   COALESCE(d.amount_paid, 0) as amount_paid,
+                   COALESCE(d.balance_due, 0) as balance_due,
+                   COALESCE((
+                       SELECT SUM(pa.amount)
+                       FROM payment_allocations pa
+                       JOIN payments p ON pa.payment_id = p.id
+                       WHERE pa.doc_type IN ('Supplier Bill', 'Purchase Invoice', 'Invoice', 'Bill', 'Down Payment Invoice')
+                         AND pa.doc_id = d.id
+                         AND p.status NOT IN ('Cancelled', 'Draft')
+                   ), 0) as alloc_paid,
+                   COALESCE((
+                       SELECT SUM(r.total)
+                       FROM purchase_docs r
+                       WHERE r.doc_type = 'Purchase Return'
+                         AND r.source_doc_id = d.id
+                         AND r.status IN ('Posted', 'Paid', 'Closed')
+                   ), 0) as return_credited
+            FROM purchase_docs d
+            WHERE d.doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice')
+              AND d.status NOT IN ('Draft', 'Cancelled')
+        """).fetchall()
+
+        for r in purch_bill_rows:
+            total = float(r['total'] or 0)
+            recorded_paid = float(r['amount_paid'] or 0)
+            alloc_paid = float(r['alloc_paid'] or 0)
+            ret_cred = float(r['return_credited'] or 0)
+            eff_paid = max(recorded_paid, alloc_paid) + ret_cred
+            if eff_paid > total and total > 0:
+                eff_paid = total
+            new_bal = max(0.0, round(total - eff_paid, 2))
+            if r['doc_type'] == 'Down Payment Invoice' and r['status'] == 'Closed':
+                new_status = 'Closed'
+                new_bal = 0.0
+            elif total > 0 and new_bal <= 0.005:
+                new_status = 'Paid'
+                new_bal = 0.0
+            elif eff_paid > 0.005 and new_bal > 0.005:
+                new_status = 'Partial'
+            else:
+                new_status = 'Posted'
+            if abs(new_bal - float(r['balance_due'] or 0)) > 0.005 or new_status != r['status'] or abs(eff_paid - recorded_paid) > 0.005:
+                conn.execute("""
+                    UPDATE purchase_docs
+                    SET amount_paid = ?, balance_due = ?, status = ?
+                    WHERE id = ?
+                """, (round(eff_paid, 2), new_bal, new_status, r['id']))
+
+        # ------------------------------------------------------------------
+        # 5. Synchronize copied_qty & Close completed upstream Sales documents
+        #    Flow: Quotation -> Sales Order -> Delivery / Down Payment Invoice -> Invoice
+        # ------------------------------------------------------------------
+        conn.execute("""
+            UPDATE sales_lines
+            SET copied_qty = COALESCE((
+                SELECT SUM(tl.quantity)
+                FROM sales_lines tl
+                JOIN sales_docs td ON tl.doc_id = td.id
+                WHERE tl.source_line_id = sales_lines.id
+                  AND td.status != 'Cancelled'
+            ), 0) + COALESCE((
+                SELECT SUM(gil.quantity)
+                FROM goods_issue_lines gil
+                JOIN goods_issues gi ON gil.issue_id = gi.id
+                WHERE gil.source_line_id = sales_lines.id
+                  AND gil.source_doc_type = 'Sales Order'
+                  AND gi.status != 'Cancelled'
+            ), 0)
+            WHERE EXISTS (
+                SELECT 1 FROM sales_lines tl
+                JOIN sales_docs td ON tl.doc_id = td.id
+                WHERE tl.source_line_id = sales_lines.id AND td.status != 'Cancelled'
+            ) OR EXISTS (
+                SELECT 1 FROM goods_issue_lines gil
+                JOIN goods_issues gi ON gil.issue_id = gi.id
+                WHERE gil.source_line_id = sales_lines.id AND gil.source_doc_type = 'Sales Order' AND gi.status != 'Cancelled'
+            )
+        """)
+
+        linked_sales_targets = conn.execute("""
+            SELECT td.id as target_id, td.source_doc_id, td.total as target_total,
+                   sd.total as source_total, sd.status as source_status
+            FROM sales_docs td
+            JOIN sales_docs sd ON td.source_doc_id = sd.id
+            WHERE td.status != 'Cancelled'
+              AND sd.doc_type IN ('Quotation', 'Sales Order', 'Delivery', 'Down Payment Invoice')
+        """).fetchall()
+        for lt in linked_sales_targets:
+            if float(lt['target_total'] or 0) >= float(lt['source_total'] or 0) - 0.01:
+                conn.execute("UPDATE sales_lines SET copied_qty = quantity WHERE doc_id = ?", (lt['source_doc_id'],))
+                conn.execute("UPDATE sales_docs SET status = 'Closed', balance_due = 0 WHERE id = ? AND status != 'Cancelled'", (lt['source_doc_id'],))
+
+        # If a Sales Order has BOTH a Delivery AND an Invoice pointing to it (or same customer/items),
+        # ensure the Delivery is also marked Closed once the Invoice is created!
+        conn.execute("""
+            UPDATE sales_docs
+            SET status = 'Closed', balance_due = 0
+            WHERE doc_type = 'Delivery'
+              AND status NOT IN ('Closed', 'Cancelled')
+              AND source_doc_id IS NOT NULL
+              AND EXISTS (
+                  SELECT 1 FROM sales_docs inv
+                  WHERE inv.doc_type = 'Invoice'
+                    AND inv.status != 'Cancelled'
+                    AND inv.source_doc_id = sales_docs.source_doc_id
+              )
+        """)
+
+        conn.execute("""
+            UPDATE sales_docs
+            SET status = 'Closed', balance_due = 0
+            WHERE doc_type IN ('Quotation', 'Sales Order', 'Delivery', 'Down Payment Invoice')
+              AND status NOT IN ('Closed', 'Cancelled')
+              AND EXISTS (SELECT 1 FROM sales_lines l WHERE l.doc_id = sales_docs.id)
+              AND (
+                  SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0)
+                  FROM sales_lines l WHERE l.doc_id = sales_docs.id
+              ) <= 0.0001
+        """)
+
+        sales_stage_order = {
+            'Quotation': ('Sales Order', 'Delivery', 'Invoice'),
+            'Sales Order': ('Delivery', 'Invoice'),
+            'Delivery': ('Invoice',),
+            'Down Payment Invoice': ('Invoice',),
+        }
+        for up_type, down_types in sales_stage_order.items():
+            placeholders = ','.join(['?'] * len(down_types))
+            open_ups = conn.execute(f"""
+                SELECT u.id, u.customer_id, u.total, u.doc_date
+                FROM sales_docs u
+                WHERE u.doc_type = ?
+                  AND u.status NOT IN ('Closed', 'Cancelled')
+            """, (up_type,)).fetchall()
+            for u in open_ups:
+                if not u['customer_id']:
+                    continue
+                down_match = conn.execute(f"""
+                    SELECT d.id
+                    FROM sales_docs d
+                    WHERE d.customer_id = ?
+                      AND d.doc_type IN ({placeholders})
+                      AND d.status IN ('Posted', 'Paid', 'Partial', 'Closed')
+                      AND (
+                          (d.id > ? AND ABS(COALESCE(d.total, 0) - COALESCE(?, 0)) <= 0.01)
+                          OR (
+                              d.doc_date >= ?
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM sales_lines ul
+                                  WHERE ul.doc_id = ?
+                                    AND NOT EXISTS (
+                                        SELECT 1 FROM sales_lines dl
+                                        WHERE dl.doc_id = d.id AND dl.item_id = ul.item_id
+                                    )
+                              )
+                          )
+                      )
+                    LIMIT 1
+                """, [u['customer_id']] + list(down_types) + [u['id'], u['total'], u['doc_date'], u['id']]).fetchone()
+                if down_match:
+                    conn.execute("UPDATE sales_lines SET copied_qty = quantity WHERE doc_id = ?", (u['id'],))
+                    conn.execute("UPDATE sales_docs SET status = 'Closed', balance_due = 0 WHERE id = ?", (u['id'],))
+
+        # ------------------------------------------------------------------
+        # 6. Synchronize copied_qty & Close completed upstream Purchase documents
+        #    Flow: Request -> Purchase Quotation -> Purchase Order -> Receipt / Down Payment Invoice -> Invoice (Bill)
+        # ------------------------------------------------------------------
+        conn.execute("""
+            UPDATE purchase_lines
+            SET copied_qty = COALESCE((
+                SELECT SUM(tl.quantity)
+                FROM purchase_lines tl
+                JOIN purchase_docs td ON tl.doc_id = td.id
+                WHERE tl.source_line_id = purchase_lines.id
+                  AND td.status != 'Cancelled'
+            ), 0) + COALESCE((
+                SELECT SUM(grl.quantity)
+                FROM goods_receipt_lines grl
+                JOIN goods_receipts gr ON grl.receipt_id = gr.id
+                WHERE (grl.source_line_id = purchase_lines.id OR grl.po_line_id = purchase_lines.id)
+                  AND gr.status != 'Cancelled'
+            ), 0)
+            WHERE EXISTS (
+                SELECT 1 FROM purchase_lines tl
+                JOIN purchase_docs td ON tl.doc_id = td.id
+                WHERE tl.source_line_id = purchase_lines.id AND td.status != 'Cancelled'
+            ) OR EXISTS (
+                SELECT 1 FROM goods_receipt_lines grl
+                JOIN goods_receipts gr ON grl.receipt_id = gr.id
+                WHERE (grl.source_line_id = purchase_lines.id OR grl.po_line_id = purchase_lines.id) AND gr.status != 'Cancelled'
+            )
+        """)
+
+        linked_purch_targets = conn.execute("""
+            SELECT td.id as target_id, td.source_doc_id, td.total as target_total,
+                   sd.total as source_total, sd.status as source_status
+            FROM purchase_docs td
+            JOIN purchase_docs sd ON td.source_doc_id = sd.id
+            WHERE td.status != 'Cancelled'
+              AND sd.doc_type IN ('Request', 'Purchase Quotation', 'Purchase Order', 'Receipt', 'Down Payment Invoice')
+        """).fetchall()
+        for lt in linked_purch_targets:
+            if float(lt['target_total'] or 0) >= float(lt['source_total'] or 0) - 0.01:
+                conn.execute("UPDATE purchase_lines SET copied_qty = quantity WHERE doc_id = ?", (lt['source_doc_id'],))
+                conn.execute("UPDATE purchase_docs SET status = 'Closed', balance_due = 0 WHERE id = ? AND status != 'Cancelled'", (lt['source_doc_id'],))
+
+        # Also check Inventory goods_receipts linked to a Purchase Order via source_doc_id
+        inv_grs = conn.execute("""
+            SELECT gr.id, gr.source_doc_id, COALESCE(gr.total_value, 0) as gr_total,
+                   po.total as po_total
+            FROM goods_receipts gr
+            JOIN purchase_docs po ON gr.source_doc_id = po.id
+            WHERE gr.status != 'Cancelled'
+              AND po.doc_type = 'Purchase Order'
+        """).fetchall()
+        for gr in inv_grs:
+            if float(gr['gr_total'] or 0) >= float(gr['po_total'] or 0) - 0.01:
+                conn.execute("UPDATE purchase_lines SET copied_qty = quantity WHERE doc_id = ?", (gr['source_doc_id'],))
+                conn.execute("UPDATE purchase_docs SET status = 'Closed', balance_due = 0 WHERE id = ? AND status != 'Cancelled'", (gr['source_doc_id'],))
+
+        # If a Purchase Order has BOTH a Receipt AND a Bill pointing to it, close the Receipt
+        conn.execute("""
+            UPDATE purchase_docs
+            SET status = 'Closed', balance_due = 0
+            WHERE doc_type = 'Receipt'
+              AND status NOT IN ('Closed', 'Cancelled')
+              AND source_doc_id IS NOT NULL
+              AND EXISTS (
+                  SELECT 1 FROM purchase_docs bill
+                  WHERE bill.doc_type IN ('Invoice', 'Bill')
+                    AND bill.status != 'Cancelled'
+                    AND bill.source_doc_id = purchase_docs.source_doc_id
+              )
+        """)
+
+        conn.execute("""
+            UPDATE purchase_docs
+            SET status = 'Closed', balance_due = 0
+            WHERE doc_type IN ('Request', 'Purchase Quotation', 'Purchase Order', 'Receipt', 'Down Payment Invoice')
+              AND status NOT IN ('Closed', 'Cancelled')
+              AND EXISTS (SELECT 1 FROM purchase_lines l WHERE l.doc_id = purchase_docs.id)
+              AND (
+                  SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0)
+                  FROM purchase_lines l WHERE l.doc_id = purchase_docs.id
+              ) <= 0.0001
+        """)
+
+        purch_stage_order = {
+            'Request': ('Purchase Quotation', 'Purchase Order', 'Receipt', 'Invoice', 'Bill'),
+            'Purchase Quotation': ('Purchase Order', 'Receipt', 'Invoice', 'Bill'),
+            'Purchase Order': ('Receipt', 'Invoice', 'Bill'),
+            'Receipt': ('Invoice', 'Bill'),
+            'Down Payment Invoice': ('Invoice', 'Bill'),
+        }
+        for up_type, down_types in purch_stage_order.items():
+            placeholders = ','.join(['?'] * len(down_types))
+            open_ups = conn.execute(f"""
+                SELECT u.id, u.supplier_id, u.total, u.doc_date
+                FROM purchase_docs u
+                WHERE u.doc_type = ?
+                  AND u.status NOT IN ('Closed', 'Cancelled')
+            """, (up_type,)).fetchall()
+            for u in open_ups:
+                down_match = None
+                if u['supplier_id']:
+                    down_match = conn.execute(f"""
+                        SELECT d.id
+                        FROM purchase_docs d
+                        WHERE d.supplier_id = ?
+                          AND d.doc_type IN ({placeholders})
+                          AND d.status IN ('Posted', 'Paid', 'Partial', 'Closed')
+                          AND (
+                              (d.id > ? AND ABS(COALESCE(d.total, 0) - COALESCE(?, 0)) <= 0.01)
+                              OR (
+                                  d.doc_date >= ?
+                                  AND NOT EXISTS (
+                                      SELECT 1 FROM purchase_lines ul
+                                      WHERE ul.doc_id = ?
+                                        AND NOT EXISTS (
+                                            SELECT 1 FROM purchase_lines dl
+                                            WHERE dl.doc_id = d.id AND dl.item_id = ul.item_id
+                                        )
+                                  )
+                              )
+                          )
+                        LIMIT 1
+                    """, [u['supplier_id']] + list(down_types) + [u['id'], u['total'], u['doc_date'], u['id']]).fetchone()
+                elif up_type == 'Request':
+                    down_match = conn.execute(f"""
+                        SELECT d.id
+                        FROM purchase_docs d
+                        WHERE d.doc_type IN ({placeholders})
+                          AND d.status IN ('Posted', 'Paid', 'Partial', 'Closed')
+                          AND (
+                              (d.id > ? AND ABS(COALESCE(d.total, 0) - COALESCE(?, 0)) <= 0.01)
+                              OR (
+                                  d.doc_date >= ?
+                                  AND NOT EXISTS (
+                                      SELECT 1 FROM purchase_lines ul
+                                      WHERE ul.doc_id = ?
+                                        AND NOT EXISTS (
+                                            SELECT 1 FROM purchase_lines dl
+                                            WHERE dl.doc_id = d.id AND dl.item_id = ul.item_id
+                                        )
+                                  )
+                              )
+                          )
+                        LIMIT 1
+                    """, list(down_types) + [u['id'], u['total'], u['doc_date'], u['id']]).fetchone()
+                if down_match:
+                    conn.execute("UPDATE purchase_lines SET copied_qty = quantity WHERE doc_id = ?", (u['id'],))
+                    conn.execute("UPDATE purchase_docs SET status = 'Closed', balance_due = 0 WHERE id = ?", (u['id'],))
+
+        # ------------------------------------------------------------------
+        # 7. Synchronize Partner Balances with Open AR / Open AP
+        # ------------------------------------------------------------------
+        conn.execute("""
+            UPDATE partners
+            SET balance = COALESCE(opening_balance, 0)
+                + COALESCE((
+                    SELECT SUM(s.balance_due)
+                    FROM sales_docs s
+                    WHERE s.customer_id = partners.id
+                      AND s.doc_type IN ('Invoice', 'Down Payment Invoice')
+                      AND s.status IN ('Posted', 'Partial')
+                ), 0)
+                - COALESCE((
+                    SELECT SUM(p.unallocated)
+                    FROM payments p
+                    WHERE p.partner_id = partners.id
+                      AND p.payment_type = 'Incoming'
+                      AND p.status = 'Posted'
+                ), 0)
+                + COALESCE((
+                    SELECT SUM(pd.balance_due)
+                    FROM purchase_docs pd
+                    WHERE pd.supplier_id = partners.id
+                      AND pd.doc_type IN ('Invoice', 'Bill', 'Down Payment Invoice')
+                      AND pd.status IN ('Posted', 'Partial')
+                ), 0)
+                - COALESCE((
+                    SELECT SUM(p.unallocated)
+                    FROM payments p
+                    WHERE p.partner_id = partners.id
+                      AND p.payment_type = 'Outgoing'
+                      AND p.status = 'Posted'
+                ), 0)
+        """)
+
+        conn.commit()
+    except Exception as e:
+        print(f"[sync_document_statuses_and_balances] Warning: {e}")

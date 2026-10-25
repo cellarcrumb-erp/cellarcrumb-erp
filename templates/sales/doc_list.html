@@ -38,10 +38,12 @@
 
       <select name="status" class="filter-select" style="min-width:140px;">
         <option value="">All Statuses</option>
+        <option value="Open" {% if request.args.get('status') == 'Open' %}selected{% endif %}>Open Only</option>
         <option value="Draft" {% if request.args.get('status') == 'Draft' %}selected{% endif %}>Draft</option>
         <option value="Posted" {% if request.args.get('status') == 'Posted' %}selected{% endif %}>Posted</option>
         <option value="Paid" {% if request.args.get('status') == 'Paid' %}selected{% endif %}>Paid</option>
         <option value="Partial" {% if request.args.get('status') == 'Partial' %}selected{% endif %}>Partial</option>
+        <option value="Closed" {% if request.args.get('status') == 'Closed' %}selected{% endif %}>Closed</option>
         <option value="Cancelled" {% if request.args.get('status') == 'Cancelled' %}selected{% endif %}>Cancelled</option>
       </select>
 

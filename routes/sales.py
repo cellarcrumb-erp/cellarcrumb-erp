@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from functools import wraps
-from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit
+from database import get_db, smart_search_sql, next_ref, update_stock, post_journal, log_audit, sync_document_statuses_and_balances
 from datetime import datetime, date
 
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
@@ -44,10 +44,58 @@ COPY_FROM_MAP = {
 @require_permission('sales', 'read')
 def index():
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
+    active_branch_id = session.get('active_branch_id', 0)
+    b_clause = " AND d.branch_id = ?" if active_branch_id and int(active_branch_id) > 0 else ""
+    b_params = [int(active_branch_id)] if active_branch_id and int(active_branch_id) > 0 else []
+
     counts = {}
     for kind, doc_type in DOC_TYPES.items():
-        row = conn.execute("SELECT COUNT(*) as cnt, COALESCE(SUM(total), 0) as total FROM sales_docs WHERE doc_type = ?", (doc_type,)).fetchone()
-        counts[kind] = {'count': row['cnt'], 'total': row['total']}
+        if doc_type in ('Quotation', 'Sales Order', 'Delivery'):
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt,
+                       COALESCE(SUM(
+                           CASE
+                               WHEN (SELECT COUNT(*) FROM sales_lines l WHERE l.doc_id = d.id) > 0 THEN
+                                   (SELECT COALESCE(SUM((l.quantity - COALESCE(l.copied_qty, 0)) * l.unit_price * (1.0 - COALESCE(l.discount_pct, 0) / 100.0)), 0)
+                                    FROM sales_lines l WHERE l.doc_id = d.id AND (l.quantity - COALESCE(l.copied_qty, 0)) > 0)
+                               ELSE COALESCE(d.total, 0)
+                           END
+                       ), 0) as total
+                FROM sales_docs d
+                WHERE d.doc_type = ?
+                  AND d.status NOT IN ('Closed', 'Cancelled', 'Paid')
+                  AND (
+                      (SELECT COUNT(*) FROM sales_lines l WHERE l.doc_id = d.id) = 0
+                      OR (SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0) FROM sales_lines l WHERE l.doc_id = d.id) > 0.0001
+                  )
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        elif doc_type in ('Invoice', 'Down Payment Invoice'):
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt,
+                       COALESCE(SUM(
+                           CASE WHEN d.status = 'Draft' THEN COALESCE(d.total, 0)
+                                ELSE COALESCE(d.balance_due, 0)
+                           END
+                       ), 0) as total
+                FROM sales_docs d
+                WHERE d.doc_type = ?
+                  AND (
+                      d.status = 'Draft'
+                      OR (d.status IN ('Posted', 'Partial') AND COALESCE(d.balance_due, 0) > 0.005)
+                  )
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        else:
+            row = conn.execute(f"""
+                SELECT COUNT(*) as cnt, COALESCE(SUM(d.total), 0) as total
+                FROM sales_docs d
+                WHERE d.doc_type = ?
+                  AND d.status = 'Draft'
+                  {b_clause}
+            """, [doc_type] + b_params).fetchone()
+        counts[kind] = {'count': int(row['cnt'] or 0), 'total': float(row['total'] or 0.0)}
     conn.close()
     return render_template('sales/index.html', counts=counts)
 
@@ -179,6 +227,7 @@ def doc_list(doc_kind):
     doc_type = DOC_TYPES[doc_kind]
     
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     search = request.args.get('search', '').strip()
     status = request.args.get('status', '')
     customer_id = request.args.get('customer_id', '')
@@ -198,7 +247,14 @@ def doc_list(doc_kind):
     """
     params = [doc_type]
     
-    if status:
+    if status == 'Open':
+        if doc_type in ('Quotation', 'Sales Order', 'Delivery'):
+            query += " AND d.status NOT IN ('Closed', 'Cancelled', 'Paid') AND ((SELECT COUNT(*) FROM sales_lines l WHERE l.doc_id = d.id) = 0 OR (SELECT COALESCE(SUM(l.quantity - COALESCE(l.copied_qty, 0)), 0) FROM sales_lines l WHERE l.doc_id = d.id) > 0.0001)"
+        elif doc_type in ('Invoice', 'Down Payment Invoice'):
+            query += " AND (d.status = 'Draft' OR (d.status IN ('Posted', 'Partial') AND COALESCE(d.balance_due, 0) > 0.005))"
+        else:
+            query += " AND d.status = 'Draft'"
+    elif status:
         query += " AND d.status = ?"
         params.append(status)
     if customer_id:
@@ -311,9 +367,21 @@ def doc_new(doc_kind):
             SET subtotal = ?, tax_total = ?, total = ?, balance_due = ?
             WHERE id = ?
         """, (subtotal, tax_total, grand_total, grand_total, doc_id))
+
+        if source_doc_id:
+            rem_row = conn.execute("""
+                SELECT COALESCE(SUM(quantity - COALESCE(copied_qty, 0)), 0) as rem_qty
+                FROM sales_lines WHERE doc_id = ?
+            """, (source_doc_id,)).fetchone()
+            if rem_row and float(rem_row['rem_qty'] or 0) <= 0.0001:
+                cursor.execute("UPDATE sales_docs SET status = 'Closed', balance_due = 0 WHERE id = ?", (source_doc_id,))
         
         conn.commit()
+        sync_document_statuses_and_balances(conn)
         log_audit(conn, session.get('user_id'), 'Sales', 'Create', doc_type, doc_id, f"Created {doc_type} {doc_ref}" + (f" copied from {source_doc_type} {source_doc_ref}" if source_doc_ref else ""))
+        if not request.form.get('is_draft'):
+            conn.close()
+            return doc_post(doc_kind, doc_id)
         flash(f"{doc_type} {doc_ref} created successfully.", "success")
         return redirect(url_for('sales.doc_detail', doc_kind=doc_kind, id=doc_id))
         
@@ -366,6 +434,7 @@ def doc_detail(doc_kind, id):
         return "Not found", 404
     doc_type = DOC_TYPES[doc_kind]
     conn = get_db()
+    sync_document_statuses_and_balances(conn)
     doc = conn.execute("""
         SELECT d.*, p.name as customer_name, w.name as warehouse_name,
                b.name as branch_name, b.code as branch_code
@@ -568,6 +637,7 @@ def doc_post(doc_kind, id):
         
     conn.execute("UPDATE sales_docs SET status = 'Posted', posted_at = datetime('now') WHERE id = ?", (id,))
     conn.commit()
+    sync_document_statuses_and_balances(conn)
     log_audit(conn, session.get('user_id'), 'Sales', 'Post', doc_type, id, f"Posted {doc_type} {doc['doc_ref']}")
     flash(f"{doc_type} posted successfully.", "success")
     return redirect(url_for('sales.doc_detail', doc_kind=doc_kind, id=id))

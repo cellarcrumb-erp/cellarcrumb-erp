@@ -18,7 +18,7 @@
     <p>Create and send estimates to customers.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      {{ counts.quotations.count }} Quotations
+      {{ counts.quotations.count }} Open Quotations
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="70" cy="70" r="48" fill="rgba(59,130,246,0.12)"/>
@@ -43,7 +43,7 @@
     <p>Manage confirmed customer orders.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(253,211,77,0.9)" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><polyline points="9 12 11 14 15 10"/></svg>
-      {{ counts.orders.count }} Orders
+      {{ counts.orders.count }} Open Orders
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(201,168,76,0.1)"/>
@@ -63,7 +63,7 @@
     <p>Dispatch items and update inventory.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(110,231,183,0.9)" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      {{ counts.deliveries.count }} Pending
+      {{ counts.deliveries.count }} Open Deliveries
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="65" cy="65" r="47" fill="rgba(16,185,129,0.1)"/>
@@ -86,7 +86,7 @@
     <p>Bill customers and manage receivables.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      {{ "%.0f"|format(counts.invoices.total) }} Open Value
+      {{ counts.invoices.count }} Open · {{ "{:,.0f}".format(counts.invoices.total) }}
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="65" r="46" fill="rgba(13,148,136,0.12)"/>
@@ -108,7 +108,7 @@
     <p>Request advance customer deposits before fulfillment (SAP ODPI).</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(196,181,253,0.9)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      {{ counts.down_payments.count if counts.down_payments else 0 }} Down Payments
+      {{ counts.down_payments.count if counts.down_payments else 0 }} Open Down Payments
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(139,92,246,0.12)"/>
@@ -125,7 +125,7 @@
     <p>Process customer returns and credit notes.</p>
     <span class="mc-stat">
       <svg viewBox="0 0 24 24" fill="none" stroke="rgba(252,165,165,0.9)" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.77"/></svg>
-      {{ counts.returns.count }} Returns
+      {{ counts.returns.count }} Open Returns
     </span>
     <svg class="mc-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="68" cy="68" r="46" fill="rgba(220,38,38,0.1)"/>
