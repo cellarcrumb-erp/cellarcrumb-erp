@@ -1,5 +1,179 @@
 {% extends "base.html" %}
-{% block page_title %}{{ doc.doc_type }} {{ doc.doc_ref }}{% endblock %}
+{% block page_title %}{{ doc.doc_type }} {{ doc.doc_ref }}<!-- ── SAP Business One Journal Entry Preview Modal ──────────────────────── -->
+<div id="jpModalBackdrop" class="sap-modal-backdrop" onclick="if(event.target===this) closeJournalPreview()">
+  <div class="sap-modal">
+    <div class="sap-modal-header">
+      <div class="sap-modal-title">
+        <i data-feather="book-open" style="width:18px;height:18px; color:#38bdf8;"></i>
+        SAP B1 Journal Entry Preview Simulation — {{ doc.doc_ref }}
+      </div>
+      <button type="button" class="sap-modal-close" onclick="closeJournalPreview()">✕</button>
+    </div>
+    <div class="sap-modal-body">
+      <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Simulated Debits and Credits before General Ledger posting:</span>
+        <span id="jpBalancedBadge" class="jp-balanced">Balanced (Debit = Credit)</span>
+      </div>
+      <div class="overflow-auto">
+        <table class="jp-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Account Code</th>
+              <th>Account Name</th>
+              <th>Line Memo / Description</th>
+              <th class="number-right" style="width:130px;">Debit (KES)</th>
+              <th class="number-right" style="width:130px;">Credit (KES)</th>
+            </tr>
+          </thead>
+          <tbody id="jpTableBody">
+            <tr><td colspan="5" class="text-center text-muted">Loading GL simulation...</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="text-right" style="font-weight:700;">Total:</td>
+              <td class="number-right font-bold text-erp-gold" id="jpTotalDebit">0.00</td>
+              <td class="number-right font-bold text-erp-gold" id="jpTotalCredit">0.00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeJournalPreview()">Close Preview</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SAP Business One & ERPNext Interactive Relationship Map Modal ──────── -->
+<div id="rmapModalBackdrop" class="sap-modal-backdrop" onclick="if(event.target===this) closeRelationshipMap()">
+  <div class="sap-modal" style="max-width:1050px;">
+    <div class="sap-modal-header">
+      <div class="sap-modal-title">
+        <i data-feather="git-merge" style="width:18px;height:18px; color:var(--gold);"></i>
+        Document Relationship Map &amp; Process Flow — {{ doc.doc_ref }}
+      </div>
+      <button type="button" class="sap-modal-close" onclick="closeRelationshipMap()">✕</button>
+    </div>
+    <div class="sap-modal-body">
+      <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:20px;">
+        Visual tracing of all upstream base documents, target documents, allocations, and journal entries.
+      </div>
+      <div id="rmapContainer" class="rmap-flow">
+        <div style="color:var(--text-muted); text-align:center; padding:30px;">Loading relationship tree...</div>
+      </div>
+      <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeRelationshipMap()">Close Map</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openJournalPreview() {
+    var modal = document.getElementById('jpModalBackdrop');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    var tbody = document.getElementById('jpTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding:20px;">Loading GL simulation...</td></tr>';
+    
+    fetch('{{ url_for("purchases.doc_journal_preview", doc_kind=doc_kind, id=doc.id) }}')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data || !data.lines || data.lines.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No journal impact for this document.</td></tr>';
+          return;
+        }
+        var html = '';
+        data.lines.forEach(function(l) {
+          html += '<tr>' +
+            '<td style="font-family:monospace; font-weight:700; color:var(--gold);">' + (l.account_code || '') + '</td>' +
+            '<td class="font-bold">' + (l.account_name || '') + '</td>' +
+            '<td style="font-size:12px; color:var(--text-secondary);">' + (l.memo || '') + '</td>' +
+            '<td class="number-right font-semibold" style="color:#38bdf8;">' + (l.debit > 0 ? Number(l.debit).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—') + '</td>' +
+            '<td class="number-right font-semibold" style="color:#34d399;">' + (l.credit > 0 ? Number(l.credit).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—') + '</td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+        document.getElementById('jpTotalDebit').textContent = Number(data.total_debit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('jpTotalCredit').textContent = Number(data.total_credit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        var bBadge = document.getElementById('jpBalancedBadge');
+        if (data.balanced) {
+          bBadge.textContent = 'Balanced (Debit = Credit)';
+          bBadge.style.color = '#34d399';
+        } else {
+          bBadge.textContent = 'Out of Balance';
+          bBadge.style.color = '#f87171';
+        }
+      })
+      .catch(function(err) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to simulate journal entry: ' + err + '</td></tr>';
+      });
+  }
+
+  function closeJournalPreview() {
+    var modal = document.getElementById('jpModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function openRelationshipMap() {
+    var modal = document.getElementById('rmapModalBackdrop');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    var container = document.getElementById('rmapContainer');
+    container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:30px;">Loading relationship tree...</div>';
+
+    fetch('{{ url_for("purchases.doc_relationship_map", doc_kind=doc_kind, id=doc.id) }}')
+      .then(function(r) { return r.json(); })
+      .then(function(graph) {
+        if (!graph || !graph.nodes || graph.nodes.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:30px;">No linked documents found.</div>';
+          return;
+        }
+
+        var html = '';
+        graph.nodes.forEach(function(node, idx) {
+          if (idx > 0) {
+            var edge = graph.edges.find(function(e) { return e.to === node.id || e.from === node.id; });
+            var edgeLabel = edge ? edge.label : 'Linked';
+            html += '<div class="rmap-connector">▼ <span style="font-size:11px; font-weight:600; color:var(--text-secondary); margin-left:6px;">' + edgeLabel + '</span></div>';
+          }
+
+          var curClass = node.is_current ? 'is-current' : '';
+          html += '<div class="rmap-node ' + curClass + '">' +
+            '<div class="rmap-node-header">' +
+              '<span class="rmap-node-type">' + node.doc_type + '</span>' +
+              '<span class="badge badge-draft" style="font-size:10px; padding:1px 6px;">' + node.status + '</span>' +
+            '</div>' +
+            '<div class="rmap-node-ref">' +
+              '<a href="' + node.url + '" class="sap-arrow" title="Drilldown to Document">➜</a>' +
+              '<a href="' + node.url + '" style="color:inherit; text-decoration:none;" class="font-bold">' + node.doc_ref + '</a>' +
+            '</div>';
+
+          if (node.total > 0) {
+            html += '<div class="rmap-node-amount">KES ' + Number(node.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div>';
+          }
+
+          html += '<div class="rmap-node-footer">' +
+              '<span>' + (node.doc_date || '') + '</span>' +
+              '<span>' + (node.balance_due > 0 ? 'Bal: KES ' + Number(node.balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'Closed') + '</span>' +
+            '</div>' +
+          '</div>';
+        });
+
+        container.innerHTML = html;
+        if (window.feather) feather.replace();
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div style="color:#f87171; text-align:center; padding:30px;">Failed to load relationship map: ' + err + '</div>';
+      });
+  }
+
+  function closeRelationshipMap() {
+    var modal = document.getElementById('rmapModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="breadcrumb">
@@ -28,12 +202,19 @@
 
   <div class="flex gap-2 items-center">
     {% if doc.status == 'Draft' %}
+    <button type="button" onclick="openJournalPreview()" class="btn btn-secondary btn-sm" style="border-color:#38bdf8; color:#38bdf8;" title="SAP B1 Journal Entry Simulation before Posting">
+      <i data-feather="eye" style="width:14px;height:14px;"></i> Journal Preview
+    </button>
     <form method="POST" action="{{ url_for('purchases.doc_post', doc_kind=doc_kind, id=doc.id) }}">
       <button type="submit" class="btn btn-primary btn-sm font-bold">
         <i data-feather="check" style="width:14px;height:14px;"></i> Post / Confirm
       </button>
     </form>
     {% endif %}
+
+    <button type="button" onclick="openRelationshipMap()" class="btn btn-secondary btn-sm" style="border-color:var(--gold); color:var(--gold);" title="Open SAP B1 & ERPNext Visual Relationship Map">
+      <i data-feather="git-merge" style="width:14px;height:14px;"></i> Relationship Map
+    </button>
 
     {% if doc.doc_type in ['Invoice', 'Bill', 'Down Payment Invoice'] and doc.status in ['Posted', 'Partial'] and (doc.balance_due or 0) > 0 %}
     <button type="button" onclick="togglePayPanel()" class="btn btn-success btn-sm font-bold" id="makePayBtn">
@@ -192,6 +373,7 @@
           <th style="width:46px;">#</th>
           <th>Item Code</th>
           <th>Item Description</th>
+          <th style="width:120px;">Whs</th>
           <th class="text-center">UOM</th>
           <th class="text-right">Ordered Qty</th>
           <th class="text-right">Drawn / Copied</th>
@@ -214,6 +396,14 @@
             <div style="font-size:11.5px; color:var(--text-secondary);">{{ l.description }}</div>
             {% endif %}
           </td>
+          <td>
+            {% if l.warehouse_id %}
+            <a href="{{ url_for('inventory.warehouse_detail', id=l.warehouse_id) }}" class="sap-arrow" title="Open Warehouse Master Data">&rarr;</a>
+            <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1; font-size:11px; padding:2px 8px; font-family:monospace;">{{ l.warehouse_code or l.warehouse_name }}</span>
+            {% else %}
+            <span style="color:var(--text-secondary); font-size:12px;">-</span>
+            {% endif %}
+          </td>
           <td class="text-center">
             <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1; font-size:11px; padding:2px 8px;">{{ l.uom_name or 'PCS' }}</span>
           </td>
@@ -229,7 +419,7 @@
       </tbody>
       <tfoot>
         <tr style="background:rgba(15, 23, 42, 0.6); font-weight:700; border-top:1px solid rgba(255, 255, 255, 0.12);">
-          <td colspan="8" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
+          <td colspan="9" class="text-right" style="padding:14px 18px; color:#cbd5e1;">Total:</td>
           <td class="text-right text-erp-gold font-bold" style="font-size:16px; padding:14px 18px; color:var(--gold);">KES {{ "%.2f"|format(doc.total) }}</td>
         </tr>
       </tfoot>

@@ -130,16 +130,55 @@ def dashboard():
         except Exception as e:
             print(f"[Dashboard] Error calculating cash_balance: {e}")
 
-        # 8. Pending Approvals / Open Drafts Count
+        # 8. Pending Approvals / Open Drafts Count & Action Items
         pending_count = 0
+        draft_action_items = []
         try:
             r_pending_s = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE status = 'Draft' {branch_sales_clause}", b_params).fetchone()
             r_pending_p = conn.execute(f"SELECT COUNT(*) as cnt FROM purchase_docs WHERE status = 'Draft' {branch_purch_clause}", b_params).fetchone()
             cnt_s = int(r_pending_s['cnt']) if r_pending_s and r_pending_s['cnt'] is not None else 0
             cnt_p = int(r_pending_p['cnt']) if r_pending_p and r_pending_p['cnt'] is not None else 0
             pending_count = cnt_s + cnt_p
+
+            draft_sales = conn.execute(f"""
+                SELECT 'sales' as module, id, doc_type, doc_ref, doc_date, total,
+                       (SELECT name FROM partners WHERE id = sales_docs.customer_id) as party_name
+                FROM sales_docs 
+                WHERE status = 'Draft' {branch_sales_clause}
+                ORDER BY id DESC LIMIT 4
+            """, b_params).fetchall()
+            draft_purch = conn.execute(f"""
+                SELECT 'purchases' as module, id, doc_type, doc_ref, doc_date, total,
+                       (SELECT name FROM partners WHERE id = purchase_docs.supplier_id) as party_name
+                FROM purchase_docs 
+                WHERE status = 'Draft' {branch_purch_clause}
+                ORDER BY id DESC LIMIT 4
+            """, b_params).fetchall()
+            draft_action_items = [dict(d) for d in draft_sales] + [dict(d) for d in draft_purch]
         except Exception as e:
             print(f"[Dashboard] Error calculating pending_count: {e}")
+
+        # 9. ERPNext & SAP B1 Document Workflow Pipeline Stages
+        pipeline = {
+            'quotations': 0,
+            'orders': 0,
+            'deliveries': 0,
+            'invoices': 0,
+            'payments': 0
+        }
+        try:
+            p_q = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE doc_type='Quotation' AND status NOT IN ('Cancelled', 'Closed') {branch_sales_clause}", b_params).fetchone()
+            p_o = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE doc_type='Sales Order' AND status NOT IN ('Cancelled', 'Closed') {branch_sales_clause}", b_params).fetchone()
+            p_d = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE doc_type='Delivery' AND status NOT IN ('Cancelled', 'Closed') {branch_sales_clause}", b_params).fetchone()
+            p_i = conn.execute(f"SELECT COUNT(*) as cnt FROM sales_docs WHERE doc_type='Invoice' AND status IN ('Posted', 'Partial') {branch_sales_clause}", b_params).fetchone()
+            p_p = conn.execute(f"SELECT COUNT(*) as cnt FROM payments WHERE status NOT IN ('Cancelled', 'Void') {branch_sales_clause}", b_params).fetchone()
+            pipeline['quotations'] = int(p_q['cnt'] or 0) if p_q else 0
+            pipeline['orders'] = int(p_o['cnt'] or 0) if p_o else 0
+            pipeline['deliveries'] = int(p_d['cnt'] or 0) if p_d else 0
+            pipeline['invoices'] = int(p_i['cnt'] or 0) if p_i else 0
+            pipeline['payments'] = int(p_p['cnt'] or 0) if p_p else 0
+        except Exception as e:
+            print(f"[Dashboard] Error calculating pipeline: {e}")
 
         # Recent transactions with type casting for PostgreSQL UNION ALL compatibility
         recent_txns = []
@@ -240,7 +279,9 @@ def dashboard():
                                low_stock_items=low_stock_items,
                                chart_labels=chart_labels,
                                chart_sales=chart_sales,
-                               chart_purchases=chart_purchases)
+                               chart_purchases=chart_purchases,
+                               pipeline=pipeline,
+                               draft_action_items=draft_action_items)
     finally:
         try:
             conn.close()

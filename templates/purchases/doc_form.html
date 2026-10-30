@@ -21,7 +21,7 @@
     </div>
 </div>
 
-<form method="POST" id="docForm" class="card p-6">
+<form method="POST" id="docForm" class="card p-6" onsubmit="return handleFormSubmit(event)">
     <input type="hidden" name="source_doc_id" id="sourceDocId" value="{{ (doc.id if copy_from_type else '') if doc else '' }}">
     <input type="hidden" name="source_doc_type" id="sourceDocType" value="{{ copy_from_type if copy_from_type else '' }}">
     <input type="hidden" name="source_doc_ref" id="sourceDocRef" value="{{ (doc.doc_ref if copy_from_type else '') if doc else '' }}">
@@ -32,28 +32,42 @@
         <span>Drawing from base document: <strong id="baseDocBannerRef">{{ doc.doc_ref if doc else '' }}</strong> (<span id="baseDocBannerType">{{ copy_from_type }}</span>)</span>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        <div>
+    <!-- Header Block (SAP B1 Document Header: Supplier, Contact, Branch, Dates) -->
+    <!-- Notice: Warehouse has been moved to line item rows as per SAP B1 structure -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <!-- Supplier / Business Partner Field (Typeable & Choose-From-List) -->
+        <div style="position:relative;">
             <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">
-                <a id="bpMasterLink" href="{{ url_for('bp_master.partner_detail', id=doc.supplier_id) if doc and doc.supplier_id else '#' }}" target="_blank" class="sap-arrow" title="Open Supplier Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Supplier first.');return false;}">➜</a>
+                <a id="bpMasterLink" href="{{ url_for('bp_master.partner_detail', id=doc.supplier_id) if doc and doc.supplier_id else '#' }}" target="_blank" class="sap-arrow" title="Open Supplier Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Supplier first.');return false;}">&rarr;</a>
                 Supplier *
             </label>
-            <select name="supplier_id" id="supplierSelect" required class="w-full border rounded p-2 text-sm" onchange="onSupplierChange()">
-                <option value="">Select Supplier</option>
-                {% for s in suppliers %}
-                <option value="{{ s.id }}" {% if doc and doc.supplier_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
-                {% endfor %}
-            </select>
+            <input type="hidden" name="supplier_id" id="supplierSelect" value="{{ doc.supplier_id if doc else '' }}">
+            <div class="sap-cfl-group">
+                <input type="text" id="supplierCodeInput" class="w-full sap-cfl-input font-mono font-bold"
+                       placeholder="Type Code/Name or Click..." autocomplete="off"
+                       value="{{ doc.supplier_code if doc and doc.supplier_code else (doc.supplier_name if doc else '') }}"
+                       oninput="onBpInput(this)" onfocus="onBpFocus(this)" onkeydown="onBpKeydown(event)">
+                <button type="button" class="btn btn-secondary sap-cfl-btn" onclick="openBpCflModal()" title="Choose from List (Click)">
+                    <i data-feather="list" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+            <div id="supplierNameDisplay" style="font-size:12px; color:var(--text-secondary); margin-top:4px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ doc.supplier_name if doc else '' }}
+            </div>
+            <!-- Live Autocomplete Suggestion Dropdown -->
+            <div id="supplierAutocomplete" class="sap-autocomplete-dropdown" style="display:none;"></div>
         </div>
+
         <div>
             <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Contact Person (OCPR)</label>
-            <select name="contact_id" id="contactSelect" class="w-full border rounded p-2 text-sm">
+            <select name="contact_id" id="contactSelect" class="w-full border rounded p-2 text-sm" style="height:38px;">
                 <option value="">-- Main Contact --</option>
             </select>
         </div>
+
         <div>
             <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Branch *</label>
-            <select name="branch_id" class="w-full border rounded p-2 text-sm" required>
+            <select name="branch_id" class="w-full border rounded p-2 text-sm" style="height:38px;" required>
                 {% for b in (branches or all_accessible_branches) %}
                 <option value="{{ b.id }}" {% if doc and doc.branch_id == b.id %}selected{% elif not doc and active_branch_id == b.id %}selected{% elif not doc and not active_branch_id and b.is_main %}selected{% endif %}>
                     {{ b.name }} ({{ b.code }})
@@ -61,53 +75,54 @@
                 {% endfor %}
             </select>
         </div>
+
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Doc Date *</label>
-            <input type="date" name="doc_date" id="docDateInput" required class="w-full border rounded p-2 text-sm" value="{{ doc.doc_date if doc else today }}">
+            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Posting Date *</label>
+            <input type="date" name="doc_date" id="docDateInput" required class="w-full border rounded p-2 text-sm" style="height:38px;" value="{{ doc.doc_date if doc else today }}">
         </div>
+
         <div>
             <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">Due Date</label>
-            <input type="date" name="due_date" id="dueDateInput" class="w-full border rounded p-2 text-sm" value="{{ doc.due_date if doc else '' }}">
-        </div>
-        <div>
-            <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color:#cbd5e1;">
-                <a id="whMasterLink" href="{{ url_for('inventory.warehouse_detail', id=doc.warehouse_id) if doc and doc.warehouse_id else '#' }}" target="_blank" class="sap-arrow" title="Open Warehouse Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Warehouse first.');return false;}">➜</a>
-                Warehouse
-            </label>
-            <select name="warehouse_id" id="warehouseSelect" class="w-full border rounded p-2 text-sm" onchange="const w=this.value; document.getElementById('whMasterLink').href=w?('/inventory/warehouses/'+w):'#';">
-                <option value="">Select Warehouse</option>
-                {% for w in warehouses %}
-                <option value="{{ w.id }}" {% if doc and doc.warehouse_id == w.id %}selected{% endif %}>{{ w.name }}</option>
-                {% endfor %}
-            </select>
+            <input type="date" name="due_date" id="dueDateInput" class="w-full border rounded p-2 text-sm" style="height:38px;" value="{{ doc.due_date if doc else '' }}">
         </div>
     </div>
 
-    <h3 class="text-lg font-bold mb-3" style="color:#f8fafc;">Line Items &amp; Pricing</h3>
+    <!-- Line Items Section (SAP B1 Matrix with Row-Level Warehouses & Readily Available Rows) -->
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold" style="color:#f8fafc; margin:0; display:flex; align-items:center; gap:8px;">
+            <i data-feather="grid" style="width:16px;height:16px; color:var(--gold);"></i>
+            Line Items &amp; Accounting Matrix
+        </h3>
+        <span style="font-size:12px; color:var(--text-secondary);">
+            Rows are readily available. Type an item code or press Tab to fill rows continuously.
+        </span>
+    </div>
+
     <div class="overflow-x-auto mb-4 border rounded" style="border-color:rgba(255,255,255,0.12); border-radius:8px;">
         <table class="w-full text-left border-collapse" id="itemsTable">
             <thead>
-                <tr style="background:rgba(15,23,42,0.75); border-bottom:1px solid rgba(255,255,255,0.12);">
+                <tr style="background:rgba(15,23,42,0.85); border-bottom:1px solid rgba(255,255,255,0.15);">
                     <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1; width:44px;">#</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item Code *</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1;">Item Description</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1;">UOM</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Qty *</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Unit Cost *</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Disc %</th>
-                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1;">Line Total</th>
-                    <th class="p-2 text-sm font-semibold text-gray-700 text-center"></th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1; min-width:185px;">Item No. *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1; min-width:200px;">Item Description</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider" style="color:#cbd5e1; width:135px;">Whs (Warehouse) *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-center" style="color:#cbd5e1; width:70px;">UOM</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1; width:95px;">Quantity *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1; width:110px;">Unit Cost *</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1; width:80px;">Disc %</th>
+                    <th class="p-2 text-xs font-bold uppercase tracking-wider text-right" style="color:#cbd5e1; width:120px;">Line Total</th>
+                    <th class="p-2 text-center" style="width:40px;"></th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Lines will be injected dynamically -->
+                <!-- Matrix rows injected dynamically with blank rows readily available -->
             </tbody>
         </table>
     </div>
     
     <div class="flex justify-between items-center mb-6">
-        <button type="button" onclick="addLine()" class="btn btn-secondary text-sm">
-            + Add Row
+        <button type="button" onclick="addLine()" class="btn btn-secondary text-sm" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-feather="plus" style="width:14px;height:14px;"></i> Add Row
         </button>
         <div class="text-right">
             <p class="text-sm" style="color:#94a3b8; margin:0 0 4px 0;">Subtotal: <span id="subtotal" class="font-semibold" style="color:#f8fafc;">0.00</span></p>
@@ -133,7 +148,119 @@
     </div>
 </form>
 
-<!-- Modal for Copy From Selection -->
+<!-- Choose from List (CFL) Modals -->
+
+<!-- 1. Supplier CFL Modal -->
+<div id="bpCflModal" class="sap-modal-backdrop" onclick="if(event.target===this) closeBpCflModal()">
+    <div class="sap-modal" style="max-width:760px;">
+        <div class="sap-modal-header">
+            <div class="sap-modal-title">
+                <i data-feather="users" style="width:18px;height:18px; color:var(--gold);"></i>
+                Choose From List — Business Partners (Suppliers / Vendors)
+            </div>
+            <button type="button" class="sap-modal-close" onclick="closeBpCflModal()">✕</button>
+        </div>
+        <div class="sap-modal-body">
+            <div class="mb-4">
+                <input type="text" id="bpSearchInput" placeholder="Type Code, Name, or Group to search..." 
+                       class="form-control w-full" oninput="filterBpTable()" autocomplete="off">
+            </div>
+            <div class="overflow-x-auto border rounded" style="max-height:340px; overflow-y:auto;">
+                <table class="cfl-table" id="bpCflTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>BP Code</th>
+                            <th>BP Name</th>
+                            <th class="number-right">Balance (KES)</th>
+                            <th class="text-center">Currency</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bpCflTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" class="btn btn-secondary" onclick="closeBpCflModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Item Master CFL Modal -->
+<div id="itemCflModal" class="sap-modal-backdrop" onclick="if(event.target===this) closeItemCflModal()">
+    <div class="sap-modal" style="max-width:820px;">
+        <div class="sap-modal-header">
+            <div class="sap-modal-title">
+                <i data-feather="package" style="width:18px;height:18px; color:var(--gold);"></i>
+                Choose From List — Item Master Data
+            </div>
+            <button type="button" class="sap-modal-close" onclick="closeItemCflModal()">✕</button>
+        </div>
+        <div class="sap-modal-body">
+            <div class="mb-4">
+                <input type="text" id="itemSearchInput" placeholder="Type Item Code or Description to search..." 
+                       class="form-control w-full" oninput="filterItemTable()" autocomplete="off">
+            </div>
+            <div class="overflow-x-auto border rounded" style="max-height:340px; overflow-y:auto;">
+                <table class="cfl-table" id="itemCflTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Item No.</th>
+                            <th>Item Description</th>
+                            <th class="text-center">UOM</th>
+                            <th class="number-right">In Stock</th>
+                            <th class="number-right">Unit Cost (KES)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemCflTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" class="btn btn-secondary" onclick="closeItemCflModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Warehouse CFL Modal -->
+<div id="whsCflModal" class="sap-modal-backdrop" onclick="if(event.target===this) closeWhsCflModal()">
+    <div class="sap-modal" style="max-width:620px;">
+        <div class="sap-modal-header">
+            <div class="sap-modal-title">
+                <i data-feather="box" style="width:18px;height:18px; color:var(--gold);"></i>
+                Choose From List — Warehouses
+            </div>
+            <button type="button" class="sap-modal-close" onclick="closeWhsCflModal()">✕</button>
+        </div>
+        <div class="sap-modal-body">
+            <div class="mb-4">
+                <input type="text" id="whsSearchInput" placeholder="Type Warehouse Code or Name..." 
+                       class="form-control w-full" oninput="filterWhsTable()" autocomplete="off">
+            </div>
+            <div class="overflow-x-auto border rounded" style="max-height:300px; overflow-y:auto;">
+                <table class="cfl-table" id="whsCflTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Whs Code</th>
+                            <th>Warehouse Name</th>
+                        </tr>
+                    </thead>
+                    <tbody id="whsCflTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" class="btn btn-secondary" onclick="closeWhsCflModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Modal for Copy From Selection -->
 <div id="copyFromModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center hidden" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center;">
     <div class="card shadow-2xl max-w-3xl w-full p-6 mx-4 max-h-screen overflow-y-auto" style="background:#0f172a; border:1px solid rgba(255,255,255,0.18); border-radius:12px; width:90%; max-width:780px; padding:24px; color:#f8fafc;">
         <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.12);">
@@ -168,7 +295,7 @@
         <div id="copyStep2" class="hidden" style="display:none;">
             <div class="flex justify-between items-center mb-2">
                 <p class="text-sm font-semibold mb-2" style="color:#cbd5e1;">Select lines and quantities to draw from <span id="selectedSourceDocRef" class="text-erp-gold font-bold"></span>:</p>
-                <button type="button" onclick="backToStep1()" class="text-xs text-blue-600 hover:underline">← Choose different document</button>
+                <button type="button" onclick="backToStep1()" class="text-xs text-blue-600 hover:underline">&larr; Choose different document</button>
             </div>
             <div class="overflow-x-auto border rounded mb-4" style="max-height:260px; overflow-y:auto;">
                 <table class="w-full text-left border-collapse" id="sourceLinesTable">
@@ -195,11 +322,27 @@
 
 <script>
     const ITEMS = {{ items_json | safe }};
+    const SUPPLIERS = {{ suppliers_json | safe if suppliers_json else '{}' }};
+    const WAREHOUSES = {{ warehouses_json | safe if warehouses_json else '{}' }};
+    const DEFAULT_WHS_ID = {{ default_warehouse_id or 'null' }};
     const PREFILLED_LINES = {{ prefilled_lines | tojson | safe }};
     const CURRENT_DOC_TYPE = "{{ doc_type }}";
 
     let currentSupplierPriceListId = null;
+    let activeCflTargetRow = null;
 
+    // Helper: get default warehouse object
+    function getDefaultWarehouse() {
+        if (DEFAULT_WHS_ID && WAREHOUSES[DEFAULT_WHS_ID]) {
+            return WAREHOUSES[DEFAULT_WHS_ID];
+        }
+        for (let k in WAREHOUSES) {
+            return WAREHOUSES[k];
+        }
+        return { id: '', code: 'MAIN', name: 'Main Warehouse' };
+    }
+
+    // ── Number & Line Ordering ────────────────────────────────────────────────
     function renumberLines() {
         document.querySelectorAll('#itemsTable tbody tr').forEach((r, idx) => {
             const numCell = r.querySelector('.line-num-cell');
@@ -207,24 +350,277 @@
         });
     }
 
-    function itemChanged(sel) {
-        const row = sel.closest('tr');
-        const id = sel.value;
-        const uomCell = row.querySelector('.uom-cell');
-        const descInput = row.querySelector('.desc-input');
-        const itemLink = row.querySelector('.item-master-link');
-        if(!id || !ITEMS[id]) {
-            if (uomCell) uomCell.innerText = '-';
-            if (descInput) descInput.value = '';
-            if (itemLink) itemLink.href = '#';
+    // ── Recalculate Line and Grand Totals ──────────────────────────────────────
+    function recalc(input) {
+        const row = input.closest('tr');
+        const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+        const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+        const disc = parseFloat(row.querySelector('.disc-input')?.value || 0);
+        const total = qty * cost * (1 - disc / 100);
+        row.querySelector('.line-total').innerText = total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        
+        let subtotal = 0;
+        document.querySelectorAll('#itemsTable tbody tr').forEach(r => {
+            const itemId = r.querySelector('.item-id-input')?.value;
+            if (itemId) {
+                const q = parseFloat(r.querySelector('.qty-input').value) || 0;
+                const c = parseFloat(r.querySelector('.cost-input').value) || 0;
+                const d = parseFloat(r.querySelector('.disc-input')?.value || 0);
+                subtotal += (q * c * (1 - d / 100));
+            }
+        });
+        document.getElementById('subtotal').innerText = subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('grandTotal').innerText = subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    // ── Add Row (SAP Style: Matrix Row with Auto-Expansion) ───────────────────
+    function addLine(item_id='', qty=1, cost=0, disc=0, source_line_id='', desc='', whs_id='') {
+        const tbody = document.querySelector('#itemsTable tbody');
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-gray-50 sap-matrix-row';
+        
+        const defaultWhs = getDefaultWarehouse();
+        const effectiveWhsId = whs_id || (defaultWhs ? defaultWhs.id : '');
+        const whsObj = WAREHOUSES[effectiveWhsId] || defaultWhs;
+        const whsCode = whsObj ? (whsObj.code || whsObj.name) : 'MAIN';
+        const whsHref = effectiveWhsId ? `/inventory/warehouses/${effectiveWhsId}` : '#';
+
+        const itemObj = (item_id && ITEMS[item_id]) ? ITEMS[item_id] : null;
+        const itemCodeText = itemObj ? itemObj.code : '';
+        const descText = desc || (itemObj ? itemObj.name : '');
+        const uomText = itemObj ? (itemObj.uom_name || 'PCS') : '-';
+        const itemHref = item_id ? `/inventory/items/${item_id}` : '#';
+        const rowNum = tbody.children.length + 1;
+        const formattedCost = itemObj ? (cost ? parseFloat(cost).toFixed(2) : parseFloat(itemObj.cost || 0).toFixed(2)) : '0.00';
+        
+        tr.innerHTML = `
+            <td class="p-2 text-center text-xs font-bold line-num-cell" style="color:#94a3b8;">${rowNum}</td>
+            <td class="p-2" style="position:relative;">
+                <input type="hidden" name="source_line_id[]" value="${source_line_id}">
+                <input type="hidden" name="item_id[]" class="item-id-input" value="${item_id}">
+                <div class="sap-cfl-group">
+                    <a href="${itemHref}" target="_blank" class="sap-arrow item-master-link" title="Open Item Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select an Item first.');return false;}">&rarr;</a>
+                    <input type="text" class="w-full border rounded p-1 text-sm item-code-input font-mono font-bold"
+                           placeholder="Type code or click..." autocomplete="off" value="${itemCodeText}"
+                           oninput="onItemInput(this)" onfocus="onItemFocus(this)" onkeydown="onItemKeydown(event, this)">
+                    <button type="button" class="btn btn-secondary sap-cfl-btn p-1" onclick="openItemCflModal(this)" title="Choose from List">
+                        <i data-feather="list" style="width:13px;height:13px;"></i>
+                    </button>
+                </div>
+                <div class="sap-autocomplete-dropdown item-autocomplete" style="display:none;"></div>
+            </td>
+            <td class="p-2">
+                <input type="text" name="description[]" class="w-full border rounded p-1 text-sm desc-input" value="${descText}" placeholder="Item description" onkeydown="onDescKeydown(event, this)">
+            </td>
+            <td class="p-2" style="position:relative;">
+                <input type="hidden" name="warehouse_id[]" class="whs-id-input" value="${effectiveWhsId}">
+                <div class="sap-cfl-group">
+                    <a href="${whsHref}" target="_blank" class="sap-arrow whs-master-link" title="Open Warehouse Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select a Warehouse first.');return false;}">&rarr;</a>
+                    <input type="text" class="w-full border rounded p-1 text-xs font-mono font-bold whs-code-input"
+                           placeholder="Whs" autocomplete="off" value="${whsCode}"
+                           oninput="onWhsInput(this)" onfocus="onWhsFocus(this)" onkeydown="onWhsKeydown(event, this)">
+                    <button type="button" class="btn btn-secondary sap-cfl-btn p-1" onclick="openWhsCflModal(this)" title="Choose Warehouse">
+                        <i data-feather="list" style="width:12px;height:12px;"></i>
+                    </button>
+                </div>
+                <div class="sap-autocomplete-dropdown whs-autocomplete" style="display:none;"></div>
+            </td>
+            <td class="p-2 text-center text-xs font-bold uom-cell" style="color:#94a3b8;">${uomText}</td>
+            <td class="p-2"><input type="number" step="0.01" name="quantity[]" class="w-24 border rounded p-1 text-sm text-right qty-input" value="${qty}" oninput="recalc(this)" onkeydown="onQtyKeydown(event, this)"></td>
+            <td class="p-2"><input type="number" step="0.01" name="unit_cost[]" class="w-28 border rounded p-1 text-sm text-right cost-input" value="${formattedCost}" oninput="recalc(this)" onkeydown="onCostKeydown(event, this)"></td>
+            <td class="p-2"><input type="number" step="0.01" name="discount_pct[]" class="w-20 border rounded p-1 text-sm text-right disc-input" value="${parseFloat(disc).toFixed(2)}" oninput="recalc(this)" onkeydown="onDiscKeydown(event, this)"></td>
+            <td class="p-2 text-right text-sm font-semibold line-total">${(qty * cost * (1 - disc/100)).toFixed(2)}</td>
+            <td class="p-2 text-center">
+                <button type="button" onclick="removeLine(this)" class="text-red-500 hover:text-red-700 font-bold px-2" title="Remove Row">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        renumberLines();
+        if (window.feather) feather.replace();
+        return tr;
+    }
+
+    function removeLine(btn) {
+        const tbody = document.querySelector('#itemsTable tbody');
+        if(tbody.children.length > 1) {
+            btn.closest('tr').remove();
+            renumberLines();
+            recalc(tbody.querySelector('input'));
+        } else {
+            const tr = tbody.children[0];
+            tr.querySelector('.item-id-input').value = '';
+            tr.querySelector('.item-code-input').value = '';
+            tr.querySelector('.desc-input').value = '';
+            tr.querySelector('.uom-cell').innerText = '-';
+            tr.querySelector('.qty-input').value = '1';
+            tr.querySelector('.cost-input').value = '0.00';
+            tr.querySelector('.disc-input').value = '0.00';
+            tr.querySelector('.line-total').innerText = '0.00';
+            recalc(tr.querySelector('input'));
+        }
+    }
+
+    // ── Check and Auto-Append Next Row if entering last row ──────────────────
+    function ensureNextRowAvailable(currentRow) {
+        const tbody = document.querySelector('#itemsTable tbody');
+        if (currentRow === tbody.lastElementChild) {
+            addLine();
+        }
+    }
+
+    // ── Supplier Field: Typing, Autocomplete & CFL ───────────────────────────
+    function onBpFocus(input) {
+        showBpSuggestions(input.value);
+    }
+
+    function onBpInput(input) {
+        showBpSuggestions(input.value);
+    }
+
+    function onBpKeydown(e) {
+        if (e.key === 'Tab' && !e.shiftKey) {
+            const dropdown = document.getElementById('supplierAutocomplete');
+            const firstItem = dropdown.querySelector('.sap-autocomplete-item');
+            if (dropdown.style.display !== 'none' && firstItem) {
+                firstItem.click();
+            }
+        }
+    }
+
+    function showBpSuggestions(query) {
+        const dropdown = document.getElementById('supplierAutocomplete');
+        const q = (query || '').toLowerCase().trim();
+        let matches = [];
+        for (let id in SUPPLIERS) {
+            const s = SUPPLIERS[id];
+            if (!q || s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) {
+                matches.push(s);
+            }
+        }
+        if (matches.length === 0) {
+            dropdown.style.display = 'none';
             return;
         }
-        if (uomCell) uomCell.innerText = ITEMS[id].uom_name || 'PCS';
-        if (descInput) descInput.value = ITEMS[id].name || '';
-        if (itemLink) itemLink.href = `/inventory/items/${id}`;
+        let html = '';
+        matches.slice(0, 10).forEach(s => {
+            html += `<div class="sap-autocomplete-item" onclick="selectSupplier('${s.id}')">
+                <div>
+                    <span class="sap-item-code">${s.code}</span> — <strong>${s.name}</strong>
+                </div>
+                <span class="sap-item-meta">${s.currency || 'KES'}</span>
+            </div>`;
+        });
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
 
+    function selectSupplier(id) {
+        const sup = SUPPLIERS[id];
+        if (!sup) return;
+        document.getElementById('supplierSelect').value = id;
+        document.getElementById('supplierCodeInput').value = sup.code;
+        document.getElementById('supplierNameDisplay').innerText = sup.name;
+        document.getElementById('bpMasterLink').href = `/bp_master/partners/${id}`;
+        document.getElementById('supplierAutocomplete').style.display = 'none';
+        onSupplierChange();
+    }
+
+    // ── Supplier CFL Modal ───────────────────────────────────────────────────
+    function openBpCflModal() {
+        const modal = document.getElementById('bpCflModal');
+        modal.style.display = 'flex';
+        document.getElementById('bpSearchInput').value = '';
+        renderBpCflTable();
+        document.getElementById('bpSearchInput').focus();
+    }
+
+    function closeBpCflModal() {
+        document.getElementById('bpCflModal').style.display = 'none';
+    }
+
+    function renderBpCflTable(filter='') {
+        const tbody = document.getElementById('bpCflTableBody');
+        const q = (filter || '').toLowerCase().trim();
+        let html = '';
+        let count = 0;
+        for (let id in SUPPLIERS) {
+            const s = SUPPLIERS[id];
+            if (!q || s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) {
+                count++;
+                html += `<tr onclick="selectSupplier('${s.id}'); closeBpCflModal();">
+                    <td class="text-center" style="color:#94a3b8;">${count}</td>
+                    <td class="font-mono font-bold text-erp-gold">${s.code}</td>
+                    <td class="font-semibold">${s.name}</td>
+                    <td class="number-right">${Number(s.balance || 0).toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                    <td class="text-center">${s.currency || 'KES'}</td>
+                </tr>`;
+            }
+        }
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted p-4">No matching suppliers found.</td></tr>';
+    }
+
+    function filterBpTable() {
+        renderBpCflTable(document.getElementById('bpSearchInput').value);
+    }
+
+    // ── Item Field: Typing, Autocomplete & CFL on Rows ────────────────────────
+    function onItemFocus(input) {
+        showItemSuggestions(input);
+    }
+
+    function onItemInput(input) {
+        showItemSuggestions(input);
+    }
+
+    function showItemSuggestions(input) {
+        const row = input.closest('tr');
+        const dropdown = row.querySelector('.item-autocomplete');
+        const q = (input.value || '').toLowerCase().trim();
+        let matches = [];
+        for (let id in ITEMS) {
+            const it = ITEMS[id];
+            if (!q || it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q)) {
+                matches.push(it);
+            }
+        }
+        if (matches.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        let html = '';
+        matches.slice(0, 10).forEach(it => {
+            html += `<div class="sap-autocomplete-item" onclick="applyItemToRow(this, '${it.id}')">
+                <div>
+                    <span class="sap-item-code">${it.code}</span> — <strong>${it.name}</strong>
+                </div>
+                <div class="text-right">
+                    <span style="color:var(--gold); font-weight:700;">Cost: KES ${(it.cost || 0).toFixed(2)}</span>
+                    <div class="sap-item-meta">Stock: ${it.stock_qty || 0} ${it.uom_name || 'PCS'}</div>
+                </div>
+            </div>`;
+        });
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
+
+    function applyItemToRow(elementOrRow, itemId) {
+        const row = elementOrRow.closest ? elementOrRow.closest('tr') : elementOrRow;
+        const it = ITEMS[itemId];
+        if (!it) return;
+
+        row.querySelector('.item-id-input').value = itemId;
+        row.querySelector('.item-code-input').value = it.code;
+        row.querySelector('.desc-input').value = it.name;
+        row.querySelector('.uom-cell').innerText = it.uom_name || 'PCS';
+        row.querySelector('.item-master-link').href = `/inventory/items/${itemId}`;
+        row.querySelector('.cost-input').value = (it.cost || 0).toFixed(2);
+        
+        const dropdown = row.querySelector('.item-autocomplete');
+        if (dropdown) dropdown.style.display = 'none';
+
+        // Query supplier-specific price / cost if available
         const supplierId = document.getElementById('supplierSelect').value;
-        fetch(`/inventory/api/resolve-price?item_id=${id}${supplierId ? '&partner_id=' + supplierId : ''}${currentSupplierPriceListId ? '&price_list_id=' + currentSupplierPriceListId : ''}`)
+        fetch(`/inventory/api/resolve-price?item_id=${itemId}${supplierId ? '&partner_id=' + supplierId : ''}${currentSupplierPriceListId ? '&price_list_id=' + currentSupplierPriceListId : ''}`)
             .then(res => res.json())
             .then(data => {
                 if (data && data.price !== undefined) {
@@ -232,22 +628,268 @@
                     if (data.discount_pct !== undefined && data.discount_pct > 0) {
                         row.querySelector('.disc-input').value = parseFloat(data.discount_pct).toFixed(2);
                     }
-                    recalc(row.querySelector('.cost-input'));
-                } else {
-                    row.querySelector('.cost-input').value = ITEMS[id].cost.toFixed(2);
-                    recalc(row.querySelector('.cost-input'));
                 }
-            })
-            .catch(() => {
-                row.querySelector('.cost-input').value = ITEMS[id].cost.toFixed(2);
                 recalc(row.querySelector('.cost-input'));
-            });
+            })
+            .catch(() => recalc(row.querySelector('.cost-input')));
+
+        recalc(row.querySelector('.qty-input'));
+        ensureNextRowAvailable(row);
+
+        // Move cursor to Quantity
+        row.querySelector('.qty-input').focus();
     }
 
+    function onItemKeydown(e, input) {
+        const row = input.closest('tr');
+        const dropdown = row.querySelector('.item-autocomplete');
+        if (e.key === 'Tab' && !e.shiftKey) {
+            const firstItem = dropdown ? dropdown.querySelector('.sap-autocomplete-item') : null;
+            if (dropdown && dropdown.style.display !== 'none' && firstItem) {
+                firstItem.click();
+                e.preventDefault();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            row.querySelector('.desc-input').focus();
+        }
+    }
+
+    function onDescKeydown(e, input) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.closest('tr').querySelector('.whs-code-input').focus();
+        }
+    }
+
+    function onQtyKeydown(e, input) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.closest('tr').querySelector('.cost-input').focus();
+        }
+    }
+
+    function onCostKeydown(e, input) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.closest('tr').querySelector('.disc-input').focus();
+        }
+    }
+
+    function onDiscKeydown(e, input) {
+        if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+            const row = input.closest('tr');
+            ensureNextRowAvailable(row);
+            const nextRow = row.nextElementSibling;
+            if (nextRow) {
+                e.preventDefault();
+                nextRow.querySelector('.item-code-input').focus();
+            }
+        }
+    }
+
+    // ── Item CFL Modal ────────────────────────────────────────────────────────
+    function openItemCflModal(btn) {
+        activeCflTargetRow = btn.closest('tr');
+        const modal = document.getElementById('itemCflModal');
+        modal.style.display = 'flex';
+        document.getElementById('itemSearchInput').value = '';
+        renderItemCflTable();
+        document.getElementById('itemSearchInput').focus();
+    }
+
+    function closeItemCflModal() {
+        document.getElementById('itemCflModal').style.display = 'none';
+        activeCflTargetRow = null;
+    }
+
+    function renderItemCflTable(filter='') {
+        const tbody = document.getElementById('itemCflTableBody');
+        const q = (filter || '').toLowerCase().trim();
+        let html = '';
+        let count = 0;
+        for (let id in ITEMS) {
+            const it = ITEMS[id];
+            if (!q || it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q)) {
+                count++;
+                html += `<tr onclick="selectItemFromCfl('${it.id}')">
+                    <td class="text-center" style="color:#94a3b8;">${count}</td>
+                    <td class="font-mono font-bold text-erp-gold">${it.code}</td>
+                    <td class="font-semibold">${it.name}</td>
+                    <td class="text-center">${it.uom_name || 'PCS'}</td>
+                    <td class="number-right font-semibold" style="color:#38bdf8;">${it.stock_qty || 0}</td>
+                    <td class="number-right font-bold" style="color:var(--gold);">${(it.cost || 0).toFixed(2)}</td>
+                </tr>`;
+            }
+        }
+        tbody.innerHTML = html || '<tr><td colspan="6" class="text-center text-muted p-4">No matching items found.</td></tr>';
+    }
+
+    function filterItemTable() {
+        renderItemCflTable(document.getElementById('itemSearchInput').value);
+    }
+
+    function selectItemFromCfl(itemId) {
+        if (activeCflTargetRow) {
+            applyItemToRow(activeCflTargetRow, itemId);
+        }
+        closeItemCflModal();
+    }
+
+    // ── Warehouse Field & CFL on Rows ─────────────────────────────────────────
+    function onWhsFocus(input) {
+        showWhsSuggestions(input);
+    }
+
+    function onWhsInput(input) {
+        showWhsSuggestions(input);
+    }
+
+    function showWhsSuggestions(input) {
+        const row = input.closest('tr');
+        const dropdown = row.querySelector('.whs-autocomplete');
+        const q = (input.value || '').toLowerCase().trim();
+        let matches = [];
+        for (let id in WAREHOUSES) {
+            const w = WAREHOUSES[id];
+            if (!q || (w.code && w.code.toLowerCase().includes(q)) || w.name.toLowerCase().includes(q)) {
+                matches.push(w);
+            }
+        }
+        if (matches.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        let html = '';
+        matches.forEach(w => {
+            html += `<div class="sap-autocomplete-item" onclick="applyWhsToRow(this, '${w.id}')">
+                <div>
+                    <span class="sap-item-code">${w.code || w.name}</span> — <strong>${w.name}</strong>
+                </div>
+            </div>`;
+        });
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
+
+    function applyWhsToRow(elementOrRow, whsId) {
+        const row = elementOrRow.closest ? elementOrRow.closest('tr') : elementOrRow;
+        const w = WAREHOUSES[whsId];
+        if (!w) return;
+        row.querySelector('.whs-id-input').value = whsId;
+        row.querySelector('.whs-code-input').value = w.code || w.name;
+        row.querySelector('.whs-master-link').href = `/inventory/warehouses/${whsId}`;
+        const dropdown = row.querySelector('.whs-autocomplete');
+        if (dropdown) dropdown.style.display = 'none';
+        row.querySelector('.qty-input').focus();
+    }
+
+    function onWhsKeydown(e, input) {
+        const row = input.closest('tr');
+        const dropdown = row.querySelector('.whs-autocomplete');
+        if (e.key === 'Tab' && !e.shiftKey) {
+            const firstItem = dropdown ? dropdown.querySelector('.sap-autocomplete-item') : null;
+            if (dropdown && dropdown.style.display !== 'none' && firstItem) {
+                firstItem.click();
+                e.preventDefault();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            row.querySelector('.qty-input').focus();
+        }
+    }
+
+    function openWhsCflModal(btn) {
+        activeCflTargetRow = btn.closest('tr');
+        const modal = document.getElementById('whsCflModal');
+        modal.style.display = 'flex';
+        document.getElementById('whsSearchInput').value = '';
+        renderWhsCflTable();
+        document.getElementById('whsSearchInput').focus();
+    }
+
+    function closeWhsCflModal() {
+        document.getElementById('whsCflModal').style.display = 'none';
+        activeCflTargetRow = null;
+    }
+
+    function renderWhsCflTable(filter='') {
+        const tbody = document.getElementById('whsCflTableBody');
+        const q = (filter || '').toLowerCase().trim();
+        let html = '';
+        let count = 0;
+        for (let id in WAREHOUSES) {
+            const w = WAREHOUSES[id];
+            if (!q || (w.code && w.code.toLowerCase().includes(q)) || w.name.toLowerCase().includes(q)) {
+                count++;
+                html += `<tr onclick="selectWhsFromCfl('${w.id}')">
+                    <td class="text-center" style="color:#94a3b8;">${count}</td>
+                    <td class="font-mono font-bold text-erp-gold">${w.code || w.name}</td>
+                    <td class="font-semibold">${w.name}</td>
+                </tr>`;
+            }
+        }
+        tbody.innerHTML = html || '<tr><td colspan="3" class="text-center text-muted p-4">No matching warehouses found.</td></tr>';
+    }
+
+    function filterWhsTable() {
+        renderWhsCflTable(document.getElementById('whsSearchInput').value);
+    }
+
+    function selectWhsFromCfl(whsId) {
+        if (activeCflTargetRow) {
+            applyWhsToRow(activeCflTargetRow, whsId);
+        }
+        closeWhsCflModal();
+    }
+
+    // Close any floating autocompletes when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.sap-cfl-group') && !e.target.closest('.sap-autocomplete-dropdown')) {
+            document.querySelectorAll('.sap-autocomplete-dropdown').forEach(el => el.style.display = 'none');
+        }
+    });
+
+    // ── Form Submission (Ignore empty matrix rows like SAP B1) ────────────────
+    function handleFormSubmit(e) {
+        const supplierId = document.getElementById('supplierSelect').value;
+        if (!supplierId) {
+            alert('Please select a valid Supplier (Business Partner).');
+            document.getElementById('supplierCodeInput').focus();
+            e.preventDefault();
+            return false;
+        }
+
+        const rows = document.querySelectorAll('#itemsTable tbody tr');
+        let validLinesCount = 0;
+
+        rows.forEach(r => {
+            const itemIdInput = r.querySelector('.item-id-input');
+            const hasItem = itemIdInput && itemIdInput.value && itemIdInput.value.trim() !== '';
+            if (!hasItem) {
+                // Disable inputs in blank row so they are skipped by browser submission
+                r.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+            } else {
+                validLinesCount++;
+            }
+        });
+
+        if (validLinesCount === 0) {
+            alert('Please select at least one item before saving.');
+            // Re-enable rows
+            rows.forEach(r => r.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false));
+            e.preventDefault();
+            return false;
+        }
+
+        return true;
+    }
+
+    // ── Supplier Change & Payment Terms Handler ──────────────────────────────
     function onSupplierChange() {
         const supId = document.getElementById('supplierSelect').value;
         const bpLink = document.getElementById('bpMasterLink');
-        if (bpLink) bpLink.href = supId ? (`/bp/${supId}`) : '#';
+        if (bpLink) bpLink.href = supId ? (`/bp_master/partners/${supId}`) : '#';
         const contactSel = document.getElementById('contactSelect');
         const dueDateInput = document.getElementById('dueDateInput');
         const docDateInput = document.getElementById('docDateInput');
@@ -283,80 +925,8 @@
             })
             .catch(err => console.error('Error fetching partner info:', err));
     }
-    
-    function recalc(input) {
-        const row = input.closest('tr');
-        const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-        const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
-        const disc = parseFloat(row.querySelector('.disc-input')?.value || 0);
-        const total = qty * cost * (1 - disc / 100);
-        row.querySelector('.line-total').innerText = total.toFixed(2);
-        
-        let subtotal = 0;
-        document.querySelectorAll('#itemsTable tbody tr').forEach(r => {
-            const q = parseFloat(r.querySelector('.qty-input').value) || 0;
-            const c = parseFloat(r.querySelector('.cost-input').value) || 0;
-            const d = parseFloat(r.querySelector('.disc-input')?.value || 0);
-            subtotal += (q * c * (1 - d / 100));
-        });
-        document.getElementById('subtotal').innerText = subtotal.toFixed(2);
-        document.getElementById('grandTotal').innerText = subtotal.toFixed(2);
-    }
-    
-    function addLine(item_id='', qty=1, cost=0, disc=0, source_line_id='', desc='') {
-        const tbody = document.querySelector('#itemsTable tbody');
-        const tr = document.createElement('tr');
-        tr.className = 'border-b hover:bg-gray-50';
-        
-        let options = '<option value="">Select Code</option>';
-        for(let id in ITEMS) {
-            options += `<option value="${id}" ${id == item_id ? 'selected' : ''}>${ITEMS[id].code} — ${ITEMS[id].name}</option>`;
-        }
-        const uomText = (item_id && ITEMS[item_id]) ? (ITEMS[item_id].uom_name || 'PCS') : '-';
-        const descText = desc || ((item_id && ITEMS[item_id]) ? (ITEMS[item_id].name || '') : '');
-        const itemHref = item_id ? `/inventory/items/${item_id}` : '#';
-        const rowNum = tbody.children.length + 1;
-        
-        tr.innerHTML = `
-            <td class="p-2 text-center text-xs font-bold line-num-cell" style="color:#94a3b8;">${rowNum}</td>
-            <td class="p-2">
-                <input type="hidden" name="source_line_id[]" value="${source_line_id}">
-                <div style="display:flex; align-items:center; gap:4px;">
-                    <a href="${itemHref}" target="_blank" class="sap-arrow item-master-link" title="Open Item Master Data" onclick="if(this.getAttribute('href')==='#'){alert('Select an Item first.');return false;}">➜</a>
-                    <select name="item_id[]" required class="w-full border rounded p-1 text-sm item-select font-mono" onchange="itemChanged(this)">
-                        ${options}
-                    </select>
-                </div>
-            </td>
-            <td class="p-2">
-                <input type="text" name="description[]" class="w-full border rounded p-1 text-sm desc-input" value="${descText}" placeholder="Item description">
-            </td>
-            <td class="p-2 text-center text-xs font-bold uom-cell" style="color:#94a3b8;">${uomText}</td>
-            <td class="p-2"><input type="number" step="0.01" name="quantity[]" required class="w-24 border rounded p-1 text-sm text-right qty-input" value="${qty}" oninput="recalc(this)"></td>
-            <td class="p-2"><input type="number" step="0.01" name="unit_cost[]" required class="w-28 border rounded p-1 text-sm text-right cost-input" value="${parseFloat(cost).toFixed(2)}" oninput="recalc(this)"></td>
-            <td class="p-2"><input type="number" step="0.01" name="discount_pct[]" class="w-20 border rounded p-1 text-sm text-right disc-input" value="${parseFloat(disc).toFixed(2)}" oninput="recalc(this)"></td>
-            <td class="p-2 text-right text-sm font-semibold line-total">${(qty * cost * (1 - disc/100)).toFixed(2)}</td>
-            <td class="p-2 text-center">
-                <button type="button" onclick="removeLine(this)" class="text-red-500 hover:text-red-700 font-bold px-2">&times;</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-        renumberLines();
-        recalc(tr.querySelector('.qty-input'));
-    }
-    
-    function removeLine(btn) {
-        const tbody = document.querySelector('#itemsTable tbody');
-        if(tbody.children.length > 1) {
-            btn.closest('tr').remove();
-            renumberLines();
-            recalc(tbody.querySelector('input'));
-        } else {
-            alert('A document must have at least one line item.');
-        }
-    }
 
-    // Modal & Copy From Flow
+    // ── Modal & Copy From Flow ────────────────────────────────────────────────
     let currentLoadedSource = null;
 
     function openCopyFromModal() {
@@ -454,22 +1024,19 @@
     function applyCopiedLines() {
         if(!currentLoadedSource) return;
         
-        // 1. Populate Header info
         if(currentLoadedSource.header.supplier_id) {
-            document.getElementById('supplierSelect').value = currentLoadedSource.header.supplier_id;
+            selectSupplier(currentLoadedSource.header.supplier_id);
         }
         document.getElementById('sourceDocId').value = currentLoadedSource.header.id;
         document.getElementById('sourceDocType').value = currentLoadedSource.header.doc_type;
         document.getElementById('sourceDocRef').value = currentLoadedSource.header.doc_ref;
 
-        // Show base document banner
         document.getElementById('baseDocBannerRef').innerText = currentLoadedSource.header.doc_ref;
         document.getElementById('baseDocBannerType').innerText = currentLoadedSource.header.doc_type;
         const banner = document.getElementById('baseDocBanner');
         banner.classList.remove('hidden');
         banner.style.display = 'flex';
 
-        // 2. Clear current table & inject selected lines
         const tbody = document.querySelector('#itemsTable tbody');
         tbody.innerHTML = '';
 
@@ -481,27 +1048,35 @@
                 const idx = parseInt(chk.getAttribute('data-idx'));
                 const lineData = currentLoadedSource.lines[idx];
                 const drawQty = parseFloat(r.querySelector('.draw-qty').value) || lineData.open_qty;
-                addLine(lineData.item_id, drawQty, lineData.unit_cost, lineData.discount_pct, lineData.id);
+                addLine(lineData.item_id, drawQty, lineData.unit_cost, lineData.discount_pct, lineData.id, lineData.description, lineData.warehouse_id);
                 addedCount++;
             }
         });
 
-        if(addedCount === 0) {
+        // Add 2 blank rows readily available after copied items
+        for (let k = 0; k < 2; k++) {
             addLine();
         }
 
         closeCopyFromModal();
     }
 
-    // Initialize lines
+    // ── Document Initialization (SAP Matrix Pre-fills Ready Rows) ─────────────
     document.addEventListener("DOMContentLoaded", function() {
-        if(PREFILLED_LINES && PREFILLED_LINES.length > 0) {
+        if (PREFILLED_LINES && PREFILLED_LINES.length > 0) {
             PREFILLED_LINES.forEach(l => {
-                addLine(l.item_id, l.open_qty, l.unit_cost, l.discount_pct || 0, l.id);
+                addLine(l.item_id, l.open_qty, l.unit_cost, l.discount_pct || 0, l.id, l.description, l.warehouse_id);
             });
+            for (let k = 0; k < 2; k++) {
+                addLine();
+            }
         } else {
-            addLine();
+            // Fresh document: pre-render 6 blank rows ready for immediate typing just like SAP B1!
+            for (let k = 0; k < 6; k++) {
+                addLine();
+            }
         }
+        if (window.feather) feather.replace();
     });
 </script>
 {% endblock %}

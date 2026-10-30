@@ -1627,3 +1627,579 @@ html[data-theme="light"] .content [style*="background: #1e293b"] {
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
+
+
+/* ==========================================================================
+   ERPNext & SAP Business One Masterclass Layout & UI System
+   ========================================================================== */
+
+/* ── 1. Document Workflow Pipeline Ribbon (ERPNext Style) ────────────────── */
+.pipeline-ribbon {
+  display: flex;
+  align-items: center;
+  background: rgba(13, 21, 38, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 24px;
+  gap: 8px;
+  overflow-x: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.pipeline-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  white-space: nowrap;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.pipeline-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 7px 14px;
+  text-decoration: none !important;
+  color: var(--text-primary) !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pipeline-step:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+
+.pipeline-step.active {
+  border-color: var(--gold);
+  background: var(--gold-light);
+}
+
+.pipeline-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.pipeline-step:hover .pipeline-badge {
+  background: var(--gold);
+  color: #0f172a;
+}
+
+.pipeline-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  user-select: none;
+}
+
+/* ── 2. Masterclass Number Cards (ERPNext Metric Cards) ─────────────────── */
+.mc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.mc-stat-card {
+  background: rgba(13, 21, 38, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.mc-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 20px rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.mc-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+}
+
+.mc-stat-card.gold::before { background: linear-gradient(90deg, #dfc26a, #c9a84c); }
+.mc-stat-card.blue::before { background: linear-gradient(90deg, #38bdf8, #0ea5e9); }
+.mc-stat-card.green::before { background: linear-gradient(90deg, #34d399, #10b981); }
+.mc-stat-card.red::before { background: linear-gradient(90deg, #f87171, #ef4444); }
+.mc-stat-card.purple::before { background: linear-gradient(90deg, #c084fc, #8b5cf6); }
+
+.mc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.mc-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.mc-card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.mc-stat-card.gold .mc-card-icon { background: var(--gold-light); color: var(--gold); }
+.mc-stat-card.blue .mc-card-icon { background: var(--info-light); color: var(--info); }
+.mc-stat-card.green .mc-card-icon { background: var(--success-light); color: var(--success); }
+.mc-stat-card.red .mc-card-icon { background: var(--danger-light); color: var(--danger); }
+.mc-stat-card.purple .mc-card-icon { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+.mc-card-value {
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.mc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 10px;
+}
+
+.stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.stat-trend.trend-up {
+  background: var(--success-light);
+  color: #34d399;
+}
+
+.stat-trend.trend-down {
+  background: var(--danger-light);
+  color: #f87171;
+}
+
+.stat-trend.trend-neutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+/* ── 3. ERPNext Quick Action Items Card ─────────────────────────────────── */
+.action-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.action-item-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.action-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.action-item-sub {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* ── 4. SAP Business One Relationship Map Modal & Interactive Graph ──────── */
+.sap-modal-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 8, 16, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sap-modal {
+  background: #0c1424;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(14, 165, 233, 0.2);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sap-modal-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.sap-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sap-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.sap-modal-close:hover {
+  color: #fff;
+}
+
+.sap-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* Relationship Map Tree Visualization */
+.rmap-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.rmap-level {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  width: 100%;
+}
+
+.rmap-node {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(56, 189, 248, 0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  min-width: 210px;
+  max-width: 260px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.rmap-node:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.25);
+}
+
+.rmap-node.is-current {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.12);
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.25);
+}
+
+.rmap-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rmap-node-type {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+.rmap-node-ref {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rmap-node-amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-top: 6px;
+}
+
+.rmap-node-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rmap-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* ── 5. Journal Entry Preview Modal Table ────────────────────────────────── */
+.jp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.jp-table th {
+  background: rgba(15, 23, 42, 0.7);
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 2px solid rgba(56, 189, 248, 0.2);
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.jp-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.jp-table tfoot td {
+  background: rgba(15, 23, 42, 0.85);
+  font-weight: 800;
+  border-top: 2px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.jp-balanced {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #34d399;
+  font-weight: 700;
+  font-size: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+/* ==========================================================================
+   SAP Business One Choose From List (CFL) & Dynamic Matrix Components
+   ========================================================================== */
+.sap-cfl-group {
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: 3px;
+}
+
+.sap-cfl-input {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.sap-cfl-input:focus {
+  border-color: var(--gold) !important;
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 0 0 2px var(--gold-light);
+  outline: none;
+}
+
+.sap-cfl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--gold);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.sap-cfl-btn:hover {
+  background: var(--gold);
+  color: #0f172a !important;
+}
+
+.sap-autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 250px;
+  overflow-y: auto;
+  background: #0c1424;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(201, 168, 76, 0.15);
+  z-index: 10005;
+  padding: 4px 0;
+}
+
+.sap-autocomplete-item {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.1s ease;
+}
+
+.sap-autocomplete-item:hover, .sap-autocomplete-item.active {
+  background: rgba(201, 168, 76, 0.22);
+  color: #ffffff;
+}
+
+.sap-autocomplete-item .sap-item-code {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.sap-autocomplete-item .sap-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* SAP Modal Choose from List Table */
+.cfl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cfl-table th {
+  background: rgba(15, 23, 42, 0.85);
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 2px solid rgba(56, 189, 248, 0.25);
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cfl-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.cfl-table tr:hover td {
+  background: rgba(201, 168, 76, 0.12);
+  color: #fff;
+}
+
+.cfl-table tr.selected td {
+  background: rgba(201, 168, 76, 0.25);
+  border-color: var(--gold);
+}
+
+.sap-matrix-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}

@@ -1,155 +1,303 @@
 {% extends "base.html" %}
-{% block title %}Overview{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}Executive Overview{% endblock %}
+{% block page_title %}Enterprise Workspace{% endblock %}
 
 {% block content %}
 
-<!-- Stats Grid -->
-<div class="stats-grid">
-  <div class="stat-card blue">
-    <div class="stat-label">Total Net Sales</div>
-    <div class="stat-value">{{ total_sales | default('0.00') }}</div>
+<!-- ── ERPNext Document Workflow Pipeline Ribbon ────────────────────────── -->
+<div class="pipeline-ribbon">
+  <div class="pipeline-title">
+    <i data-feather="git-commit" style="width:14px;height:14px;"></i>
+    Sales Flow
   </div>
-  <div class="stat-card blue">
-    <div class="stat-label">Total Net Purchases</div>
-    <div class="stat-value">{{ total_purchases | default('0.00') }}</div>
-  </div>
-  <div class="stat-card gold">
-    <div class="stat-label">Stock Value</div>
-    <div class="stat-value">{{ stock_value | default('0.00') }}</div>
-  </div>
-  <div class="stat-card red">
-    <div class="stat-label">Low Stock Items</div>
-    <div class="stat-value">{{ low_stock_count | default('0') }}</div>
-  </div>
-  <div class="stat-card green">
-    <div class="stat-label">Open Receivables</div>
-    <div class="stat-value">{{ open_receivables | default('0.00') }}</div>
-  </div>
-  <div class="stat-card red">
-    <div class="stat-label">Open Payables</div>
-    <div class="stat-value">{{ open_payables | default('0.00') }}</div>
-  </div>
-  <div class="stat-card green">
-    <div class="stat-label">Cash & Bank Balance</div>
-    <div class="stat-value">{{ cash_balance | default('0.00') }}</div>
-  </div>
-  <div class="stat-card gold">
-    <div class="stat-label">Open Drafts</div>
-    <div class="stat-value">{{ pending_count | default('0') }}</div>
+  <div class="pipeline-steps">
+    <a href="{{ url_for('sales.doc_list', doc_kind='quotations') }}" class="pipeline-step">
+      <i data-feather="file-text" style="width:14px;height:14px; color:#38bdf8;"></i>
+      <span>Quotations</span>
+      <span class="pipeline-badge">{{ pipeline.quotations if pipeline else 0 }}</span>
+    </a>
+    <span class="pipeline-arrow">➔</span>
+    <a href="{{ url_for('sales.doc_list', doc_kind='orders') }}" class="pipeline-step">
+      <i data-feather="shopping-bag" style="width:14px;height:14px; color:#fbbf24;"></i>
+      <span>Sales Orders</span>
+      <span class="pipeline-badge">{{ pipeline.orders if pipeline else 0 }}</span>
+    </a>
+    <span class="pipeline-arrow">➔</span>
+    <a href="{{ url_for('sales.doc_list', doc_kind='deliveries') }}" class="pipeline-step">
+      <i data-feather="truck" style="width:14px;height:14px; color:#34d399;"></i>
+      <span>Deliveries</span>
+      <span class="pipeline-badge">{{ pipeline.deliveries if pipeline else 0 }}</span>
+    </a>
+    <span class="pipeline-arrow">➔</span>
+    <a href="{{ url_for('sales.doc_list', doc_kind='invoices') }}" class="pipeline-step">
+      <i data-feather="dollar-sign" style="width:14px;height:14px; color:#2dd4bf;"></i>
+      <span>A/R Invoices</span>
+      <span class="pipeline-badge">{{ pipeline.invoices if pipeline else 0 }}</span>
+    </a>
+    <span class="pipeline-arrow">➔</span>
+    <a href="{{ url_for('payments.index') }}" class="pipeline-step">
+      <i data-feather="check-circle" style="width:14px;height:14px; color:#10b981;"></i>
+      <span>Payments</span>
+      <span class="pipeline-badge">{{ pipeline.payments if pipeline else 0 }}</span>
+    </a>
   </div>
 </div>
 
-<!-- Quick Actions -->
-<div class="mb-4">
-  <h3 class="form-section-title">Quick Actions</h3>
+<!-- ── ERPNext & SAP B1 Masterclass Number Cards (KPI Grid) ─────────────── -->
+<div class="mc-stats-grid">
+  <!-- Total Net Sales -->
+  <div class="mc-stat-card blue">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Total Net Sales</div>
+      <div class="mc-card-icon"><i data-feather="trending-up" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ total_sales | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>Posted invoices less returns</span>
+      <span class="stat-trend trend-up">▲ Revenue Active</span>
+    </div>
+  </div>
+
+  <!-- Total Net Purchases -->
+  <div class="mc-stat-card purple">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Total Net Purchases</div>
+      <div class="mc-card-icon"><i data-feather="shopping-cart" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ total_purchases | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>Goods receipt & supplier bills</span>
+      <span class="stat-trend trend-neutral">● Operating Cost</span>
+    </div>
+  </div>
+
+  <!-- Stock Asset Valuation -->
+  <div class="mc-stat-card gold">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Stock Valuation</div>
+      <div class="mc-card-icon"><i data-feather="box" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ stock_value | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>Inventory at weighted cost</span>
+      <a href="{{ url_for('inventory.index') }}" style="color:var(--gold); text-decoration:none; font-weight:700;">Explore Stock &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Open Receivables (A/R) -->
+  <div class="mc-stat-card green">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Open Receivables (A/R)</div>
+      <div class="mc-card-icon"><i data-feather="arrow-down-left" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ open_receivables | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>Customer ledger balance due</span>
+      <a href="{{ url_for('finance.ar_list') }}" style="color:#34d399; text-decoration:none; font-weight:700;">A/R Aging &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Open Payables (A/P) -->
+  <div class="mc-stat-card red">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Open Payables (A/P)</div>
+      <div class="mc-card-icon"><i data-feather="arrow-up-right" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ open_payables | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>Supplier obligations due</span>
+      <a href="{{ url_for('finance.ap_list') }}" style="color:#f87171; text-decoration:none; font-weight:700;">A/P Ledger &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Cash & Liquid Assets -->
+  <div class="mc-stat-card blue">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Cash & Bank Balance</div>
+      <div class="mc-card-icon"><i data-feather="credit-card" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value">KES {{ cash_balance | default('0.00') }}</div>
+    <div class="mc-card-footer">
+      <span>All active bank accounts</span>
+      <a href="{{ url_for('banking.index') }}" style="color:#38bdf8; text-decoration:none; font-weight:700;">Cashbooks &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Critical Low Stock Alerts -->
+  <div class="mc-stat-card red">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Low Stock Alerts</div>
+      <div class="mc-card-icon"><i data-feather="alert-triangle" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value" style="color:#f87171;">{{ low_stock_count | default('0') }} Items</div>
+    <div class="mc-card-footer">
+      <span>At or below reorder level</span>
+      {% if low_stock_count > 0 %}
+      <span class="stat-trend trend-down">Action Required</span>
+      {% else %}
+      <span class="stat-trend trend-up">Stock Healthy</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Action Required / Open Drafts -->
+  <div class="mc-stat-card gold">
+    <div class="mc-card-top">
+      <div class="mc-card-label">Action Center (Drafts)</div>
+      <div class="mc-card-icon"><i data-feather="clock" style="width:18px;height:18px;"></i></div>
+    </div>
+    <div class="mc-card-value" style="color:var(--gold);">{{ pending_count | default('0') }} Docs</div>
+    <div class="mc-card-footer">
+      <span>Pending review / posting</span>
+      <span class="stat-trend trend-neutral">Awaiting Action</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── ERPNext Quick Create Shortcuts ───────────────────────────────────── -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-3">
+    <h3 class="form-section-title" style="margin:0; font-size:14px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-secondary);">
+      <i data-feather="zap" style="width:14px;height:14px; color:var(--gold);"></i> Fast-Track Actions
+    </h3>
+  </div>
   <div class="quick-actions">
+    <a href="{{ url_for('sales.doc_new', doc_kind='orders') }}" class="quick-action-btn">
+      <i data-feather="shopping-bag" style="color:#fbbf24;"></i>
+      <span>New Sales Order</span>
+    </a>
     <a href="{{ url_for('sales.doc_new', doc_kind='invoices') }}" class="quick-action-btn">
-      <i data-feather="file-plus"></i>
-      <span>New Sale Invoice</span>
+      <i data-feather="file-plus" style="color:#38bdf8;"></i>
+      <span>New Sales Invoice</span>
     </a>
     <a href="{{ url_for('purchases.doc_new', doc_kind='orders') }}" class="quick-action-btn">
-      <i data-feather="shopping-bag"></i>
+      <i data-feather="package" style="color:#c084fc;"></i>
       <span>New Purchase Order</span>
     </a>
     <a href="{{ url_for('inventory.new_receipt') }}" class="quick-action-btn">
-      <i data-feather="download"></i>
-      <span>Receive Goods</span>
+      <i data-feather="download" style="color:#34d399;"></i>
+      <span>Receive Goods (GRPO)</span>
     </a>
     <a href="{{ url_for('inventory.new_issue') }}" class="quick-action-btn">
-      <i data-feather="upload"></i>
+      <i data-feather="upload" style="color:#f87171;"></i>
       <span>Issue Stock</span>
     </a>
     <a href="{{ url_for('bp_master.new_partner') }}" class="quick-action-btn">
-      <i data-feather="user-plus"></i>
+      <i data-feather="user-plus" style="color:#2dd4bf;"></i>
       <span>Add Business Partner</span>
-    </a>
-    <a href="{{ url_for('payments.new_incoming') }}" class="quick-action-btn">
-      <i data-feather="dollar-sign"></i>
-      <span>Record Payment</span>
     </a>
   </div>
 </div>
 
-<!-- Two Columns Area -->
-<div class="two-col">
-  <!-- Recent Transactions -->
-  <div class="card p-0">
-    <div class="card-header p-4 m-0 border-b">
-      <h3 class="card-title m-0">Recent Transactions</h3>
+<!-- ── Two Columns Area: Action Center & Recent Ledger Activity ─────────── -->
+<div class="two-col" style="gap:20px; margin-bottom:24px;">
+
+  <!-- Column 1: Action Center (Pending Draft Documents) -->
+  <div class="card p-0" style="overflow:hidden;">
+    <div class="card-header p-4 m-0 border-b flex justify-between items-center" style="background:rgba(15,23,42,0.4);">
+      <h3 class="card-title m-0 flex items-center gap-2">
+        <i data-feather="inbox" style="width:16px;height:16px; color:var(--gold);"></i>
+        Pending Drafts &amp; Approvals
+      </h3>
+      <span class="badge badge-draft" style="font-size:11px;">{{ draft_action_items|length if draft_action_items else 0 }} Pending</span>
     </div>
     <div class="overflow-auto">
       <table>
         <thead>
           <tr>
+            <th>Document</th>
+            <th>Party</th>
             <th>Date</th>
-            <th>Type</th>
+            <th class="number-right">Total</th>
+            <th class="text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in draft_action_items | default([]) %}
+          <tr>
+            <td>
+              <a href="/{{ d.module }}/{{ 'invoices' if d.doc_type=='Invoice' else ('orders' if 'Order' in d.doc_type else 'quotations') }}/{{ d.id }}" class="sap-arrow" title="Open Document">&rarr;</a>
+              <span class="font-bold text-erp-gold">{{ d.doc_ref }}</span>
+              <div style="font-size:11px; color:var(--text-secondary);">{{ d.doc_type }}</div>
+            </td>
+            <td>{{ d.party_name or '—' }}</td>
+            <td style="font-size:12px; color:var(--text-secondary);">{{ d.doc_date }}</td>
+            <td class="number-right font-bold text-erp-gold">KES {{ "%.2f"|format(d.total) }}</td>
+            <td class="text-right">
+              <a href="/{{ d.module }}/{{ 'invoices' if d.doc_type=='Invoice' else ('orders' if 'Order' in d.doc_type else 'quotations') }}/{{ d.id }}" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:11.5px;">
+                Review &rarr;
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted" style="padding:28px;">
+              <i data-feather="check-circle" style="width:28px;height:28px; color:#10b981; margin-bottom:6px; display:inline-block;"></i>
+              <div>All document workflows are up to date. No pending drafts.</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Column 2: Recent Ledger Activity with SAP Golden Arrows -->
+  <div class="card p-0" style="overflow:hidden;">
+    <div class="card-header p-4 m-0 border-b flex justify-between items-center" style="background:rgba(15,23,42,0.4);">
+      <h3 class="card-title m-0 flex items-center gap-2">
+        <i data-feather="activity" style="width:16px;height:16px; color:#38bdf8;"></i>
+        Recent Transactions
+      </h3>
+      <span style="font-size:11.5px; color:var(--text-muted);">Real-Time Audit</span>
+    </div>
+    <div class="overflow-auto">
+      <table>
+        <thead>
+          <tr>
             <th>Reference</th>
-            <th>Amount</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th class="number-right">Amount</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {% for txn in recent_txns | default([]) %}
           <tr>
-            <td>{{ txn.doc_date }}</td>
+            <td>
+              <span class="sap-arrow" title="SAP Drilldown Link">&rarr;</span>
+              <span class="font-bold text-erp-gold">{{ txn.doc_ref }}</span>
+            </td>
             <td>{{ txn.doc_type }}</td>
-            <td>{{ txn.doc_ref }}</td>
-            <td class="number-right">{{ txn.total }}</td>
+            <td style="font-size:12px; color:var(--text-secondary);">{{ txn.doc_date }}</td>
+            <td class="number-right font-bold">KES {{ "%.2f"|format(txn.total) if txn.total is number else txn.total }}</td>
             <td>
               <span class="badge badge-{{ txn.status|lower }}">{{ txn.status }}</span>
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="5" class="text-center text-muted">No recent transactions</td>
+            <td colspan="5" class="text-center text-muted">No recent transactions recorded</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
-  
-  <!-- Low Stock Alerts -->
-  <div class="card p-0">
-    <div class="card-header p-4 m-0 border-b">
-      <h3 class="card-title m-0">Low Stock Alerts</h3>
-    </div>
-    <div class="overflow-auto">
-      <table>
-        <thead>
-          <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th class="number-right">Stock</th>
-            <th class="number-right">Reorder Lvl</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in low_stock_items | default([]) %}
-          <tr>
-            <td>{{ item.code }}</td>
-            <td>{{ item.name }}</td>
-            <td class="number-right text-danger font-bold">{{ item.stock_qty }}</td>
-            <td class="number-right">{{ item.reorder_level }}</td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="4" class="text-center text-muted">No low stock alerts</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+
 </div>
 
-<!-- Charts Section -->
+<!-- ── Charts & Financial Analytics Section ─────────────────────────────── -->
 <div class="card mt-4">
-  <div class="card-header">
-    <h3 class="card-title">Monthly Sales vs Purchases</h3>
+  <div class="card-header flex justify-between items-center">
+    <h3 class="card-title flex items-center gap-2">
+      <i data-feather="bar-chart-2" style="width:16px;height:16px; color:var(--gold);"></i>
+      Financial Trends: Monthly Net Sales vs. Purchases
+    </h3>
+    <div style="font-size:12px; color:var(--text-secondary);">Current Fiscal Year</div>
   </div>
-  <div style="height: 300px; width: 100%;">
+  <div style="height: 320px; width: 100%;">
     <canvas id="monthlyChart"></canvas>
   </div>
 </div>
@@ -159,9 +307,9 @@
 {% block extra_scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    if (window.feather) feather.replace();
+
     const ctx = document.getElementById('monthlyChart').getContext('2d');
-    
-    // Default safe parsing of chart data passed from jinja
     const labels = {{ chart_labels | default(['Jan', 'Feb', 'Mar']) | tojson }};
     const salesData = {{ chart_sales | default([0, 0, 0]) | tojson }};
     const purchasesData = {{ chart_purchases | default([0, 0, 0]) | tojson }};
@@ -172,16 +320,18 @@
         labels: labels,
         datasets: [
           {
-            label: 'Sales',
+            label: 'Net Sales Revenue (KES)',
             data: salesData,
             backgroundColor: '#c9a84c',
-            borderRadius: 4
+            borderRadius: 6,
+            borderSkipped: false
           },
           {
-            label: 'Purchases',
+            label: 'Net Purchases & Direct Costs (KES)',
             data: purchasesData,
-            backgroundColor: '#3b82f6',
-            borderRadius: 4
+            backgroundColor: '#0ea5e9',
+            borderRadius: 6,
+            borderSkipped: false
           }
         ]
       },
@@ -191,19 +341,33 @@
         plugins: {
           legend: {
             position: 'top',
+            labels: {
+              color: '#94a3b8',
+              font: { family: 'Inter', size: 12, weight: 600 }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': KES ' + Number(context.raw).toLocaleString();
+              }
+            }
           }
         },
         scales: {
           y: {
             beginAtZero: true,
+            ticks: {
+              color: '#94a3b8',
+              callback: function(val) { return 'KES ' + Number(val).toLocaleString(); }
+            },
             grid: {
-              color: '#e5e7eb'
+              color: 'rgba(255, 255, 255, 0.06)'
             }
           },
           x: {
-            grid: {
-              display: false
-            }
+            ticks: { color: '#94a3b8' },
+            grid: { display: false }
           }
         }
       }

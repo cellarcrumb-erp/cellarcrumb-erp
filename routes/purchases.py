@@ -201,7 +201,8 @@ def api_source_lines():
             'discount_pct': float(l['discount_pct'] or 0),
             'tax_id': l['tax_id'],
             'tax_amount': float(l['tax_amount'] or 0),
-            'line_total': float(l['line_total'] or 0)
+            'line_total': float(l['line_total'] or 0),
+            'warehouse_id': l['warehouse_id']
         })
         
     return jsonify({
@@ -306,10 +307,24 @@ def doc_new(doc_kind):
         tax_ids = request.form.getlist('tax_id[]')
         descriptions = request.form.getlist('description[]')
         source_line_ids = request.form.getlist('source_line_id[]')
+        line_warehouse_ids = request.form.getlist('warehouse_id[]')
         
-        if not supplier_id or not item_ids:
-            flash('Supplier and at least one item line are required.', 'error')
+        # Filter out empty blank rows (SAP B1 ready-rows matrix)
+        valid_indices = [i for i in range(len(item_ids)) if item_ids[i] and str(item_ids[i]).strip()]
+        if not supplier_id or not valid_indices:
+            flash('Supplier and at least one valid line item are required.', 'error')
             return redirect(request.url)
+
+        # Header warehouse defaults to first row's warehouse or active warehouse
+        header_warehouse_id = None
+        for i in valid_indices:
+            if i < len(line_warehouse_ids) and line_warehouse_ids[i]:
+                header_warehouse_id = int(line_warehouse_ids[i])
+                break
+        if not header_warehouse_id:
+            w_first = conn.execute("SELECT id FROM warehouses WHERE is_active=1 ORDER BY id ASC LIMIT 1").fetchone()
+            header_warehouse_id = w_first['id'] if w_first else None
+        warehouse_id = header_warehouse_id
             
         doc_ref = next_ref('Purchases', doc_type, conn)
         cursor = conn.cursor()
@@ -340,14 +355,14 @@ def doc_new(doc_kind):
         """, (doc_ref, doc_type, doc_date, due_date, supplier_id, warehouse_id, branch_id, initial_status, remarks, source_doc_id, source_doc_type, source_doc_ref, session.get('user_id'), contact_id))
         doc_id = cursor.lastrowid
         
-        for i in range(len(item_ids)):
-            if not item_ids[i]: continue
+        for i in valid_indices:
             qty = float(quantities[i]) if quantities[i] else 0.0
             unit_cost = float(costs[i]) if costs[i] else 0.0
             disc = float(discounts[i]) if i < len(discounts) and discounts[i] else 0.0
             tax = int(tax_ids[i]) if i < len(tax_ids) and tax_ids[i] else None
             desc = descriptions[i] if i < len(descriptions) else ''
             s_line_id = int(source_line_ids[i]) if i < len(source_line_ids) and source_line_ids[i] else None
+            line_wh = int(line_warehouse_ids[i]) if i < len(line_warehouse_ids) and line_warehouse_ids[i] else header_warehouse_id
             
             line_net = qty * unit_cost * (1.0 - disc / 100.0)
             subtotal += line_net
@@ -355,9 +370,9 @@ def doc_new(doc_kind):
             
             cursor.execute("""
                 INSERT INTO purchase_lines
-                (doc_id, item_id, description, quantity, unit_cost, discount_pct, tax_id, tax_amount, line_total, copied_qty, source_doc_type, source_doc_id, source_line_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
-            """, (doc_id, item_ids[i], desc, qty, unit_cost, disc, tax, tax_amt, line_net + tax_amt, source_doc_type, source_doc_id, s_line_id))
+                (doc_id, item_id, description, quantity, unit_cost, discount_pct, tax_id, tax_amount, line_total, copied_qty, source_doc_type, source_doc_id, source_line_id, warehouse_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+            """, (doc_id, item_ids[i], desc, qty, unit_cost, disc, tax, tax_amt, line_net + tax_amt, source_doc_type, source_doc_id, s_line_id, line_wh))
             
             # Atomically increment copied_qty on the source line
             if s_line_id:
@@ -388,13 +403,18 @@ def doc_new(doc_kind):
         flash(f"{doc_type} {doc_ref} created successfully.", "success")
         return redirect(url_for('purchases.doc_detail', doc_kind=doc_kind, id=doc_id))
         
-    suppliers = conn.execute("SELECT id, code, name FROM partners WHERE partner_type IN ('Supplier', 'Customer & Supplier') ORDER BY name").fetchall()
-    warehouses = conn.execute("SELECT id, name FROM warehouses WHERE is_active=1").fetchall()
+    suppliers = conn.execute("SELECT id, code, name, COALESCE(balance, 0) as balance, currency FROM partners WHERE partner_type IN ('Supplier', 'Customer & Supplier') ORDER BY code").fetchall()
+    suppliers_json = {row['id']: dict(row) for row in suppliers}
+    warehouses = conn.execute("SELECT id, code, name FROM warehouses WHERE is_active=1 ORDER BY code").fetchall()
+    warehouses_json = {row['id']: dict(row) for row in warehouses}
+    default_warehouse_id = warehouses[0]['id'] if warehouses else None
     items = conn.execute("""
-        SELECT i.id, i.code, i.name, i.price, i.cost, COALESCE(u.code, u.name, 'PCS') as uom_name
+        SELECT i.id, i.code, i.name, i.price, i.cost, COALESCE(u.code, u.name, 'PCS') as uom_name,
+               (SELECT COALESCE(SUM(sb.quantity), 0) FROM stock_balances sb WHERE sb.item_id = i.id) as stock_qty
         FROM items i
         LEFT JOIN uom u ON i.uom_id = u.id
         WHERE i.is_active=1
+        ORDER BY i.code
     """).fetchall()
     items_json = {row['id']: dict(row) for row in items}
     
@@ -423,8 +443,10 @@ def doc_new(doc_kind):
     branches = conn.execute("SELECT * FROM branches WHERE is_active=1 ORDER BY is_main DESC, name ASC").fetchall()
     
     return render_template('purchases/doc_form.html', doc_kind=doc_kind, doc_type=doc_type, 
-                           suppliers=suppliers, warehouses=warehouses, items=items,
-                           items_json=json.dumps(items_json), doc=prefilled_doc,
+                           suppliers=suppliers, suppliers_json=json.dumps(suppliers_json),
+                           warehouses=warehouses, warehouses_json=json.dumps(warehouses_json),
+                           default_warehouse_id=default_warehouse_id,
+                           items=items, items_json=json.dumps(items_json), doc=prefilled_doc,
                            prefilled_lines=prefilled_lines, copy_from_id=copy_from_id,
                            copy_from_type=copy_from_type, valid_source_types=valid_source_types,
                            branches=branches)
@@ -460,10 +482,12 @@ def doc_detail(doc_kind, id):
         
     lines = conn.execute("""
         SELECT l.*, i.name as item_name, i.code as item_code,
+               w.name as warehouse_name, w.code as warehouse_code,
                COALESCE(u.code, u.name, 'PCS') as uom_name,
                (l.quantity - COALESCE(l.copied_qty, 0)) as open_qty
         FROM purchase_lines l
         LEFT JOIN items i ON l.item_id = i.id
+        LEFT JOIN warehouses w ON l.warehouse_id = w.id
         LEFT JOIN uom u ON i.uom_id = u.id
         WHERE l.doc_id = ?
     """, (id,)).fetchall()
@@ -525,7 +549,8 @@ def doc_post(doc_kind, id):
     if doc_type == 'Receipt':
         # Add stock for received items
         for line in lines:
-            update_stock(conn, line['item_id'], doc['warehouse_id'], line['quantity'], 0, doc_type, id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
+            line_wh = line['warehouse_id'] or doc['warehouse_id']
+            update_stock(conn, line['item_id'], line_wh, line['quantity'], 0, doc_type, id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
     
     elif doc_type == 'Invoice':
         ap_acc = conn.execute("SELECT id FROM coa WHERE code='2110'").fetchone()
@@ -552,16 +577,19 @@ def doc_post(doc_kind, id):
             src_r = conn.execute("SELECT status FROM purchase_docs WHERE id=?", (doc['source_doc_id'],)).fetchone()
             if src_r and src_r['status'] in ('Posted', 'Closed', 'Paid'):
                 already_received = True
-        if not already_received and doc['warehouse_id']:
+        if not already_received:
             for line in lines:
                 item_row = conn.execute('SELECT is_stock_item FROM items WHERE id=?', (line['item_id'],)).fetchone()
                 if item_row and item_row['is_stock_item']:
-                    update_stock(conn, line['item_id'], doc['warehouse_id'], line['quantity'], 0, 'Bill', id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
+                    line_wh = line['warehouse_id'] or doc['warehouse_id']
+                    if line_wh:
+                        update_stock(conn, line['item_id'], line_wh, line['quantity'], 0, 'Bill', id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
         
     elif doc_type == 'Purchase Return':
         # Deduct stock and debit AP
         for line in lines:
-            update_stock(conn, line['item_id'], doc['warehouse_id'], 0, line['quantity'], doc_type, id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
+            line_wh = line['warehouse_id'] or doc['warehouse_id']
+            update_stock(conn, line['item_id'], line_wh, 0, line['quantity'], doc_type, id, doc['doc_ref'], line['unit_cost'], session.get('user_id'))
             
         ap_acc = conn.execute("SELECT id FROM coa WHERE code='2110'").fetchone()
         inv_acc = conn.execute("SELECT id FROM coa WHERE code='1300'").fetchone()
@@ -727,3 +755,26 @@ def make_payment(id):
         flash(f'Error processing payment: {e}', 'error')
 
     return redirect(url_for('purchases.doc_detail', doc_kind='bills', id=id))
+
+
+@purchases_bp.route('/<doc_kind>/<int:id>/journal-preview')
+@login_required
+def doc_journal_preview(doc_kind, id):
+    """Simulates the General Ledger postings for a purchase document before posting (SAP B1 Journal Entry Preview)."""
+    conn = get_db()
+    doc = conn.execute("SELECT * FROM purchase_docs WHERE id = ?", (id,)).fetchone()
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+    lines = conn.execute("SELECT * FROM purchase_lines WHERE doc_id = ?", (id,)).fetchall()
+    from tn_engine import simulate_journal_entry
+    preview = simulate_journal_entry(conn, doc['doc_type'], dict(doc), [dict(l) for l in lines])
+    return jsonify(preview)
+
+@purchases_bp.route('/<doc_kind>/<int:id>/relationship-map')
+@login_required
+def doc_relationship_map(doc_kind, id):
+    """Returns the complete SAP B1 & ERPNext visual relationship graph for a purchase document."""
+    conn = get_db()
+    from tn_engine import build_relationship_map
+    rmap = build_relationship_map(conn, 'purchases', id)
+    return jsonify(rmap)
